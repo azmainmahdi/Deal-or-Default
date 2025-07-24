@@ -23,4 +23,4 @@ A turn-based multiplayer board game simulating financial diplomacy, FDI investme
 - Hosted on GitHub Pages
 
 ## 🚀 Play Now
-👉 [https://yourusername.github.io/Deal-or-Default/](https://yourusername.github.io/Deal-or-Default/)
+👉 [https://azmainmahdi.github.io/Deal-or-Default/](https://azmainmahdi.github.io/Deal-or-Default/)

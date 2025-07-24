@@ -15,6 +15,7 @@ export default class Layout {
         const scaleX = screenWidth / baseWidth;  // Scale factor based on width
         const scaleY = screenHeight / baseHeight; // Scale factor based on height
         const scaleFactor = Math.min(scaleX, scaleY);  // Use the smaller factor to avoid distortion
+        this.scaleFactor = scaleFactor; 
 
         
 
@@ -112,10 +113,15 @@ export default class Layout {
 
             this.capitalLabels.push(capText);
 
-            const projectText = scene.add.text(W *0.08, waiverY + font * 0.8, '', '', fontStyle(font * 0.7, {
-                fill: '#aaaaaa',
-                wordWrap: { width: 160 }
-            })).setOrigin(0, 0);
+            const projectText = scene.add.text(
+                W * 0.08,
+                waiverY + font * 0.8,
+                '',
+                fontStyle(font * 1, {
+                    fill: '#aaaaaa',
+                    wordWrap: { width: 200 }  // Increased for larger font
+                })
+            ).setOrigin(0, 0);
 
             this.projectTexts.push(projectText);
 
@@ -156,6 +162,7 @@ export default class Layout {
 
         // dice container
         this.diceContainer = this.scene.add.container(diceX + 50, diceY + 50);
+        this.diceContainer.setScale(scaleFactor*1.5);
 
         // 🎯 BACKGROUND behind dice
         this.diceBackground = this.scene.add.graphics();
@@ -187,6 +194,7 @@ export default class Layout {
 
         this.diceContainer.setSize(80, 80);  // define hit area
         this.diceContainer.setInteractive();
+        this.diceContainer.setScale(this.scaleFactor*1.3);
         this.diceContainer.on('pointerdown', () => {
             this.scene.handleRoll();  // same as pressing R
         });
@@ -277,8 +285,8 @@ export default class Layout {
     this.scene.tweens.add({
         targets: this.diceContainer,
         angle: { from: -10, to: 10 },
-        scaleX: { from: 0.9, to: 1.1 },
-        scaleY: { from: 0.9, to: 1.1 },
+       scaleX: { from: this.scaleFactor * 1.1, to: this.scaleFactor * 1.5 },
+        scaleY: { from: this.scaleFactor * 1.1, to: this.scaleFactor * 1.5 },
         duration: 100,
         yoyo: true,
         repeat: 3,
@@ -286,9 +294,7 @@ export default class Layout {
         onComplete: () => {
             interval.remove();
             this.diceContainer.angle = 0;
-            this.diceContainer.scaleX = 1;
-            this.diceContainer.scaleY = 1;
-
+             this.diceContainer.setScale(this.scaleFactor*1.3); // ✅ Restore correct scale
             this.drawDiceFace(roll); // final result
 
             this.scene.time.delayedCall(400, () => {

@@ -29,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.svg('ladderIcon', 'assets/ladder.svg');
         this.load.svg('snakeIcon', 'assets/snake.svg');
         this.load.image('goalIcon', 'assets/goal.svg');
+        this.load.image('cardBack', 'assets/cardBack.png');
     }
 
     create() {
@@ -661,6 +662,9 @@ export default class GameScene extends Phaser.Scene {
 
         if (info.type === 'event') {
            // ✅ Pull a real event from microEvents.js
+
+          this.showCardShakeAnimation(() => {
+           
             const allEvents = [...microEvents, ...globalMicroEvents];
             const event = Phaser.Utils.Array.GetRandom(allEvents);
             const isGlobal = !!event.applyGlobalEffect; // Global if it has applyGlobalEffect
@@ -711,7 +715,7 @@ export default class GameScene extends Phaser.Scene {
 
             this.activePrompt.setStyleByType(event.type);
 
-
+             });
         }
 
 
@@ -1199,6 +1203,39 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
+    showCardShakeAnimation(onReveal) {
+        const centerX = this.cameras.main.width / 2;
+        const centerY = this.cameras.main.height / 2;
+
+        const scaleFactor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+        const scaleMultiplier = 0.5; // ← You can reduce this to 1.2 or 1.0 for smaller cards
+        const cardWidth = 320 * scaleFactor * scaleMultiplier;
+        const cardHeight = 220 * scaleFactor * scaleMultiplier;
+
+        const card = this.add.image(centerX, centerY, 'cardBack')
+            .setDisplaySize(cardWidth, cardHeight)
+            .setDepth(99)
+            .setAlpha(1);
+
+        this.tweens.add({
+            targets: card,
+            angle: { from: -5, to: 5 },
+            scaleX: { from: 0.3, to: 0.35 },
+            scaleY: { from: 0.3, to: 0.35 },
+            duration: 100,
+            yoyo: true,
+            repeat: 3,
+            ease: 'Sine.easeInOut',
+            onComplete: () => {
+                card.destroy();
+                if (onReveal) onReveal(); // Show real card effect
+            }
+        });
+    }
+
+
+
+    
 
                      
 }

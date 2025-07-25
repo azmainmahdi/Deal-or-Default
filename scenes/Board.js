@@ -68,10 +68,20 @@ export default class Board {
                 // ).setStrokeStyle(4, 0x23242d);
 
                 // tile number
-                scene.add.text(
-                    x + 6, y + 4, squareNumber,
-                    fontStyle(tileSize * 0.25)
-                ).setDepth(2).setAlpha(0.8);
+                if (squareNumber === 1) {
+                    // Show "Start" instead of 1
+                    scene.add.text(
+                        x + 6, y + 4, 'Start',
+                        fontStyle(tileSize * 0.22, { fill: '#ffffff' })
+                    ).setDepth(2).setAlpha(0.9);
+                } else if (squareNumber !== 100) {
+                    // Show numbers for 2–99 only
+                    scene.add.text(
+                        x + 6, y + 4, squareNumber,
+                        fontStyle(tileSize * 0.25)
+                    ).setDepth(2).setAlpha(0.8);
+                }
+                // 👈 Do NOT render anything if squareNumber is 100
 
                     // colour specials
                     // const special = this.specialTiles[squareNumber];
@@ -125,8 +135,16 @@ export default class Board {
                                 .setDisplaySize(tileSize * 0.95, tileSize * 0.95)
                                 .setAlpha(0.8);
                         }
-                    }
+                        
 
+                        
+                    } else if (squareNumber === 100) {  
+                            this.scene.add.image(x + tileSize / 2, y + tileSize / 2, 'goalIcon')
+                                .setOrigin(0.5)
+                                .setDisplaySize(tileSize * 0.95, tileSize * 0.95)
+                                .setDepth(30)
+                                .setAlpha(1);
+                    }
 
 
 

@@ -28,6 +28,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.svg('sanctionIcon', 'assets/sanction.svg');
         this.load.svg('ladderIcon', 'assets/ladder.svg');
         this.load.svg('snakeIcon', 'assets/snake.svg');
+        this.load.image('goalIcon', 'assets/goal.svg');
     }
 
     create() {
@@ -458,9 +459,19 @@ export default class GameScene extends Phaser.Scene {
     resolveSquare(player, playerIndex) {
 
         // ✅ Check if game should end
-        if (player.square === 99) { // index 99 = square 100
-            this.endGame();
-            return;
+        if (player.square === 99 && !player._receivedVictoryBonus) {
+            player._receivedVictoryBonus = true;  // ✅ Avoids duplicate bonuses
+            player.capital += 20;
+
+            this.layout.updatePlayerCapital(this.currentPlayerIndex, player.capital);
+            this.layout.updateMsg(`${this.getPlayerName(this.currentPlayerIndex)} reached square 100 and earned +20 Capital!`, 'beneficial');
+
+            // Optional: slight delay before triggering game end
+            this.time.delayedCall(500, () => {
+                this.endGame();
+            });
+
+            return;  // ⛔ Skip remaining turn logic if desired
         }
 
         const sq = player.square + 1;

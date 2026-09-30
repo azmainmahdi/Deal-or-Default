@@ -6,7 +6,7 @@ import { botIntent } from '../rules/sim'
 import type { CardId, GameEvent, GameState, Intent } from '../rules/types'
 import { flyCard, play } from './anim/director'
 import { Board, PAWN_COLORS, type BoardHandle } from './Board'
-import { CardTable } from './Cards'
+import { CardTable, CountryCard, Reveal } from './Cards'
 import { describe } from './describe'
 import { Die, type DieHandle } from './Die'
 import { Dock } from './Dock'
@@ -17,7 +17,7 @@ import { setMuted } from './sound'
 const SAVE = 'dod-local-game'
 const PREFS = 'dod-prefs'
 const DEMO_NAMES = ['Ada', 'Bashir', 'Chen', 'Dara']
-const TABLES = [['a', 'Boardroom'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
+const TABLES = [['a', 'Wood'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
 type Table = (typeof TABLES)[number][0]
 
 interface View {
@@ -55,9 +55,10 @@ export function App() {
   const [state, setState] = useState<GameState | null>(saved?.state ?? null)
   const [view, setView] = useState<View | null>(() => (saved ? { ...viewOf(saved.state), log: saved.log } : null))
   const [busy, setBusy] = useState(false)
-  const [prefs, setPrefs] = useState(() => ({ table: 'c' as Table, speed: 1, sound: true, ...read<{ table: Table; speed: number; sound: boolean }>(PREFS) }))
+  const [prefs, setPrefs] = useState(() => ({ table: 'a' as Table, speed: 1, sound: true, ...read<{ table: Table; speed: number; sound: boolean }>(PREFS) }))
   const [demo, setDemo] = useState(false)
   const [portraitOk, setPortraitOk] = useState(false)
+  const [dealt, setDealt] = useState(!!saved)
   const [arming, setArming] = useState(false) // confirm() is blocked in some hosts, so confirm in-page
   const board = useRef<BoardHandle>(null)
   const die = useRef<DieHandle>(null)
@@ -78,11 +79,15 @@ export function App() {
     const pd = prev.decision
     if ((pd?.kind === 'ackCard' || pd?.kind === 'cardChoice') && next.discard.length > prev.discard.length) {
       setView((v) => v && { ...v, card: null })
-      await flyCard(pd.card, '[data-slot]', '[data-discard]', false)
+      await flyCard(pd.card, '[data-reveal-spot]', '[data-discard]', 'text', false)
       setView((v) => v && { ...v, discardTop: pd.card })
     }
     const squares = prev.players.map((pl) => pl.square)
-    await play(events, { board: board.current, die: die.current, squares, names: next.players.map((p) => p.name), colors: PAWN_COLORS }, (e) => setView((v) => v && applyEvent(v, e, next)))
+    // Safety net: a stalled animation must never lock the game; after 20s the screen snaps to the real state.
+    await Promise.race([
+      play(events, { board: board.current, die: die.current, squares, names: next.players.map((p) => p.name), colors: PAWN_COLORS }, (e) => setView((v) => v && applyEvent(v, e, next))),
+      new Promise((r) => setTimeout(r, 20_000)),
+    ])
     skipping.current = false
     gsap.globalTimeline.timeScale(prefs.speed)
     setView((v) => viewOf(next, v ?? undefined))
@@ -96,9 +101,15 @@ export function App() {
     if (!r.error) void run(state, r.state, r.events)
   }
 
+  useEffect(() => {
+    if (!demo || dealt) return
+    const t = setTimeout(() => setDealt(true), 3500)
+    return () => clearTimeout(t)
+  }, [demo, dealt])
+
   // Demo: the smart bot takes every decision, with a beat between moves so it reads like play.
   useEffect(() => {
-    if (!demo || busy || !state || state.phase !== 'playing') return
+    if (!demo || busy || !dealt || !state || state.phase !== 'playing') return
     const t = setTimeout(() => { const i = botIntent(state); if (i) send(i) }, 700 / prefs.speed)
     return () => clearTimeout(t)
   })
@@ -107,6 +118,7 @@ export function App() {
 
   function start(names: string[]) {
     const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0 })
+    setDealt(false)
     setView({ ...viewOf(r.state), log: [] })
     void run(null, r.state, r.events)
   }
@@ -174,13 +186,14 @@ export function App() {
 
       <main className="stage">
         <div className="boardzone">
+          <Reveal id={view.card} />
           <div className="tilt">
             <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} />
           </div>
         </div>
 
         <aside className="side">
-          <CardTable deck={view.deck} current={view.card} discardTop={view.discardTop} />
+          <CardTable deck={view.deck} discardTop={view.discardTop} />
           <div className="midrow">
             <Die ref={die} note={dieNote} />
             <div className="dockwrap">
@@ -198,6 +211,21 @@ export function App() {
       </main>
 
       {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} />}
+      {!dealt && s.phase === 'playing' && (
+        <div className="overlay deal">
+          <p className="eyebrow">Countries dealt</p>
+          <div className="deal-row">
+            {s.players.map((pl, p) => (
+              <div key={p} className="deal-card" style={{ animationDelay: `${0.15 + p * 0.18}s` }}>
+                <CountryCard c={pl.country} />
+                <b>{pl.name}</b>
+                <small>{COUNTRIES[pl.country].perk}</small>
+              </div>
+            ))}
+          </div>
+          <button className="primary" onClick={() => setDealt(true)}>{demo ? 'Starting…' : 'Start the game'}</button>
+        </div>
+      )}
       {!portraitOk && (
         <div className="rotate">
           <div className="phone" aria-hidden="true" />

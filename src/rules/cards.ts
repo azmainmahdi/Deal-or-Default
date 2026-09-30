@@ -182,3 +182,34 @@ export const CARDS: Record<CardId, CardDef> = {
     apply: (c, p) => (addStatus(c, p, 'capitalControls', 3), none),
   },
 }
+
+/** The italic quote on each card's text side. `true` = read off the printed card (some lines
+ *  were partly hidden in the photos and completed); `false` = placeholder until Azmain sends his. */
+export const FLAVOUR: Record<CardId, [string, boolean]> = {
+  lendLease: ['Allies fill your coffers.', true],
+  alliedAid: ['Relief ships arrive.', true],
+  tradeCorridor: ['New route slashes costs.', true],
+  tariffTruce: ['Borders briefly open.', true],
+  surplusBudget: ['Unexpected fiscal surplus.', true],
+  strike: ['Pickets halt production.', true],
+  corruptionProbe: ['Officials under arrest.', true],
+  commodityCrash: ['Prices collapse globally.', true],
+  debtSpiral: ['Interest snowballs.', true],
+  insuranceFraud: ['The claims were fake.', true],
+  bankingPanic: ['Queues at every branch.', true],
+  commodityBoom: ['Every barrel sells twice.', false],
+  debtRestructure: ['Creditors blink first.', false],
+  fastTrack: ['Stamped before lunch.', false],
+  exportSubsidy: ['The state pays the freight.', false],
+  productivitySurge: ['The line never stops.', false],
+  strategicReserve: ['Open the vaults.', false],
+  warBond: ['Buy bonds, win the war.', false],
+  devaluation: ['The currency slides overnight.', false],
+  cyberAttack: ['The ledgers go dark.', false],
+  embargo: ['Ports close to you.', false],
+  sovereignDefault: ['A nation stops paying.', false],
+  portBlockade: ['Ships wait at anchor.', false],
+  sanctionThreat: ['All eyes turn to you.', false],
+  rateHike: ['The central bank tightens.', false],
+  capitalControls: ['Money stays at home.', false],
+}

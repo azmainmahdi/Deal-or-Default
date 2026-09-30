@@ -1,6 +1,7 @@
 import { COUNTRIES } from '../rules/countries'
 import type { GameState } from '../rules/types'
 import { PAWN_COLORS } from './Board'
+import { Flag } from './Flag'
 import { Num } from './Num'
 
 export interface Shown { square: number; capital: number; debt: number; waivers: number }
@@ -10,6 +11,16 @@ const STATUS: Record<string, string> = {
   embargo: 'Embargo', noRepay: 'No repay', sanctionThreat: 'Sanction threat',
 }
 
+/** Octagonal chips like the printed ones: gold for Capital, copper with a hole for Debt. */
+function Chip({ kind }: { kind: 'capital' | 'debt' }) {
+  return (
+    <svg className={`chip ${kind}`} viewBox="-12 -12 24 24" aria-hidden="true">
+      <path d="M-5-11.5h10l6.5 6.5v10L5 11.5h-10l-6.5-6.5v-10z" />
+      {kind === 'debt' ? <circle r="4" className="hole" /> : <path d="M-3.5-8h7l5 5v6l-5 5h-7l-5-5v-6z" className="inner" />}
+    </svg>
+  )
+}
+
 export function Ledger({ s, shown, active }: { s: GameState; shown: Shown[]; active: number }) {
   return (
     <div className="ledgers">
@@ -17,33 +28,41 @@ export function Ledger({ s, shown, active }: { s: GameState; shown: Shown[]; act
         const v = shown[p] ?? pl
         return (
           <article key={p} data-ledger={p} className={`ledger ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
-            <header>
-              <span className="dot seat" aria-hidden="true">{p + 1}</span>
-              <b>{pl.name}</b>
-              <span className="sq">sq {v.square}</span>
-            </header>
-            <p className="country" title={COUNTRIES[pl.country].perk}>{COUNTRIES[pl.country].name} · {COUNTRIES[pl.country].perk}</p>
-            <dl>
-              <div><dt>Capital</dt><dd><Num value={v.capital} /></dd></div>
-              <div><dt>Debt</dt><dd><Num value={v.debt} /></dd></div>
-              <div><dt>Waivers</dt><dd><Num value={v.waivers} /></dd></div>
-              <div><dt>Net</dt><dd><Num value={v.capital - s.config.debtWeight * v.debt} /></dd></div>
-            </dl>
-            {pl.projects.length > 0 && (
-              <ul className="projects" aria-label="Pending projects">
-                {pl.projects.map((x) => (
-                  <li key={x.id} title={`${x.profit} profit in ${x.ttm} turns`}>
-                    <span className="clock" style={{ '--t': Math.min(1, x.ttm / 4) } as React.CSSProperties} aria-hidden="true" />+{x.profit}<small>{x.ttm}t</small>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {(pl.statuses.length > 0 || pl.fraud) && (
-              <p className="statuses">
-                {pl.statuses.map((st, i) => <span key={i}>{STATUS[st.kind]} ({st.turns})</span>)}
-                {pl.fraud && <span>Insurance fraud</span>}
-              </p>
-            )}
+            <div className="lg-portrait" style={{ backgroundImage: `url(./art/countries/${pl.country}.jpg)` }}>
+              <Flag c={pl.country} />
+              <span className="dot seat">{p + 1}</span>
+            </div>
+            <div className="lg-body">
+              <header>
+                <b>{pl.name}</b>
+                <span className="sq">sq {v.square}</span>
+              </header>
+              <p className="country" title={COUNTRIES[pl.country].perk}>{COUNTRIES[pl.country].perk}</p>
+              <div className="purse">
+                <span title="Capital"><Chip kind="capital" /><Num value={v.capital} /></span>
+                <span title="Debt"><Chip kind="debt" /><Num value={v.debt} /></span>
+                <span title="Tariff Waivers" className="tickets">
+                  {Array.from({ length: Math.min(v.waivers, 4) }, (_, i) => <i key={i} />)}
+                  {v.waivers === 0 ? <em>no waiver</em> : v.waivers > 4 ? <em>×{v.waivers}</em> : null}
+                </span>
+                <span className="nw" title="Net Worth = Capital − 1.5 × Debt">NW <Num value={v.capital - s.config.debtWeight * v.debt} /></span>
+              </div>
+              {pl.projects.length > 0 && (
+                <ul className="projects" aria-label="Pending projects">
+                  {pl.projects.map((x) => (
+                    <li key={x.id} title={`${x.profit} profit in ${x.ttm} turns`}>
+                      <span className="clock" style={{ '--t': Math.min(1, x.ttm / 4) } as React.CSSProperties} aria-hidden="true" />+{x.profit}<small>{x.ttm}t</small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {(pl.statuses.length > 0 || pl.fraud) && (
+                <p className="statuses">
+                  {pl.statuses.map((st, i) => <span key={i}>{STATUS[st.kind]} ({st.turns})</span>)}
+                  {pl.fraud && <span>Insurance fraud</span>}
+                </p>
+              )}
+            </div>
           </article>
         )
       })}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poiret+One&family=Josefin+Sans:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Poiret+One&family=Josefin+Sans:ital,wght@0,400;0,600;0,700;1,300&display=swap');
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #0c0d0f; color: var(--text); font: 16px/1.45 var(--font); }
 button { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
@@ -12,8 +12,8 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
 
 /* ---------- tables (the environment) ---------- */
 .table { min-height: 100vh; position: relative; overflow-x: hidden; }
-.t-a { background: radial-gradient(ellipse at 40% 45%, #6b4526 0%, #3d2615 55%, #1c110a 100%); }
-.t-a::before { content: ""; position: fixed; inset: 0; background: repeating-linear-gradient(88deg, #ffffff07 0 3px, #0000 3px 40px), repeating-linear-gradient(92deg, #0000 0 90px, #00000014 90px 94px); pointer-events: none; }
+.t-a { background: linear-gradient(180deg, #0000 0%, #0000002a 100%), repeating-linear-gradient(91deg, #ffffff08 0 2px, #0000 2px 11px, #00000010 11px 13px, #0000 13px 29px), repeating-linear-gradient(89deg, #0000 0 140px, #0000001a 140px 146px, #0000 146px 380px), linear-gradient(90deg, #9b5a2c, #b8743e 35%, #a9642f 60%, #b87a44); }
+.t-a::before { content: ""; position: fixed; inset: 0; background: radial-gradient(ellipse at 45% 40%, #ffffff14, #0000 55%), radial-gradient(ellipse at 50% 120%, #0006, #0000 60%); pointer-events: none; }
 .t-b { background: radial-gradient(ellipse at 45% 45%, #1f6b45 0%, #124a30 55%, #07261a 100%); }
 .t-b::before { content: ""; position: fixed; inset: 10px; border: 3px solid #c9a24a55; border-radius: 40px; pointer-events: none; }
 .t-c { background: linear-gradient(115deg, #0000 40%, #b8955a1c 41%, #0000 42%), linear-gradient(35deg, #0000 60%, #ffffff0a 61%, #0000 63%), radial-gradient(ellipse at 50% 40%, #23262b, #0d0e10 80%); }
@@ -36,25 +36,22 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
 .tilt { width: min(100%, calc(100vh - 90px)); transform: rotateX(12deg); transform-origin: 50% 60%; filter: drop-shadow(0 30px 30px #000a) drop-shadow(0 8px 10px #0008); }
 .board { width: 100%; height: auto; display: block; }
 
-.t-a .board .frame, .t-c .board .frame, .t-d .board .frame { fill: #c9962f; }
-.t-b .board .frame { fill: #0e1113; stroke: #c9a24a; stroke-width: 8; }
-.tile.a { fill: var(--tile-a); } .tile.b { fill: var(--tile-b); }
-.sqnum { fill: var(--muted); font-size: 17px; }
-.startlab { fill: var(--gold-hi); font-size: 18px; font-weight: 700; letter-spacing: .1em; }
-.ladder .rail { stroke: #d9b36a; stroke-width: 7; stroke-linecap: round; }
-.ladder .rung { stroke: #a8823f; stroke-width: 5; stroke-linecap: round; }
-.ladder { filter: drop-shadow(3px 5px 3px #000a); }
-.snake .motion { fill: none; stroke: none; }
-.snake .shadow { fill: #0007; transform: translate(4px, 7px); }
-.snake .scale-a { fill: #c42a40; }
-.snake .scale-b { fill: #b3213a; }
-.snake .band { fill: #e3bd6a; }
-.snake .head { fill: #a3182c; stroke: #e3bd6a; stroke-width: 2; }
-.snake .brow { fill: none; stroke: #e3bd6a; stroke-width: 1.5; opacity: .7; }
-.snake .eye { fill: #f5d67b; } .snake .pupil { fill: #1d1a14; }
-.snake .tongue { fill: none; stroke: #ff5a6e; stroke-width: 2.5; stroke-linecap: round; transform-box: fill-box; transform-origin: left center; animation: flick 3.2s infinite; }
-.snake:nth-of-type(2n) .tongue { animation-delay: 1.3s; } .snake:nth-of-type(3n) .tongue { animation-delay: 2.1s; }
-@keyframes flick { 0%, 80%, 100% { transform: scaleX(0); } 84%, 92% { transform: scaleX(1); } 88% { transform: scaleX(.6); } }
+.board .frame { fill: #0e1320; }
+.board .felt { fill: #18203a; }
+.t-b .board .frame { fill: #0e1113; stroke: #c9a24a; stroke-width: 6; }
+.board .watermark { opacity: .07; }
+.sq .tile { fill: #1b2440; stroke: #2e3a5c; stroke-width: 1.5; }
+.sqnum { fill: #efe6d2; font: 700 20px "Fraunces", Georgia, serif; }
+.sqnum.on-art { fill: #fff; paint-order: stroke; stroke: #0006; stroke-width: 3px; }
+.startlab { fill: #efe6d2; font: 700 20px "Fraunces", Georgia, serif; }
+.delta { fill: #fff; font: 700 15px "Fraunces", Georgia, serif; paint-order: stroke; stroke: #0007; stroke-width: 3px; }
+.dest { fill: none; stroke-width: 2.5; stroke-dasharray: 7 5; }
+.dest.snake { stroke: #ef5a6f; fill: #ef5a6f14; } .dest.ladder { stroke: #3fd08c; fill: #3fd08c12; }
+.route .motion { fill: none; stroke: none; }
+.route .casing { fill: none; stroke: #0b0f1a; stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
+.route .line { fill: none; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.route.ladder .line { stroke: #3fd08c; } .route.snake .line { stroke: #ef5a6f; }
+.arrowhead.ladder { fill: #3fd08c; } .arrowhead.snake { fill: #ef5a6f; }
 .pawn .shadow { fill: #000; opacity: .45; }
 .pawn circle:first-child { stroke: #fff; stroke-width: 3; }
 .pawn .shine { fill: #fff; opacity: .18; transform: translate(-5px, -6px) scale(.45); }
@@ -73,23 +70,46 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
 /* ---------- side: cards, die, dock, ledgers ---------- */
 .side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
 .side > * { min-width: 0; }
-.cardtable { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.pile { aspect-ratio: .62; border-radius: 10px; position: relative; display: grid; place-items: center; }
-.pile.slot, .pile.discard { border: 2px dashed #ffffff22; }
-.pile.deck img { position: absolute; width: 161%; border-radius: 10px; box-shadow: 0 4px 8px #0009; }
-.pile-label { position: absolute; bottom: -22px; width: 100%; text-align: center; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
-.pile-label.ghost { position: static; color: #ffffff44; font-size: 11px; }
-.cardslot-inner { position: absolute; inset: 0; }
-.cardface { position: absolute; inset: 0; border-radius: 10px; background: #f4ead3; color: #1d1a14; padding: 10px; border-top: 10px solid #2f9e5b; box-shadow: 0 6px 14px #0009; overflow: hidden; }
-.cardface.adverse { border-top-color: #d2344a; }
-.cardface small { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #6b6250; }
-.cardface b { display: block; font: 400 17px/1.1 "Poiret One", var(--font); margin: 4px 0 6px; font-weight: 700; }
-.cardface p { font-size: 11px; margin: 0; color: #3b352a; }
+.cardtable { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.pile { aspect-ratio: 1.6; border-radius: 10px; position: relative; display: grid; place-items: center; }
+.pile.discard { border: 2px dashed #ffffff22; }
+.pile.deck img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; box-shadow: 0 3px 6px #0009; }
+.pile-label { position: absolute; bottom: -20px; width: 100%; text-align: center; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-2); }
+.pile-label.ghost { position: static; color: #ffffff44; }
+.card-face { position: absolute; inset: 0; }
+.ev-text { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; background: #141b2e; color: #efe6d2; display: grid; align-content: center; justify-items: center; text-align: center; gap: 4px; padding: 10% 12%; container-type: inline-size; box-shadow: 0 6px 14px #0009; }
+.ev-text .deco { position: absolute; inset: 4%; width: 92%; height: 92%; fill: none; stroke: #c9913f; stroke-width: 1.6; }
+.ev-diamond { width: 9cqi; aspect-ratio: 1; border: 1.5px solid currentColor; transform: rotate(45deg); display: grid; place-items: center; }
+.ev-diamond svg { width: 70%; transform: rotate(-45deg); fill: currentColor; }
+.ev-text.adverse .ev-diamond { color: #ef5a6f; } .ev-text.beneficial .ev-diamond { color: #3fd08c; }
+.ev-name { font-size: 4.2cqi; letter-spacing: .14em; text-transform: uppercase; color: #9aa3ba; }
+.ev-text q { font: italic 300 6.4cqi/1.25 "Josefin Sans", sans-serif; color: #e6e1d6; }
+.ev-text p { margin: 2px 0 0; font: 800 6cqi/1.25 "Fraunces", Georgia, serif; color: #f0b44c; }
+.ev-text.adverse p em { color: #ff6b7a; font-style: normal; } .ev-text.beneficial p em { color: #5fe08f; font-style: normal; }
+.ev-art { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; display: grid; place-items: center; border: 5px solid #d9914a; container-type: inline-size;
+  background: radial-gradient(ellipse at 30% 25%, #ffd48a55, #0000 50%), radial-gradient(ellipse at 75% 80%, #0008, #0000 60%), linear-gradient(135deg, #2b3f73, #6a2c3f 60%, #1b1f33); }
+.ev-art.beneficial { background: radial-gradient(ellipse at 30% 25%, #ffe0a066, #0000 50%), radial-gradient(ellipse at 75% 80%, #0008, #0000 60%), linear-gradient(135deg, #2f5d73, #7a5a2a 60%, #1b2433); }
+.ev-art b { font: 800 10cqi/1 "Fraunces", Georgia, serif; color: #f5c451; text-shadow: 0 3px 8px #000c; text-align: center; padding: 0 8%; }
+.ev-logo { position: absolute; bottom: 4%; width: 18%; opacity: .9; }
+.reveal-spot { position: absolute; z-index: 8; left: 50%; top: 46%; width: min(62%, 460px); aspect-ratio: 1.6; transform: translate(-50%, -50%); pointer-events: none; }
+.reveal { position: absolute; inset: 0; animation: revealflip .5s ease-out both; filter: drop-shadow(0 24px 30px #000c); }
+@keyframes revealflip { from { transform: perspective(900px) rotateY(90deg); } }
 .flyer { position: fixed; z-index: 50; perspective: 900px; pointer-events: none; }
 .flyer-inner { position: absolute; inset: 0; transform-style: preserve-3d; }
 .flyer-back, .flyer-front { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 10px; overflow: hidden; }
-.flyer-back { transform: rotateY(180deg); display: grid; place-items: center; background: #121417; }
-.flyer-back img { width: 161%; transform: rotate(90deg); }
+.flyer-back { transform: rotateY(180deg); }
+.flyer-back img { width: 100%; height: 100%; object-fit: cover; }
+
+/* country cards */
+.country-card { position: relative; aspect-ratio: .7; width: 150px; border-radius: 8px; overflow: hidden; background: #2a1c14; box-shadow: 0 10px 20px #000a; container-type: inline-size; }
+.cc-art { position: absolute; inset: 0; background-size: cover; background-position: center 20%; }
+.cc-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #0000 45%, #0008 100%); }
+.cc-frame { position: absolute; inset: 5%; border: 1.5px solid #e59a57; box-shadow: inset 0 0 0 4px #0000, inset 0 0 0 5.5px #e59a5788; }
+.cc-name { position: absolute; left: 0; right: 0; bottom: 24%; text-align: center; font: 800 12cqi/1 "Fraunces", Georgia, serif; color: #f5c451; text-shadow: 0 2px 6px #000; }
+.cc-badge { position: absolute; left: 50%; bottom: 5%; transform: translateX(-50%); width: 22%; aspect-ratio: 1; border-radius: 50%; border: 2px solid #e59a57; padding: 2px; background: #2a1c14; }
+.cc-badge::before { content: ""; position: absolute; left: -140%; right: -140%; top: 45%; border-top: 1.5px solid #e59a57; border-bottom: 1.5px solid #e59a57; height: 4px; z-index: -1; }
+.flag-badge { display: block; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.flag-badge svg { width: 100%; height: 100%; display: block; }
 
 .midrow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: start; margin-top: 18px; }
 .tray { width: 110px; height: 110px; border-radius: 50%; display: grid; place-items: center; position: relative; background: radial-gradient(#0006, #000a); box-shadow: inset 0 4px 12px #000c; }
@@ -98,7 +118,9 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
 .die3d { width: 54px; height: 54px; position: relative; transform-style: preserve-3d; }
 .face { position: absolute; inset: 0; background: #f7f1e3; border-radius: 9px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 7px; box-shadow: inset 0 0 0 1px #d8ceb6, inset -3px -4px 0 #d8ceb6; backface-visibility: hidden; }
 .face i { width: 9px; height: 9px; border-radius: 50%; place-self: center; }
-.face i.on { background: #1d1a14; }
+.face i.on { background: #2a4fd6; }
+.f1 i.on, .f3 i.on, .f5 i.on { background: #d8263a; }
+.face { background: #fbfbf7; }
 .f1 { transform: translateZ(27px); } .f6 { transform: rotateY(180deg) translateZ(27px); }
 .f2 { transform: rotateY(90deg) translateZ(27px); } .f5 { transform: rotateY(-90deg) translateZ(27px); }
 .f3 { transform: rotateX(90deg) translateZ(27px); } .f4 { transform: rotateX(-90deg) translateZ(27px); }
@@ -115,19 +137,27 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
 .playing span { margin-right: auto; }
 
 .ledgers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.ledger { min-width: 0; }
-.ledger { background: var(--ledger-bg); color: var(--ledger-ink); border-radius: 10px; padding: 10px 12px; border-left: 5px solid var(--pc); box-shadow: 0 6px 12px #0007; transition: transform .2s, box-shadow .2s; }
+.ledger { min-width: 0; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; background: var(--ledger-bg); color: var(--ledger-ink); border-radius: 10px; padding: 8px; border-left: 5px solid var(--pc); box-shadow: 0 6px 12px #0007; transition: transform .2s, box-shadow .2s; }
 .ledger.active { transform: translateY(-3px); box-shadow: 0 0 0 2px var(--gold-hi), 0 10px 18px #0009; }
+.lg-portrait { position: relative; width: 54px; height: 72px; border-radius: 6px; background-size: cover; background-position: center 20%; border: 2px solid #e59a57; }
+.lg-portrait .flag-badge { position: absolute; right: -6px; bottom: -6px; width: 22px; height: 22px; border: 2px solid #e59a57; }
+.lg-portrait .seat { position: absolute; left: -6px; top: -6px; background: var(--pc); border: 2px solid #fff; }
+.lg-body { min-width: 0; }
 .ledger header { display: flex; align-items: center; gap: 6px; font-size: 15px; }
 .ledger header b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ledger .country { color: var(--ledger-accent); font-size: 11px; margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ledger .sq { margin-left: auto; opacity: .6; font-size: 12px; }
-.ledger dl { display: grid; grid-template-columns: repeat(4, 1fr); margin: 6px 0 0; gap: 2px; }
-.ledger dt { font-size: 10px; opacity: .65; }
-.ledger dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ledger .country { color: var(--ledger-accent); font-size: 11px; margin: 1px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.purse { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.purse > span { display: inline-flex; align-items: center; gap: 4px; }
+.chip { width: 20px; height: 20px; filter: drop-shadow(0 1px 1px #0008); }
+.chip.capital path:first-child { fill: #e8b03a; stroke: #9b6a12; stroke-width: 1.2; } .chip.capital .inner { fill: none; stroke: #b9831f; stroke-width: 1; }
+.chip.debt path { fill: #b45a2c; stroke: #6e2f12; stroke-width: 1.2; } .chip.debt .hole { fill: #1a0d06; }
+.tickets i { width: 16px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, #1b2033 70%, #e36d2c 70%); border: 1px solid #e36d2c; }
+.tickets em { font-weight: 400; font-size: 11px; opacity: .6; font-style: normal; }
+.nw { font-size: 12px; opacity: .85; } .nw .num { font-size: 14px; }
 .num.up { color: #3fbf73; } .num.down { color: #ff6b7a; }
 .projects { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
-.projects li { display: inline-flex; align-items: center; gap: 4px; background: #0000001a; padding: 2px 8px 2px 4px; border-radius: 999px; font-weight: 700; }
+.projects li { display: inline-flex; align-items: center; gap: 4px; background: #0000001f; padding: 2px 8px 2px 4px; border-radius: 999px; font-weight: 700; }
 .projects small { opacity: .7; font-weight: 400; }
 .clock { width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--gold) calc(var(--t) * 360deg), #0000 0); border: 1px solid var(--gold); }
 .statuses { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
@@ -234,3 +264,20 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
   .final { padding: 14px; max-height: 94dvh; overflow: auto; } .final h2 { font-size: 26px; }
   .setup { padding: 16px; }
 }
+
+/* deal screen */
+.overlay.deal { align-content: center; justify-items: center; gap: 18px; background: #000b; }
+.deal .eyebrow { margin: 0; font: 400 32px "Poiret One", var(--font); color: var(--gold-hi); }
+.deal-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; max-width: 1000px; }
+.deal-card { display: grid; justify-items: center; gap: 6px; width: 150px; text-align: center; animation: dealin .6s both cubic-bezier(.2, 1.3, .5, 1); }
+.deal-card b { font-size: 17px; } .deal-card small { color: var(--text-2); font-size: 12px; line-height: 1.3; }
+@keyframes dealin { from { opacity: 0; transform: translateY(-60px) rotate(-8deg) scale(.8); } }
+@media (orientation: landscape) and (max-height: 540px) {
+  .deal-card { width: 96px; } .country-card { width: 96px; } .deal .eyebrow { font-size: 22px; } .deal-card small { display: none; }
+  .ledger { grid-template-columns: 34px minmax(0, 1fr); gap: 6px; padding: 5px; }
+  .lg-portrait { width: 34px; height: 46px; } .lg-portrait .seat { width: 18px; height: 18px; font-size: 10px; } .lg-portrait .flag-badge { width: 16px; height: 16px; }
+  .purse { gap: 2px 6px; font-size: 12px; } .chip { width: 15px; height: 15px; } .nw, .tickets em { display: none; }
+  .cardtable { grid-template-columns: repeat(2, 96px); }
+  .reveal-spot { width: 78%; }
+}
+@media (prefers-reduced-motion: reduce) { .deal-card, .reveal { animation: none; } }

@@ -19,3 +19,12 @@ export function fan(k: number, n: number): { dx: number; dy: number } {
   const a = (2 * Math.PI * k) / n - Math.PI / 2
   return { dx: 22 * Math.cos(a), dy: 22 * Math.sin(a) }
 }
+
+/** Printed-board style route for a ladder or snake: out of the source tile to the row gap,
+ *  along the gap, then into the destination tile. `lane` nudges routes that share a gap. */
+export function routeOf(from: number, to: number, lane = 0): { x: number; y: number }[] {
+  const a = centerOf(from), z = centerOf(to)
+  const up = to > from
+  const gy = cellOf(from).y + (up ? 0 : CELL) + lane * 7
+  return [a, { x: a.x, y: gy }, { x: z.x, y: gy }, z]
+}

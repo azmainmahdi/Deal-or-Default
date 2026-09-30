@@ -4,7 +4,7 @@ import { gsap } from 'gsap'
 import { SNAKES } from '../../rules/board'
 import type { CardId, GameEvent } from '../../rules/types'
 import type { BoardHandle } from '../Board'
-import { cardFaceHtml } from '../Cards'
+import { eventArtHtml, eventTextHtml } from '../Cards'
 import type { DieHandle } from '../Die'
 import { centerOf } from '../geometry'
 import { sfx } from '../sound'
@@ -21,6 +21,7 @@ const wait = (s: number) => gsap.timeline().to({}, { duration: s })
 
 export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEvent) => void) {
   for (const e of events) {
+    if (import.meta.env.DEV) console.debug('[anim]', e.type)
     switch (e.type) {
       case 'turnStarted':
         apply(e)
@@ -38,7 +39,7 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         break
       case 'cardDrawn':
         sfx.flip()
-        await flyCard(e.card, '[data-deck]', '[data-slot]', true)
+        await flyCard(e.card, '[data-deck]', '[data-reveal-spot]', 'art', true)
         apply(e)
         break
       case 'capital':
@@ -107,25 +108,19 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
   gsap.set(pawn, { zIndex: 5 })
   pawn.parentNode?.appendChild(pawn) // draw the mover on top
 
-  if (e.via === 'ladder') {
-    const c = centerOf(to)
-    tl.call(sfx.climb).to(body, { scale: 1.25, duration: 0.15 })
-      .to(pawn, { x: c.x, y: c.y, duration: 0.9, ease: 'power1.inOut' })
-      .to(body, { scale: 1, duration: 0.2 })
-    trail(stage, from, to, 'gold')
-  } else if (e.via === 'snake') {
-    const tail = SNAKES[from]!
-    const path = board.snakePath(from)
+  if (e.via === 'ladder' || e.via === 'snake') {
+    // Follow the printed route. A hedged slide stops part way, then steps onto its square.
+    const path = board.routePath(from)
     const len = path.getTotalLength()
-    const frac = (from - to) / (from - tail) // hedged slides stop part way
+    const frac = e.via === 'ladder' ? 1 : (from - to) / (from - SNAKES[from]!)
     const o = { t: 0 }
-    tl.call(sfx.slide).to(body, { rotation: -20, duration: 0.1 })
-      .to(o, {
-        t: frac >= 1 ? 1 : 0.5, duration: 1.1 * (frac >= 1 ? 1 : 0.6), ease: 'power2.in',
-        onUpdate: () => { const p = path.getPointAtLength(o.t * len); gsap.set(pawn, { x: p.x, y: p.y }) },
-      })
+    const follow = () => { const p = path.getPointAtLength(o.t * len); gsap.set(pawn, { x: p.x, y: p.y }) }
+    tl.call(e.via === 'ladder' ? sfx.climb : sfx.slide)
+      .to(body, { scale: e.via === 'ladder' ? 1.25 : 1, rotation: e.via === 'snake' ? -18 : 0, duration: 0.15 })
+      .to(o, { t: frac >= 1 ? 1 : 0.5, duration: e.via === 'ladder' ? 1.0 : 1.1 * (frac >= 1 ? 1 : 0.6), ease: e.via === 'ladder' ? 'power1.inOut' : 'power2.in', onUpdate: follow })
     if (frac < 1) { const c = centerOf(to); tl.to(pawn, { x: c.x, y: c.y, duration: 0.3 }) }
-    tl.to(body, { rotation: 0, duration: 0.15 })
+    tl.to(body, { scale: 1, rotation: 0, duration: 0.2 })
+    if (e.via === 'ladder') trail(stage, from, 'gold')
   } else {
     const step = e.via === 'walk' ? 0.2 : 0.12
     for (const sq of e.path.slice(1)) {
@@ -168,13 +163,13 @@ async function spotlight(stage: Stage, p: number) {
   hole.remove()
 }
 
-function trail(stage: Stage, from: number, to: number, cls: string) {
-  const a = centerOf(from), z = centerOf(to)
-  const line = svgEl('line', { x1: a.x, y1: a.y, x2: z.x, y2: z.y, class: `trail ${cls}` })
+function trail(stage: Stage, from: number, cls: string) {
+  const src = stage.board.routePath(from)
+  const line = svgEl('path', { d: src.getAttribute('d')!, class: `trail ${cls}` })
   stage.board.fx().appendChild(line)
-  const len = Math.hypot(z.x - a.x, z.y - a.y)
+  const len = src.getTotalLength()
   gsap.timeline({ onComplete: () => line.remove() })
-    .fromTo(line, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.9, ease: 'power1.inOut' })
+    .fromTo(line, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.15, ease: 'power1.inOut' })
     .to(line, { opacity: 0, duration: 0.5 })
 }
 
@@ -218,13 +213,13 @@ function float(p: number, text: string, kind: 'gain' | 'loss' | 'debt') {
 }
 
 /** A card flies between piles; flip = it turns face up on the way. */
-export async function flyCard(card: CardId, fromSel: string, toSel: string, flip: boolean) {
+export async function flyCard(card: CardId, fromSel: string, toSel: string, face: 'art' | 'text', flip: boolean) {
   const from = document.querySelector(fromSel)?.getBoundingClientRect()
   const to = document.querySelector(toSel)?.getBoundingClientRect()
   if (!from || !to) return
   const el = document.createElement('div')
   el.className = 'flyer'
-  el.innerHTML = `<div class="flyer-inner"><div class="flyer-back"><img src="./card-back.png" alt=""></div><div class="flyer-front">${cardFaceHtml(card)}</div></div>`
+  el.innerHTML = `<div class="flyer-inner"><div class="flyer-back"><img src="./card-back.png" alt=""></div><div class="flyer-front">${face === 'art' ? eventArtHtml(card) : eventTextHtml(card)}</div></div>`
   Object.assign(el.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` })
   document.body.appendChild(el)
   const inner = el.firstElementChild!

@@ -1,0 +1,20 @@
+/* Theme tokens (plan section 7). The deco redesign changes only this folder, icons and board paths. */
+:root {
+  color-scheme: dark;
+  --bg: #121417;
+  --panel: #1a1d22;
+  --panel-2: #22262c;
+  --line: #2e3238;
+  --gold: #b8955a;
+  --gold-hi: #e3bd6a;
+  --text: #efe6d2;
+  --text-2: #c3b9a4;
+  --muted: #8e8676;
+  --tile-a: #1d2025;
+  --tile-b: #23272d;
+  --ladder: #2f9e5b;
+  --snake: #d2344a;
+  --good: #2f9e5b;
+  --bad: #d2344a;
+  --font: "Josefin Sans", system-ui, sans-serif;
+}

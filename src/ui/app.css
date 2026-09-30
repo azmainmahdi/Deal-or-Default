@@ -1,0 +1,79 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--font); }
+button { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+button:hover { border-color: var(--gold); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+button.primary { background: var(--gold); border-color: var(--gold); color: #121417; font-weight: 700; }
+button.quiet { background: none; }
+.dot.seat { width: 22px; height: 22px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--pc, var(--gold)); flex: none; }
+h1, h2 { margin: 0; font-weight: 700; }
+
+/* setup */
+.setup { max-width: 440px; margin: 0 auto; padding: 32px 16px; display: grid; gap: 12px; justify-items: center; text-align: center; }
+.setup form { display: grid; gap: 10px; width: 100%; }
+.namerow { display: flex; gap: 10px; align-items: center; }
+.namerow input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; }
+
+/* game */
+.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.topbar h1 { font-size: 18px; color: var(--gold-hi); }
+.topbar .turn { color: var(--muted); margin-right: auto; }
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; grid-template-areas: "ledger board side"; gap: 16px; padding: 16px; align-items: start; }
+.boardwrap { grid-area: board; }
+.side { grid-area: side; display: grid; gap: 12px; }
+.ledgers { grid-area: ledger; display: grid; gap: 10px; }
+
+.board { width: 100%; height: auto; display: block; border-radius: 8px; }
+.tile.a { fill: var(--tile-a); } .tile.b { fill: var(--tile-b); }
+.sqnum { fill: var(--muted); font-size: 18px; }
+.startlab { fill: var(--gold-hi); font-size: 20px; font-weight: 700; }
+.ladder line { stroke: var(--ladder); stroke-width: 14; stroke-linecap: round; opacity: .85; }
+.ladder line.rungs { stroke: var(--bg); stroke-width: 6; stroke-dasharray: 4 14; opacity: 1; }
+.snake path { fill: none; stroke: var(--snake); stroke-width: 12; stroke-linecap: round; opacity: .85; }
+.snake circle { fill: var(--snake); }
+.pawn circle { stroke: var(--bg); stroke-width: 4; }
+.pawn text { fill: #fff; font-size: 20px; font-weight: 700; }
+.pawn.active circle { stroke: var(--gold-hi); stroke-width: 5; }
+
+.die { width: 64px; height: 64px; border-radius: 12px; background: var(--text); color: var(--bg); font-size: 36px; font-weight: 700; display: grid; place-items: center; }
+.dock { background: var(--panel); border-radius: 12px; padding: 16px; border-top: 4px solid var(--pc); }
+.dock h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+.dock p { margin: 8px 0 12px; color: var(--text-2); }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.card { margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--panel-2); border-left: 4px solid var(--good); }
+.card.adverse { border-left-color: var(--bad); }
+.card small { color: var(--muted); display: block; }
+.card b { font-size: 18px; }
+.card p { margin: 4px 0 0; color: var(--text); }
+
+.log { background: var(--panel); border-radius: 12px; padding: 8px 16px; max-height: 320px; overflow-y: auto; font-size: 14px; color: var(--text-2); }
+.log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+.ledger { background: var(--panel); border-radius: 12px; padding: 12px 14px; border-left: 4px solid var(--pc); }
+.ledger.active { outline: 2px solid var(--gold); }
+.ledger header { display: flex; align-items: center; gap: 8px; }
+.ledger .country { color: var(--gold-hi); font-size: 14px; }
+.ledger .sq { margin-left: auto; color: var(--muted); font-size: 14px; }
+.ledger .perk { margin: 2px 0 8px; font-size: 13px; color: var(--muted); }
+.ledger dl { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; gap: 4px; }
+.ledger dt { font-size: 12px; color: var(--muted); }
+.ledger dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.projects { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.statuses { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.statuses span { background: var(--panel-2); padding: 2px 8px; border-radius: 999px; }
+
+.final { background: var(--panel); border-radius: 12px; padding: 16px; display: grid; gap: 12px; overflow-x: auto; }
+.final table { border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.final th, .final td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; }
+.final th:nth-child(2), .final td:nth-child(2) { text-align: left; }
+.final small { color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: "board side" "ledger ledger"; }
+  .ledgers { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; grid-template-areas: "board" "side" "ledger"; padding: 8px 16px 16px; }
+  .log { max-height: 160px; }
+}

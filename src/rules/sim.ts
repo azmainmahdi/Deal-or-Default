@@ -66,6 +66,12 @@ function smart(
   }
 }
 
+/** The smart bot's move for the current decision (demo mode uses this). */
+export function botIntent(s: GameState): Intent | undefined {
+  const legal = legalIntents(s)
+  return legal.length ? pick('smart', s, legal, 0) : undefined
+}
+
 export function checkInvariants(s: GameState): string | undefined {
   const cap = s.config.debtCap
   for (const [i, p] of s.players.entries()) {

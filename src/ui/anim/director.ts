@@ -7,11 +7,14 @@ import type { BoardHandle } from '../Board'
 import { cardFaceHtml } from '../Cards'
 import type { DieHandle } from '../Die'
 import { centerOf } from '../geometry'
+import { sfx } from '../sound'
 
 export interface Stage {
   board: BoardHandle
   die: DieHandle
   squares: number[] // displayed square per player, kept in step with the animation
+  names: string[]
+  colors: string[]
 }
 
 const wait = (s: number) => gsap.timeline().to({}, { duration: s })
@@ -19,7 +22,12 @@ const wait = (s: number) => gsap.timeline().to({}, { duration: s })
 export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEvent) => void) {
   for (const e of events) {
     switch (e.type) {
+      case 'turnStarted':
+        apply(e)
+        await banner(stage.names[e.player]!, stage.colors[e.player]!)
+        break
       case 'diceRolled':
+        sfx.dice()
         await stage.die.roll(e.raw)
         apply(e)
         if (e.crunched || e.bonus) await wait(0.5)
@@ -29,12 +37,14 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         apply(e)
         break
       case 'cardDrawn':
+        sfx.flip()
         await flyCard(e.card, '[data-deck]', '[data-slot]', true)
         apply(e)
         break
       case 'capital':
         apply(e)
         float(e.player, `${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? 'gain' : 'loss')
+        if (e.delta < 0) sfx.lose()
         await wait(0.25)
         break
       case 'debt':
@@ -44,19 +54,23 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         break
       case 'tariffHit':
         apply(e)
+        sfx.thud()
         await pulse(stage, stage.squares[e.from]!, 'tariff')
         await shake(stage, e.player)
         break
       case 'sanctionHit':
         apply(e)
+        sfx.thud()
         await spotlight(stage, e.player)
         break
       case 'hedged':
         apply(e)
+        sfx.shield()
         await pulse(stage, stage.squares[e.player]!, 'shield')
         break
       case 'projectMatured':
         apply(e)
+        sfx.coin()
         await coins(stage, e.player)
         break
       case 'projectLost':
@@ -75,6 +89,7 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         break
       case 'finished':
         apply(e)
+        sfx.win()
         await pulse(stage, 100, 'gold', 2.2)
         await wait(0.4)
         break
@@ -94,7 +109,7 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
 
   if (e.via === 'ladder') {
     const c = centerOf(to)
-    tl.to(body, { scale: 1.25, duration: 0.15 })
+    tl.call(sfx.climb).to(body, { scale: 1.25, duration: 0.15 })
       .to(pawn, { x: c.x, y: c.y, duration: 0.9, ease: 'power1.inOut' })
       .to(body, { scale: 1, duration: 0.2 })
     trail(stage, from, to, 'gold')
@@ -104,7 +119,7 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
     const len = path.getTotalLength()
     const frac = (from - to) / (from - tail) // hedged slides stop part way
     const o = { t: 0 }
-    tl.to(body, { rotation: -20, duration: 0.1 })
+    tl.call(sfx.slide).to(body, { rotation: -20, duration: 0.1 })
       .to(o, {
         t: frac >= 1 ? 1 : 0.5, duration: 1.1 * (frac >= 1 ? 1 : 0.6), ease: 'power2.in',
         onUpdate: () => { const p = path.getPointAtLength(o.t * len); gsap.set(pawn, { x: p.x, y: p.y }) },
@@ -115,7 +130,7 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
     const step = e.via === 'walk' ? 0.2 : 0.12
     for (const sq of e.path.slice(1)) {
       const c = centerOf(sq)
-      tl.to(pawn, { x: c.x, y: c.y, duration: step, ease: 'none' })
+      tl.call(sfx.hop).to(pawn, { x: c.x, y: c.y, duration: step, ease: 'none' })
         .to(body, { y: -16, scaleY: 1.08, duration: step / 2, ease: 'power1.out', yoyo: true, repeat: 1 }, '<')
     }
     tl.to(body, { scaleX: 1.15, scaleY: 0.85, duration: 0.07, yoyo: true, repeat: 1 })
@@ -173,6 +188,19 @@ async function coins(stage: Stage, p: number) {
     tl.fromTo(coin, { x: 0, y: 0, opacity: 1 }, { x: Math.cos(a) * 60, y: Math.sin(a) * 60 - 30, opacity: 0, duration: 0.7, ease: 'power2.out', onComplete: () => coin.remove() }, i * 0.02)
   }
   await tl
+}
+
+/** "Rafi's turn" ribbon across the table, so a passed phone knows whose go it is. */
+async function banner(name: string, color: string) {
+  const el = document.createElement('div')
+  el.className = 'turn-banner'
+  el.innerHTML = `<span class="tb-dot" style="background:${color}"></span><span>${name.replace(/[<&>]/g, '')}'s turn</span>`
+  document.body.appendChild(el)
+  sfx.turn()
+  await gsap.timeline()
+    .fromTo(el, { xPercent: -50, x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power2.out' })
+    .to(el, { x: 80, opacity: 0, duration: 0.3, ease: 'power2.in', delay: 0.5 })
+  el.remove()
 }
 
 /** Floating "+3" over a player's ledger card. */

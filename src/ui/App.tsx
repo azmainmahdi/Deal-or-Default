@@ -2,6 +2,7 @@ import { gsap } from 'gsap'
 import { useEffect, useRef, useState } from 'react'
 import { COUNTRIES } from '../rules/countries'
 import { legalIntents, newGame, step } from '../rules/engine'
+import { botIntent } from '../rules/sim'
 import type { CardId, GameEvent, GameState, Intent } from '../rules/types'
 import { flyCard, play } from './anim/director'
 import { Board, PAWN_COLORS, type BoardHandle } from './Board'
@@ -11,9 +12,11 @@ import { Die, type DieHandle } from './Die'
 import { Dock } from './Dock'
 import { Ledger, type Shown } from './Ledger'
 import { Num } from './Num'
+import { setMuted } from './sound'
 
 const SAVE = 'dod-local-game'
 const PREFS = 'dod-prefs'
+const DEMO_NAMES = ['Ada', 'Bashir', 'Chen', 'Dara']
 const TABLES = [['a', 'Boardroom'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
 type Table = (typeof TABLES)[number][0]
 
@@ -52,12 +55,14 @@ export function App() {
   const [state, setState] = useState<GameState | null>(saved?.state ?? null)
   const [view, setView] = useState<View | null>(() => (saved ? { ...viewOf(saved.state), log: saved.log } : null))
   const [busy, setBusy] = useState(false)
-  const [prefs, setPrefs] = useState(() => ({ table: 'c' as Table, speed: 1, ...read<{ table: Table; speed: number }>(PREFS) }))
+  const [prefs, setPrefs] = useState(() => ({ table: 'c' as Table, speed: 1, sound: true, ...read<{ table: Table; speed: number; sound: boolean }>(PREFS) }))
+  const [demo, setDemo] = useState(false)
+  const [portraitOk, setPortraitOk] = useState(false)
   const board = useRef<BoardHandle>(null)
   const die = useRef<DieHandle>(null)
   const skipping = useRef(false)
 
-  useEffect(() => write(PREFS, prefs), [prefs])
+  useEffect(() => { write(PREFS, prefs); setMuted(!prefs.sound) }, [prefs])
   useEffect(() => { if (state && view) write(SAVE, { state, log: view.log.slice(-200) }) }, [state, view])
   useEffect(() => { gsap.globalTimeline.timeScale(matchMedia('(prefers-reduced-motion: reduce)').matches ? 8 : prefs.speed) }, [prefs.speed])
 
@@ -76,7 +81,7 @@ export function App() {
       setView((v) => v && { ...v, discardTop: pd.card })
     }
     const squares = prev.players.map((pl) => pl.square)
-    await play(events, { board: board.current, die: die.current, squares }, (e) => setView((v) => v && applyEvent(v, e, next)))
+    await play(events, { board: board.current, die: die.current, squares, names: next.players.map((p) => p.name), colors: PAWN_COLORS }, (e) => setView((v) => v && applyEvent(v, e, next)))
     skipping.current = false
     gsap.globalTimeline.timeScale(prefs.speed)
     setView((v) => viewOf(next, v ?? undefined))
@@ -89,6 +94,15 @@ export function App() {
     const r = step(state, i)
     if (!r.error) void run(state, r.state, r.events)
   }
+
+  // Demo: the smart bot takes every decision, with a beat between moves so it reads like play.
+  useEffect(() => {
+    if (!demo || busy || !state || state.phase !== 'playing') return
+    const t = setTimeout(() => { const i = botIntent(state); if (i) send(i) }, 700 / prefs.speed)
+    return () => clearTimeout(t)
+  })
+
+  function quit() { write(SAVE, null); setDemo(false); setState(null); setView(null) }
 
   function start(names: string[]) {
     const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0 })
@@ -121,7 +135,7 @@ export function App() {
 
   const tableClass = `table t-${prefs.table}`
 
-  if (!state || !view) return <div className={tableClass}><Setup onStart={start} /></div>
+  if (!state || !view) return <div className={tableClass}><Setup onStart={start} onDemo={() => { setDemo(true); start(DEMO_NAMES) }} /></div>
 
   const s = state
   const dieNote = view.die && (view.die.crunched || view.die.bonus)
@@ -132,15 +146,27 @@ export function App() {
       <header className="topbar">
         <img src="./logo.png" alt="Deal or Default" className="toplogo" />
         <span className="turn">Turn {s.turn}</span>
-        <div className="seg" role="group" aria-label="Table">
-          {TABLES.map(([k, name]) => (
-            <button key={k} aria-pressed={prefs.table === k} onClick={() => setPrefs({ ...prefs, table: k })}>{name}</button>
-          ))}
-        </div>
-        <div className="seg" role="group" aria-label="Animation speed">
-          {[1, 2].map((x) => <button key={x} aria-pressed={prefs.speed === x} onClick={() => setPrefs({ ...prefs, speed: x })}>{x}×</button>)}
-        </div>
-        <button className="quiet" onClick={() => { if (confirm('Abandon this game?')) { write(SAVE, null); setState(null); setView(null) } }}>New game</button>
+        {demo && <span className="demo-chip">Demo <button className="quiet" onClick={() => setDemo(false)}>Take over</button></span>}
+        <details className="settings">
+          <summary aria-label="Settings">Table &amp; sound</summary>
+          <div className="menu">
+            <p>Table</p>
+            <div className="seg" role="group" aria-label="Table">
+              {TABLES.map(([k, name]) => <button key={k} aria-pressed={prefs.table === k} onClick={() => setPrefs({ ...prefs, table: k })}>{name}</button>)}
+            </div>
+            <p>Animation speed</p>
+            <div className="seg" role="group" aria-label="Animation speed">
+              {[1, 2].map((x) => <button key={x} aria-pressed={prefs.speed === x} onClick={() => setPrefs({ ...prefs, speed: x })}>{x}×</button>)}
+            </div>
+            <p>Sound</p>
+            <div className="seg" role="group" aria-label="Sound">
+              <button aria-pressed={prefs.sound} onClick={() => setPrefs({ ...prefs, sound: true })}>On</button>
+              <button aria-pressed={!prefs.sound} onClick={() => setPrefs({ ...prefs, sound: false })}>Off</button>
+            </div>
+            {document.fullscreenEnabled && <button onClick={fullscreen}>Full screen</button>}
+            <button onClick={() => { if (demo || confirm('Abandon this game?')) quit() }}>{demo ? 'Stop demo' : 'New game'}</button>
+          </div>
+        </details>
       </header>
 
       <main className="stage">
@@ -168,9 +194,25 @@ export function App() {
         </aside>
       </main>
 
-      {s.phase === 'finished' && !busy && <Final s={s} onNew={() => { write(SAVE, null); setState(null); setView(null) }} />}
+      {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} />}
+      {!portraitOk && (
+        <div className="rotate">
+          <div className="phone" aria-hidden="true" />
+          <h2>Turn your phone sideways</h2>
+          <p>The table is built for landscape.</p>
+          {document.fullscreenEnabled && <button className="primary" onClick={fullscreen}>Full screen, landscape</button>}
+          <button className="quiet" onClick={() => setPortraitOk(true)}>Play upright anyway</button>
+        </div>
+      )}
     </div>
   )
+}
+
+/** Android can lock landscape once fullscreen; iOS ignores the lock and just rotates with the phone. */
+function fullscreen() {
+  document.documentElement.requestFullscreen?.()
+    .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+    .catch(() => {})
 }
 
 function applyEvent(v: View, e: GameEvent, s: GameState): View {
@@ -191,7 +233,7 @@ function applyEvent(v: View, e: GameEvent, s: GameState): View {
   return { ...v, players, log }
 }
 
-function Setup({ onStart }: { onStart: (names: string[]) => void }) {
+function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo: () => void }) {
   const [names, setNames] = useState(['', ''])
   const clean = names.map((n, i) => n.trim() || `Player ${i + 1}`)
   return (
@@ -211,6 +253,8 @@ function Setup({ onStart }: { onStart: (names: string[]) => void }) {
         {names.length < 6 && <button type="button" className="quiet" onClick={() => setNames([...names, ''])}>Add player</button>}
         <button className="primary" type="submit">Deal the countries</button>
       </form>
+      <button className="demo-btn" onClick={onDemo}>Watch a demo game</button>
+      <p className="hint">Four bots play a full game while you watch. Take over any time.</p>
     </main>
   )
 }

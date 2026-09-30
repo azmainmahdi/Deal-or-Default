@@ -1,0 +1,10 @@
+{
+  "name": "Deal or Default",
+  "short_name": "Deal or Default",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0c0d0f",
+  "theme_color": "#0c0d0f",
+  "icons": [{ "src": "logo.png", "sizes": "1452x988", "type": "image/png" }]
+}

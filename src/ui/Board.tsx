@@ -17,13 +17,46 @@ export interface BoardHandle {
   layout(squares: number[], duration?: number): gsap.core.Timeline
 }
 
-function snakeD(head: number, tail: number): string {
+function snakeCurve(head: number, tail: number) {
   const a = centerOf(head), z = centerOf(tail)
   // ponytail: one generated S-curve per snake until the .ai paths arrive
   const dx = z.x - a.x, dy = z.y - a.y
   const c1 = { x: a.x + dx * 0.25 + dy * 0.3, y: a.y + dy * 0.25 - dx * 0.3 }
   const c2 = { x: a.x + dx * 0.75 - dy * 0.3, y: a.y + dy * 0.75 + dx * 0.3 }
-  return `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${z.x},${z.y}`
+  const at = (t: number) => {
+    const u = 1 - t
+    return {
+      x: u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * z.x,
+      y: u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * z.y,
+    }
+  }
+  return { d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${z.x},${z.y}`, a, c1, at }
+}
+
+/** Tapered, banded body built from overlapping discs, tail first so the head sits on top. */
+function Snake({ head, tail }: { head: number; tail: number }) {
+  const { d, a, c1, at } = snakeCurve(head, tail)
+  const n = 46
+  const discs = Array.from({ length: n + 1 }, (_, i) => {
+    const t = 1 - i / n
+    const p = at(t)
+    return { ...p, r: 3.5 + 11.5 * Math.pow(1 - t, 0.6), band: i % 6 === 0 && t > 0.08 && t < 0.95 }
+  })
+  const angle = (Math.atan2(a.y - c1.y, a.x - c1.x) * 180) / Math.PI
+  return (
+    <g className="snake">
+      <path id={`snake-${head}`} d={d} className="motion" />
+      <g className="shadow">{discs.map((c, i) => <circle key={i} cx={c.x} cy={c.y} r={c.r} />)}</g>
+      {discs.map((c, i) => <circle key={i} cx={c.x} cy={c.y} r={c.r} className={c.band ? 'band' : i % 2 ? 'scale-a' : 'scale-b'} />)}
+      <g transform={`translate(${a.x},${a.y}) rotate(${angle})`}>
+        <path d="M18,0 L30,0 M30,0 L35,-4 M30,0 L35,4" className="tongue" />
+        <ellipse cx={4} rx={19} ry={14} className="head" />
+        <path d="M-8,-10 Q6,-16 18,-6 M-8,10 Q6,16 18,6" className="brow" />
+        <circle cx={10} cy={-6} r={3.6} className="eye" /><circle cx={11} cy={-6} r={1.6} className="pupil" />
+        <circle cx={10} cy={6} r={3.6} className="eye" /><circle cx={11} cy={6} r={1.6} className="pupil" />
+      </g>
+    </g>
+  )
 }
 
 function ladderRungs(base: number, top: number) {
@@ -98,19 +131,7 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
             </g>
           )
         })}
-        {Object.entries(SNAKES).map(([h, t]) => {
-          const a = centerOf(+h)
-          return (
-            <g key={`s${h}`} className="snake">
-              <path id={`snake-${h}`} d={snakeD(+h, t)} className="body-shadow" />
-              <path d={snakeD(+h, t)} className="body" />
-              <path d={snakeD(+h, t)} className="scales" />
-              <circle cx={a.x} cy={a.y} r={13} className="head" />
-              <circle cx={a.x - 4} cy={a.y - 3} r={2.5} className="eye" />
-              <circle cx={a.x + 4} cy={a.y - 3} r={2.5} className="eye" />
-            </g>
-          )
-        })}
+        {Object.entries(SNAKES).map(([h, t]) => <Snake key={`s${h}`} head={+h} tail={t} />)}
 
         <g ref={fxRef} className="fx" />
 

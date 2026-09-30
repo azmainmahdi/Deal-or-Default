@@ -2,9 +2,9 @@
 import type { Config } from './config'
 import { legalIntents, newGame, step } from './engine'
 import { next } from './rng'
-import type { GameState, Intent } from './types'
+import type { GameEvent, GameState, Intent } from './types'
 
-export type Policy = 'random' | 'greedy' | 'cautious'
+export type Policy = 'random' | 'greedy' | 'cautious' | 'smart' | 'noDebt'
 
 export interface SimResult {
   finished: boolean
@@ -19,6 +19,7 @@ function pick(policy: Policy, s: GameState, legal: Intent[], r: number): Intent 
   const pl = s.players[legal[0]!.player]!
   const has = (t: Intent['type']) => legal.filter((i) => i.type === t)
   const last = <T>(xs: T[]) => xs[xs.length - 1]
+  if (policy === 'smart' || policy === 'noDebt') return smart(s, legal, has, last, policy === 'smart')
   const greedy = policy === 'greedy'
   const want: (Intent | undefined)[] = [
     // debt window: greedy borrows early and never repays; cautious repays everything it can
@@ -30,6 +31,39 @@ function pick(policy: Policy, s: GameState, legal: Intent[], r: number): Intent 
     has('takeover').find((i) => i.type === 'takeover' && (greedy ? i.victim !== null : i.victim === null)),
   ]
   return want.find(Boolean) ?? legal[0]!
+}
+
+/** Plays roughly like a careful person: borrows early when short, clears debt before the
+ *  crunch zone, keeps 2 Capital back for hedging, hedges when projects are at stake.
+ *  borrow = false is the same player who never takes Debt (isolates what Debt is worth). */
+function smart(
+  s: GameState, legal: Intent[], has: (t: Intent['type']) => Intent[], last: <T>(xs: T[]) => T | undefined, borrow: boolean,
+): Intent {
+  const d = s.decision!
+  const pl = s.players[d.player]!
+  const late = pl.square >= 70
+  switch (d.kind) {
+    case 'debtWindow': {
+      if (late && pl.debt > 0) return last(has('repay')) ?? legal[0]!
+      if (borrow && !late && pl.debt < 3 && pl.capital < 6) {
+        return has('takeDebt').find((i) => i.type === 'takeDebt' && i.n === Math.min(3 - pl.debt, d.maxTake)) ?? legal[0]!
+      }
+      return legal[0]!
+    }
+    case 'invest': {
+      const chips = Math.min(d.max, Math.max(1, pl.capital - (pl.square < 88 ? 2 : 0)))
+      return legal.find((i) => i.type === 'invest' && i.chips === chips)!
+    }
+    case 'hedge':
+      return legal.find((i) => i.type === 'hedge' && i.hedge === (pl.projects.length > 0 || d.from - d.to >= 15))!
+    case 'cardChoice': {
+      const want = d.card === 'strategicReserve' ? (late ? 'repay' : 'capital') : borrow && !late && pl.debt < 4 ? 'debt' : 'pay'
+      return legal.find((i) => i.type === 'choose' && i.option === want) ?? legal[0]!
+    }
+    case 'takeover': return legal[1] ?? legal[0]!
+    case 'waiver': return legal[0]! // use it
+    default: return legal[0]!
+  }
 }
 
 export function checkInvariants(s: GameState): string | undefined {
@@ -52,11 +86,14 @@ export function playGame(opts: {
   config?: Partial<Config>
   check?: boolean
   maxTurns?: number
+  /** Called with every batch of events, for stats. */
+  onEvents?: (events: GameEvent[], s: GameState) => void
 }): SimResult {
   const policies = Array.isArray(opts.policy) ? opts.policy : [opts.policy]
   const names = Array.from({ length: opts.players }, (_, i) => `Bot${i}`)
   const init = newGame({ names, seed: opts.seed, config: { ackCards: false, ...opts.config } })
   let s = init.state
+  opts.onEvents?.(init.events, s)
   let r = (opts.seed ^ 0x9e3779b9) >>> 0
   const intents: Intent[] = []
   const maxTurns = opts.maxTurns ?? 2000
@@ -77,6 +114,7 @@ export function playGame(opts: {
     }
     intents.push(intent)
     s = res.state
+    opts.onEvents?.(res.events, s)
   }
 
   if (opts.check) {

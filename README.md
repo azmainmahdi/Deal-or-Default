@@ -13,5 +13,6 @@ a pure rules engine shared by local and online play.
 npm install
 npm run dev     # local dev server
 npm test        # rules tests
+npm run sim -- --games 10000 --check   # bots play; checks invariants, prints balance stats
 npm run build   # static build in dist/ (works on Vercel and itch.io)
 ```

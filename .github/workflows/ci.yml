@@ -16,4 +16,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run sim -- --games 1000 --check
       - run: npx vite build

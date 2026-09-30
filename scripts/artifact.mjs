@@ -17,4 +17,5 @@ writeFileSync(`${out}/index.html`, `${title}
 `)
 for (const f of ['logo.png', 'card-back.png', 'world-bg.jpg']) cpSync(`dist/${f}`, `${out}/${f}`)
 cpSync('dist/icons', `${out}/icons`, { recursive: true })
+cpSync('dist/art', `${out}/art`, { recursive: true })
 console.log('artifact/ ready')

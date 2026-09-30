@@ -58,6 +58,7 @@ export function App() {
   const [prefs, setPrefs] = useState(() => ({ table: 'c' as Table, speed: 1, sound: true, ...read<{ table: Table; speed: number; sound: boolean }>(PREFS) }))
   const [demo, setDemo] = useState(false)
   const [portraitOk, setPortraitOk] = useState(false)
+  const [arming, setArming] = useState(false) // confirm() is blocked in some hosts, so confirm in-page
   const board = useRef<BoardHandle>(null)
   const die = useRef<DieHandle>(null)
   const skipping = useRef(false)
@@ -164,7 +165,9 @@ export function App() {
               <button aria-pressed={!prefs.sound} onClick={() => setPrefs({ ...prefs, sound: false })}>Off</button>
             </div>
             {document.fullscreenEnabled && <button onClick={fullscreen}>Full screen</button>}
-            <button onClick={() => { if (demo || confirm('Abandon this game?')) quit() }}>{demo ? 'Stop demo' : 'New game'}</button>
+            <button onClick={() => { if (demo || arming) quit(); else setArming(true) }} onBlur={() => setArming(false)}>
+              {demo ? 'Stop demo' : arming ? 'Tap again to abandon this game' : 'New game'}
+            </button>
           </div>
         </details>
       </header>

@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { COUNTRIES } from '../rules/countries'
 import { legalIntents, newGame, step } from '../rules/engine'
 import { botIntent } from '../rules/sim'
-import type { CardId, GameEvent, GameState, Intent } from '../rules/types'
+import type { CardId, CountryId, GameEvent, GameState, Intent } from '../rules/types'
 import { flyCard, play } from './anim/director'
-import { Board, PAWN_COLORS, type BoardHandle } from './Board'
-import { CardTable, CountryCard, Reveal } from './Cards'
+import { Board, PAWN_COLORS, type BoardHandle, type RouteStyle } from './Board'
+import { CardTable, Reveal } from './Cards'
+import { Draft } from './Draft'
 import { describe } from './describe'
 import { Die, type DieHandle } from './Die'
 import { Dock } from './Dock'
@@ -55,10 +56,10 @@ export function App() {
   const [state, setState] = useState<GameState | null>(saved?.state ?? null)
   const [view, setView] = useState<View | null>(() => (saved ? { ...viewOf(saved.state), log: saved.log } : null))
   const [busy, setBusy] = useState(false)
-  const [prefs, setPrefs] = useState(() => ({ table: 'a' as Table, speed: 1, sound: true, ...read<{ table: Table; speed: number; sound: boolean }>(PREFS) }))
+  const [prefs, setPrefs] = useState(() => ({ table: 'a' as Table, speed: 1, sound: true, routes: 'market' as RouteStyle, ...read<{ table: Table; speed: number; sound: boolean; routes: RouteStyle }>(PREFS) }))
   const [demo, setDemo] = useState(false)
   const [portraitOk, setPortraitOk] = useState(false)
-  const [dealt, setDealt] = useState(!!saved)
+  const [draft, setDraft] = useState<{ names: string[]; auto: boolean } | null>(null)
   const [arming, setArming] = useState(false) // confirm() is blocked in some hosts, so confirm in-page
   const board = useRef<BoardHandle>(null)
   const die = useRef<DieHandle>(null)
@@ -101,24 +102,18 @@ export function App() {
     if (!r.error) void run(state, r.state, r.events)
   }
 
-  useEffect(() => {
-    if (!demo || dealt) return
-    const t = setTimeout(() => setDealt(true), 3500)
-    return () => clearTimeout(t)
-  }, [demo, dealt])
-
   // Demo: the smart bot takes every decision, with a beat between moves so it reads like play.
   useEffect(() => {
-    if (!demo || busy || !dealt || !state || state.phase !== 'playing') return
+    if (!demo || busy || !state || state.phase !== 'playing') return
     const t = setTimeout(() => { const i = botIntent(state); if (i) send(i) }, 700 / prefs.speed)
     return () => clearTimeout(t)
   })
 
   function quit() { write(SAVE, null); setDemo(false); setState(null); setView(null) }
 
-  function start(names: string[]) {
-    const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0 })
-    setDealt(false)
+  function start(names: string[], countries: CountryId[]) {
+    const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0, countries })
+    setDraft(null)
     setView({ ...viewOf(r.state), log: [] })
     void run(null, r.state, r.events)
   }
@@ -148,9 +143,22 @@ export function App() {
 
   const tableClass = `table t-${prefs.table}`
 
-  if (!state || !view) return <div className={tableClass}><Setup onStart={start} onDemo={() => { setDemo(true); start(DEMO_NAMES) }} /></div>
+  if (!state || !view) return (
+    <div className={tableClass}>
+      {draft ? <Draft names={draft.names} auto={draft.auto} onDone={(c) => start(draft.names, c)} />
+        : <Setup onStart={(names) => setDraft({ names, auto: false })} onDemo={() => { setDemo(true); setDraft({ names: DEMO_NAMES, auto: true }) }} />}
+    </div>
+  )
 
   const s = state
+  const rollNow = !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'roll') : undefined
+  // Squares the current roll could reach glow before the die is thrown.
+  const reach = (() => {
+    if (!rollNow || demo) return []
+    const pl = s.players[s.current]!
+    const max = (pl.square >= s.config.crunchFrom && pl.debt > 0 ? 3 : 6) + s.turnFlags.rollBonus
+    return Array.from({ length: max }, (_, i) => pl.square + 1 + i).filter((q) => q <= 100)
+  })()
   const dieNote = view.die && (view.die.crunched || view.die.bonus)
     ? `${view.die.raw}${view.die.crunched ? ' → ½' : ''}${view.die.bonus ? ` +${view.die.bonus}` : ''} = ${view.die.value}` : undefined
 
@@ -171,6 +179,11 @@ export function App() {
             <div className="seg" role="group" aria-label="Animation speed">
               {[1, 2].map((x) => <button key={x} aria-pressed={prefs.speed === x} onClick={() => setPrefs({ ...prefs, speed: x })}>{x}×</button>)}
             </div>
+            <p>Snakes &amp; ladders</p>
+            <div className="seg" role="group" aria-label="Route style">
+              <button aria-pressed={prefs.routes === 'market'} onClick={() => setPrefs({ ...prefs, routes: 'market' })}>Market lines</button>
+              <button aria-pressed={prefs.routes === 'printed'} onClick={() => setPrefs({ ...prefs, routes: 'printed' })}>Printed</button>
+            </div>
             <p>Sound</p>
             <div className="seg" role="group" aria-label="Sound">
               <button aria-pressed={prefs.sound} onClick={() => setPrefs({ ...prefs, sound: true })}>On</button>
@@ -188,14 +201,14 @@ export function App() {
         <div className="boardzone">
           <Reveal id={view.card} />
           <div className="tilt">
-            <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} />
+            <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} routeStyle={prefs.routes} reach={reach} />
           </div>
         </div>
 
         <aside className="side">
           <CardTable deck={view.deck} discardTop={view.discardTop} />
           <div className="midrow">
-            <Die ref={die} note={dieNote} />
+            <Die ref={die} note={dieNote} onRoll={rollNow && !demo ? () => send(rollNow) : undefined} />
             <div className="dockwrap">
               {busy ? (
                 <div className="playing"><span>Playing…</span><button className="quiet" onClick={skip}>Skip</button></div>
@@ -211,21 +224,6 @@ export function App() {
       </main>
 
       {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} />}
-      {!dealt && s.phase === 'playing' && (
-        <div className="overlay deal">
-          <p className="eyebrow">Countries dealt</p>
-          <div className="deal-row">
-            {s.players.map((pl, p) => (
-              <div key={p} className="deal-card" style={{ animationDelay: `${0.15 + p * 0.18}s` }}>
-                <CountryCard c={pl.country} />
-                <b>{pl.name}</b>
-                <small>{COUNTRIES[pl.country].perk}</small>
-              </div>
-            ))}
-          </div>
-          <button className="primary" onClick={() => setDealt(true)}>{demo ? 'Starting…' : 'Start the game'}</button>
-        </div>
-      )}
       {!portraitOk && (
         <div className="rotate">
           <div className="phone" aria-hidden="true" />

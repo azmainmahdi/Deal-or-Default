@@ -1,7 +1,7 @@
 import { gsap } from 'gsap'
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { LADDERS, SNAKES, tileAt } from '../rules/board'
-import { CELL, cellOf, centerOf, fan, routeOf } from './geometry'
+import { CELL, cellOf, centerOf, fan, laneMarketD, routeOf } from './geometry'
 
 export const PAWN_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9']
 
@@ -29,8 +29,16 @@ function drawnD(pts: { x: number; y: number }[]) {
   return `M${a.x},${sy} L${b.x},${b.y} L${c.x},${c.y} L${z.x},${ey}`
 }
 
-export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: number; names: string[] }>(
-  function Board({ squaresOf, active, names }, ref) {
+export type RouteStyle = 'market' | 'printed'
+
+const TIP: Record<string, string> = {
+  event: 'Event: draw a card', tariff: 'Tariff: every other player moves back 3', sanction: 'Sanction: the Net Worth leader moves back 5',
+  goal: 'Land exactly on 100 to finish and take the bonus',
+}
+
+export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: number; names: string[]; routeStyle: RouteStyle; reach: number[] }>(
+  function Board({ squaresOf, active, names, routeStyle, reach }, ref) {
+    const [hot, setHot] = useState<number | null>(null)
     const pawns = useRef<SVGGElement[]>([])
     const bodies = useRef<SVGGElement[]>([])
     const fxRef = useRef<SVGGElement>(null)
@@ -64,6 +72,12 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
               <path d="M0,0 L10,5 L0,10 z" className={`arrowhead ${k}`} />
             </marker>
           ))}
+          <linearGradient id="sheen-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0.42" stopColor="#fff" stopOpacity="0" />
+            <stop offset="0.5" stopColor="#ffe9b0" stopOpacity="0.16" />
+            <stop offset="0.58" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
         <rect x={-24} y={-24} width={1048} height={1048} rx={16} className="frame" />
         <rect x={-10} y={-10} width={1020} height={1020} rx={8} className="felt" />
@@ -74,8 +88,13 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
           const type = tileAt(sq)
           const art = type !== 'plain' && type !== 'start'
           const dest = DEST.get(sq)
+          const route = ROUTES.find((r) => r.from === hot)
+          const tip = type === 'ladder' ? `FDI ladder: invest to climb to ${LADDERS[sq]} (Δ${LADDERS[sq]! - sq})`
+            : type === 'snake' ? `Market crash: slide to ${SNAKES[sq]} unless you hedge` : TIP[type]
           return (
-            <g key={sq} className={`sq ${type}`}>
+            <g key={sq} className={`sq ${type} ${reach.includes(sq) ? 'reach' : ''} ${route && (route.from === sq || route.to === sq) ? 'hot' : ''}`}
+              onPointerEnter={() => setHot(type === 'ladder' || type === 'snake' ? sq : null)} onPointerLeave={() => setHot(null)}>
+              {tip && <title>{`${sq}. ${tip}`}</title>}
               <rect x={x + 5} y={y + 5} width={CELL - 10} height={CELL - 10} rx={4} className="tile" />
               {art && <image href={`icons/${type}.svg`} x={x + 5} y={y + 5} width={CELL - 10} height={CELL - 10} />}
               {dest && <rect x={x + 10} y={y + 10} width={CELL - 20} height={CELL - 20} rx={3} className={`dest ${dest}`} />}
@@ -88,14 +107,23 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
 
         {ROUTES.map((r) => {
           const pts = routeOf(r.from, r.to, r.lane)
+          const motion = routeStyle === 'market' ? laneMarketD(pts, r.kind) : `M${pts.map((p) => `${p.x},${p.y}`).join(' L')}`
+          const drawn = routeStyle === 'market' ? laneMarketD(pts, r.kind, true) : drawnD(pts)
           return (
-            <g key={`r${r.from}`} className={`route ${r.kind}`}>
-              <path id={`route-${r.from}`} d={`M${pts.map((p) => `${p.x},${p.y}`).join(' L')}`} className="motion" />
-              <path d={drawnD(pts)} className="casing" />
-              <path d={drawnD(pts)} className="line" markerEnd={`url(#arrow-${r.kind})`} />
+            <g key={`r${r.from}`} className={`route ${r.kind} ${routeStyle} ${hot === r.from ? 'hot' : ''}`}>
+              <path id={`route-${r.from}`} d={motion} className="motion" />
+              <path d={drawn} className="casing" />
+              <path d={drawn} className="line" markerEnd={routeStyle === 'printed' ? `url(#arrow-${r.kind})` : undefined} />
+              <path d={drawn} className="flow" />
+              {routeStyle === 'market' && (() => {
+                const z = centerOf(r.to)
+                return <g className="endcap" transform={`translate(${z.x},${z.y})`}><circle r={9} /><path d={r.kind === 'ladder' ? 'M-4,2 L0,-3 L4,2' : 'M-4,-2 L0,3 L4,-2'} /></g>
+              })()}
             </g>
           )
         })}
+
+        <rect x={-24} y={-24} width={1048} height={1048} rx={16} className="sheen" pointerEvents="none" />
 
         <g ref={fxRef} className="fx" />
 

@@ -55,6 +55,7 @@ export const sfx = {
   lose() { tone(330, 0.25, { type: 'triangle', vol: 0.12, slideTo: 220 }) },
   thud() { tone(90, 0.35, { vol: 0.35, slideTo: 45 }); noise(0.15, { freq: 300, vol: 0.3 }) },
   shield() { tone(880, 0.4, { type: 'sine', vol: 0.1, slideTo: 1320 }) },
+  flare() { tone(988, 0.08, { type: 'triangle', vol: 0.06 }); tone(1480, 0.14, { type: 'triangle', vol: 0.05, at: 0.06 }) },
   turn() { tone(784, 0.12, { type: 'triangle', vol: 0.07 }); tone(1047, 0.2, { type: 'triangle', vol: 0.07, at: 0.1 }) },
   win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.3, { type: 'triangle', at: i * 0.15, vol: 0.14 })) },
 }

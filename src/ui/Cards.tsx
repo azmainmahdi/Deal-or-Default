@@ -28,8 +28,12 @@ export function eventTextHtml(id: CardId): string {
   </div>`
 }
 
+/** Cards whose painting is in public/art/events/<id>.jpg (title baked into the art). */
+const EVENT_ART = new Set<CardId>(['corruptionProbe', 'cyberAttack'])
+
 export function eventArtHtml(id: CardId): string {
   const c = CARDS[id]
+  if (EVENT_ART.has(id)) return `<div class="ev-art has-art"><img src="./art/events/${id}.jpg" alt="${esc(c.name)}"></div>`
   return `<div class="ev-art ${c.kind}" data-card="${id}">
     <b>${esc(c.name)}</b>
     <img src="./logo.png" alt="" class="ev-logo">

@@ -281,3 +281,116 @@ h1, h2 { margin: 0; font-family: "Poiret One", var(--font); font-weight: 400; }
   .reveal-spot { width: 78%; }
 }
 @media (prefers-reduced-motion: reduce) { .deal-card, .reveal { animation: none; } }
+
+/* ================= round 3: printed-set polish ================= */
+/* rounder cards */
+.ev-text, .ev-art, .pile, .pile.deck img, .flyer-back, .flyer-front { border-radius: 14px; }
+.country-card { border-radius: 12px; }
+/* subtle destination squares */
+.dest { stroke-width: 1.4; stroke-dasharray: 2 7; stroke-linecap: round; opacity: .55; }
+.dest.snake { fill: #ef5a6f0a; } .dest.ladder { fill: #3fd08c0a; }
+
+/* ---- board life ---- */
+.board .sheen { fill: url(#sheen-grad); transform-box: fill-box; animation: sheen 9s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes sheen { 0%, 55% { transform: translate(-100%, -100%); } 85%, 100% { transform: translate(100%, 100%); } }
+.sq.ladder image, .sq.snake image, .sq.event image, .sq.tariff image, .sq.sanction image, .sq.goal image { animation: breathe 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.sq:nth-child(3n) image { animation-delay: -1.7s; } .sq:nth-child(5n) image { animation-delay: -3.1s; }
+@keyframes breathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12) saturate(1.1); } }
+.sq image { transition: transform .18s; }
+.sq:hover image { transform: scale(1.06); }
+.sq.hot .tile, .sq.hot .dest { stroke: #f5d67b; stroke-width: 3; opacity: 1; }
+.sq.reach .tile { fill: #2a355c; stroke: #f5d67b88; stroke-width: 2; animation: reachpulse 1.6s ease-in-out infinite; }
+@keyframes reachpulse { 50% { stroke: #f5d67b; } }
+.route .flow { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1 26; opacity: .55; animation: flow 1.6s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -27; } }
+.route.hot .line { stroke-width: 8; } .route.hot .flow { opacity: 1; animation-duration: .7s; }
+/* market lines */
+.route.market .casing { stroke-width: 11; stroke: #0b0f1acc; }
+.route.market .line { stroke-width: 5; filter: drop-shadow(0 0 5px currentColor); }
+.route.market.ladder .line { stroke: #3fd08c; color: #3fd08c; }
+.route.market.snake .line { stroke: #ff4d63; color: #ff4d63; stroke-linejoin: miter; }
+.route.market.snake .flow { stroke: #ffd0d6; }
+.route .endcap circle { stroke: #0b0f1a; stroke-width: 3; }
+.route.ladder .endcap circle { fill: #3fd08c; } .route.snake .endcap circle { fill: #ff4d63; }
+.route .endcap path { fill: none; stroke: #0b0f1a; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+/* tile flare */
+.flare-box { fill: #ffffff22; stroke: #f5d67b; stroke-width: 4; }
+.flare.snake .flare-box, .flare.tariff .flare-box { stroke: #ff6b7a; } .flare.ladder .flare-box { stroke: #3fd08c; } .flare.sanction .flare-box { stroke: #b38cff; }
+.flare-sweep { fill: #ffffff66; }
+.flare-tag rect { fill: #121417; stroke: #f5d67b; stroke-width: 2; }
+.flare-tag text { fill: #f5d67b; font: 700 15px "Josefin Sans", sans-serif; letter-spacing: .12em; }
+.flare.snake .flare-tag text, .flare.tariff .flare-tag text { fill: #ff8a95; } .flare.ladder .flare-tag text { fill: #5fe08f; }
+
+/* ---- die tray is a button ---- */
+button.tray { padding: 0; border: 0; cursor: default; color: inherit; font: inherit; }
+button.tray.ready { cursor: pointer; box-shadow: inset 0 4px 12px #000c, 0 0 0 2px var(--gold-hi), 0 0 22px #f5d67b55; animation: trayglow 1.8s ease-in-out infinite; }
+button.tray.ready:hover .die3d { transform: rotateX(-30deg) rotateY(40deg) !important; transition: transform .25s; }
+@keyframes trayglow { 50% { box-shadow: inset 0 4px 12px #000c, 0 0 0 2px var(--gold-hi), 0 0 34px #f5d67b99; } }
+.die-hint { position: absolute; bottom: -22px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-hi); white-space: nowrap; }
+.die-hop, .die3d, .face { display: block; }
+.face { display: grid; }
+.buttons button.amount { min-width: 52px; font-weight: 700; font-size: 18px; border-color: var(--gold); }
+
+/* ---- art deco player plaque ---- */
+.t-a, .t-b, .t-c, .t-d { --ledger-bg: #10141f; --ledger-ink: #efe6d2; --ledger-accent: #e3bd6a; }
+.ledger.plaque { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 12px 14px 12px 12px; border: 0; border-radius: 0; background: linear-gradient(180deg, #161c2c, #0c1019); box-shadow: 0 10px 20px #000a;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px); }
+.ledger.plaque::after { content: ""; position: absolute; left: 22px; right: 22px; bottom: 4px; height: 3px; background: var(--pc); border-radius: 2px; }
+.pl-frame { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #c9913f; stroke-width: 1.2; pointer-events: none; }
+.pl-frame .inner { stroke: #c9913f66; } .pl-frame .step { stroke: #e3bd6a; }
+.ledger.plaque.active { transform: translateY(-3px); box-shadow: 0 0 26px #f5d67b44, 0 12px 22px #000c; }
+.ledger.plaque.active .pl-frame path { stroke: #f5d67b; }
+.ledger.plaque.active::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, #0000 40%, #ffe9b022 50%, #0000 60%) -200% 0 / 200% 100% no-repeat; animation: plaquesheen 2.8s ease-in-out infinite; pointer-events: none; }
+@keyframes plaquesheen { to { background-position: 200% 0; } }
+.pl-arch { position: relative; width: 64px; height: 84px; }
+.pl-sun { position: absolute; inset: -4px -6px 20px; border-radius: 50% 50% 0 0; background: repeating-conic-gradient(from -90deg at 50% 100%, #e3bd6a33 0 5deg, #0000 5deg 12deg); }
+.pl-portrait { position: absolute; left: 6px; right: 6px; top: 6px; bottom: 6px; border-radius: 26px 26px 3px 3px; background-size: cover; background-position: center 20%; border: 2px solid #c9913f; box-shadow: 0 0 0 3px #10141f, 0 0 0 4px #c9913f88; }
+.pl-arch .flag-badge { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); width: 22px; height: 22px; border: 2px solid #e3bd6a; box-shadow: 0 0 0 2px #10141f; }
+.pl-seat { position: absolute; left: -2px; top: -2px; width: 20px; height: 20px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: var(--pc); transform: rotate(45deg); border: 1.5px solid #f5d67b; }
+.pl-seat { font-size: 0; } .pl-seat::after { content: attr(data-n); }
+.plaque header b { font: 800 16px/1.1 "Fraunces", Georgia, serif; letter-spacing: .02em; }
+.plaque .sq { font: 700 12px "Fraunces", Georgia, serif; color: #e3bd6a; opacity: 1; background: #e3bd6a1a; border: 1px solid #e3bd6a55; padding: 1px 7px; border-radius: 999px; }
+.plaque .country { color: #9aa3ba; font-size: 11px; margin: 2px 0 6px; }
+.plaque .country span { color: #e3bd6a; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; margin-right: 4px; }
+.plaque .purse { gap: 4px 12px; }
+.plaque .nw { color: #e3bd6a; }
+.plaque .projects li { background: #e3bd6a14; border: 1px solid #e3bd6a33; }
+
+/* ---- draft ---- */
+.overlay.draft { align-content: center; justify-items: center; gap: 22px; background: radial-gradient(ellipse at 50% 45%, #1a2036f0, #07090ef5); }
+.draft .eyebrow { margin: 0; font: 400 34px "Poiret One", var(--font); color: var(--gold-hi); text-align: center; }
+.draft-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 1040px; }
+.draft-card { position: relative; width: 150px; aspect-ratio: .7; padding: 0; border: 0; background: none; min-height: 0; perspective: 900px; cursor: default; }
+.draft-card:not(:disabled) { cursor: pointer; }
+.draft-card:not(:disabled):hover .dc-inner { transform: rotateY(180deg) translateY(-10px); }
+.dc-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.3, 1.3, .5, 1); }
+.draft-card.down .dc-inner { transform: rotateY(180deg); }
+.dc-front, .dc-back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 12px; overflow: hidden; }
+.dc-front .country-card { width: 100%; }
+.dc-back { transform: rotateY(180deg); display: grid; place-items: center; background: radial-gradient(ellipse at 50% 40%, #1f2a45, #0e1320); box-shadow: 0 10px 20px #000a, inset 0 0 0 6px #0e1320, inset 0 0 0 7.5px #c9913f, inset 0 0 0 11px #0e1320, inset 0 0 0 12px #c9913f88; }
+.dc-back::before { content: ""; position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 50%, #e3bd6a14 0 6deg, #0000 6deg 15deg); }
+.dc-back img { position: relative; width: 70%; }
+.draft-card.taken .dc-front { box-shadow: 0 0 0 3px var(--pc), 0 0 30px var(--pc); }
+.draft-card.unpicked { opacity: .35; filter: grayscale(.6); }
+.dc-owner { position: absolute; left: 0; right: 0; top: calc(100% + 8px); display: grid; gap: 2px; text-align: center; animation: rowin .4s both; }
+.dc-owner b { font: 800 16px "Fraunces", Georgia, serif; color: var(--text); } .dc-owner small { font-size: 11px; color: var(--text-2); line-height: 1.3; }
+.draft-row:has(.taken) { margin-bottom: 44px; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .draft-card { width: 92px; } .draft .eyebrow { font-size: 22px; } .dc-owner small { display: none; } .draft-row { gap: 10px; }
+  .ledger.plaque { grid-template-columns: 38px minmax(0, 1fr); gap: 8px; padding: 7px 9px; }
+  .pl-arch { width: 38px; height: 50px; } .pl-arch .flag-badge { width: 16px; height: 16px; } .pl-seat { width: 15px; height: 15px; }
+  .plaque header b { font-size: 13px; } .plaque .country { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .board .sheen, .sq image, .route .flow, button.tray.ready, .ledger.plaque.active::before, .sq.reach .tile { animation: none; } }
+.pl-seat::after { transform: rotate(-45deg); font-size: 11px; }
+.ledgers { grid-template-columns: minmax(0, 1fr); }
+.ledgers:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.route.market.snake .line { stroke-width: 4.5; }
+.ev-art.has-art { padding: 0; background: #1b1f33; }
+.ev-art.has-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ev-art:not(.has-art)::before { content: ""; position: absolute; inset: 0; background: repeating-conic-gradient(from -90deg at 50% 115%, #ffffff10 0 4deg, #0000 4deg 11deg); }
+.cc-name { font-size: 11cqi; padding: 0 6%; line-height: 1.05; }
+@media (orientation: landscape) and (max-height: 540px) {
+  .ledgers, .ledgers:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plaque .purse { gap: 2px 8px; }
+}

@@ -27,17 +27,24 @@ export function Ledger({ s, shown, active }: { s: GameState; shown: Shown[]; act
       {s.players.map((pl, p) => {
         const v = shown[p] ?? pl
         return (
-          <article key={p} data-ledger={p} className={`ledger ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
-            <div className="lg-portrait" style={{ backgroundImage: `url(./art/countries/${pl.country}.jpg)` }}>
+          <article key={p} data-ledger={p} className={`ledger plaque ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
+            <svg className="pl-frame" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+              <path vectorEffect="non-scaling-stroke" d="M12 3H288L297 12V108L288 117H12L3 108V12Z" />
+              <path vectorEffect="non-scaling-stroke" className="inner" d="M16 7H284L293 16V104L284 113H16L7 104V16Z" />
+              <path vectorEffect="non-scaling-stroke" className="step" d="M3 22H9V9H22V3M297 22H291V9H278V3M3 98H9V111H22V117M297 98H291V111H278V117" />
+            </svg>
+            <div className="pl-arch">
+              <span className="pl-sun" aria-hidden="true" />
+              <span className="pl-portrait" style={{ backgroundImage: `url(./art/countries/${pl.country}.jpg)` }} />
               <Flag c={pl.country} />
-              <span className="dot seat">{p + 1}</span>
+              <span className="pl-seat" data-n={p + 1} />
             </div>
             <div className="lg-body">
               <header>
                 <b>{pl.name}</b>
-                <span className="sq">sq {v.square}</span>
+                <span className="sq">Sq {v.square}</span>
               </header>
-              <p className="country" title={COUNTRIES[pl.country].perk}>{COUNTRIES[pl.country].perk}</p>
+              <p className="country" title={COUNTRIES[pl.country].perk}><span>{COUNTRIES[pl.country].name}</span> {COUNTRIES[pl.country].perk}</p>
               <div className="purse">
                 <span title="Capital"><Chip kind="capital" /><Num value={v.capital} /></span>
                 <span title="Debt"><Chip kind="debt" /><Num value={v.debt} /></span>

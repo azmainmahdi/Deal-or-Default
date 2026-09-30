@@ -11,6 +11,11 @@ describe('setup', () => {
     expect(s.decision).toMatchObject({ kind: 'debtWindow', player: 0 })
     expect(s.deck).toHaveLength(24)
   })
+  it('uses drafted countries when given, and rejects duplicates', () => {
+    const { state } = newGame({ names: ['A', 'B'], seed: 3, countries: ['uk', 'china'] })
+    expect(state.players.map((p) => p.country)).toEqual(['uk', 'china'])
+    expect(() => newGame({ names: ['A', 'B'], seed: 3, countries: ['uk', 'uk'] })).toThrow()
+  })
   it('rejects fewer than 2 or more than 6 players', () => {
     expect(() => newGame({ names: ['A'], seed: 1 })).toThrow()
     expect(() => newGame({ names: Array(7).fill('x'), seed: 1 })).toThrow()

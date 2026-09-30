@@ -1,4 +1,5 @@
 // The decision dock: shows what the engine is waiting for and one button per legal intent.
+import { useState } from 'react'
 import { CARDS } from '../rules/cards'
 import { legalIntents } from '../rules/engine'
 import type { GameState, Intent } from '../rules/types'
@@ -25,7 +26,7 @@ function prompt(s: GameState): string {
   const card = d.kind === 'ackCard' ? CARDS[d.card] : null
   const pl = s.players[d.player]!
   switch (d.kind) {
-    case 'debtWindow': return `Borrow, repay, or roll.${s.turnFlags.noRepay ? ' (Debt Spiral: no repaying this turn.)' : ''}${pl.square >= s.config.crunchFrom && pl.debt > 0 ? ' Crunch: your roll is halved while in debt.' : ''}`
+    case 'debtWindow': return `Roll, or borrow first.${s.turnFlags.noRepay ? ' (Debt Spiral: no repaying this turn.)' : ''}${pl.square >= s.config.crunchFrom && pl.debt > 0 ? ' Crunch: your roll is halved while in debt.' : ''}`
     case 'roll': return 'Roll the die.'
     case 'invest': return `FDI ladder ${d.from} → ${d.to} (Δ${d.to - d.from}). Invest chips to climb; each chip earns ${d.to - d.from} when the project matures.`
     case 'hedge': return `Market crash ${d.from} → ${d.to}. Hedge for ${d.cost} to slide only ${Math.ceil((d.from - d.to) / 2)} and keep your projects.`
@@ -37,18 +38,34 @@ function prompt(s: GameState): string {
 }
 
 export function Dock({ s, onIntent }: { s: GameState; onIntent: (i: Intent) => void }) {
+  const [mode, setMode] = useState<null | 'takeDebt' | 'repay'>(null)
+  const [forDecision, setForDecision] = useState(s.decision)
+  if (forDecision !== s.decision) { setForDecision(s.decision); setMode(null) } // new decision: close any chooser
   const d = s.decision
   if (!d) return null
   const pl = s.players[d.player]!
-  const intents = legalIntents(s)
+  const all = legalIntents(s)
+  // The debt window shows Roll plus one Borrow and one Repay button; the amount is chosen after.
+  const intents = d.kind === 'debtWindow'
+    ? mode ? all.filter((i) => i.type === mode) : all.filter((i) => i.type === 'roll')
+    : all
+  const perChip = pl.country === 'uk' ? s.config.ukDebtCapital : 1
+  const text = mode === 'takeDebt'
+    ? `Borrow how much? Each Debt chip gives ${perChip} Capital now and costs ${s.config.debtWeight} Net Worth at the end if unpaid.`
+    : mode === 'repay' ? 'Repay how much? Each chip costs 1 Capital.' : prompt(s)
   return (
     <section className="dock" aria-label="Your decision" style={{ '--pc': PAWN_COLORS[d.player] } as React.CSSProperties}>
       <h2><span className="dot" aria-hidden="true" />{pl.name}</h2>
-      <p>{prompt(s)}</p>
+      <p>{text}</p>
       <div className="buttons">
         {intents.map((i, k) => (
-          <button key={k} className={i.type === 'roll' || i.type === 'ack' ? 'primary' : ''} onClick={() => onIntent(i)}>{label(i, s)}</button>
+          <button key={k} className={i.type === 'roll' || i.type === 'ack' ? 'primary' : mode ? 'amount' : ''} onClick={() => onIntent(i)}>
+            {mode && (i.type === 'takeDebt' || i.type === 'repay') ? i.n : label(i, s)}
+          </button>
         ))}
+        {d.kind === 'debtWindow' && !mode && d.maxTake > 0 && <button onClick={() => setMode('takeDebt')}>Borrow…</button>}
+        {d.kind === 'debtWindow' && !mode && d.maxRepay > 0 && <button onClick={() => setMode('repay')}>Repay…</button>}
+        {mode && <button className="quiet" onClick={() => setMode(null)}>Back</button>}
       </div>
     </section>
   )

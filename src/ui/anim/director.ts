@@ -1,7 +1,7 @@
 // Plays a batch of engine events as animation, one after another, calling apply(e) so the
 // numbers on screen change at the moment the animation shows them changing.
 import { gsap } from 'gsap'
-import { SNAKES } from '../../rules/board'
+import { SNAKES, tileAt } from '../../rules/board'
 import type { CardId, GameEvent } from '../../rules/types'
 import type { BoardHandle } from '../Board'
 import { eventArtHtml, eventTextHtml } from '../Cards'
@@ -133,6 +133,34 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
   await tl
   stage.squares[e.player] = to
   await board.layout(stage.squares, 0.18)
+  if (e.via !== 'ladder' && e.via !== 'snake') await flare(stage, to)
+}
+
+const FLARE: Partial<Record<ReturnType<typeof tileAt>, [string, string]>> = {
+  ladder: ['FDI LADDER', 'ladder'], snake: ['MARKET CRASH', 'snake'], event: ['EVENT', 'event'],
+  tariff: ['TARIFF', 'tariff'], sanction: ['SANCTION', 'sanction'], goal: ['100!', 'goal'],
+}
+
+/** The tile a pawn lands on lights up and names itself. */
+async function flare(stage: Stage, sq: number) {
+  const f = FLARE[tileAt(sq)]
+  if (!f) return
+  const c = centerOf(sq)
+  const g = svgEl('g', { class: `flare ${f[1]}` })
+  const box = svgEl('rect', { x: c.x - 46, y: c.y - 46, width: 92, height: 92, rx: 6, class: 'flare-box' })
+  const sweep = svgEl('rect', { x: c.x - 46, y: c.y - 46, width: 30, height: 92, class: 'flare-sweep' })
+  const tag = svgEl('g', { class: 'flare-tag', transform: `translate(${c.x},${c.y - 62})` })
+  const w = f[0].length * 11 + 22
+  tag.append(svgEl('rect', { x: -w / 2, y: -17, width: w, height: 28, rx: 14 }), Object.assign(svgEl('text', { 'text-anchor': 'middle', y: 3 }), { textContent: f[0] }))
+  g.append(box, sweep, tag)
+  stage.board.fx().appendChild(g)
+  sfx.flare()
+  await gsap.timeline()
+    .fromTo(box, { opacity: 0, scale: 1.3, transformOrigin: 'center' }, { opacity: 1, scale: 1, duration: 0.25, ease: 'back.out(2)' })
+    .fromTo(sweep, { x: 0, opacity: 0.9 }, { x: 62, opacity: 0, duration: 0.45, ease: 'power1.inOut' }, 0.05)
+    .fromTo(tag, { opacity: 0, scale: 0.4, transformOrigin: '50% 100%' }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(3)' }, 0.05)
+    .to(g, { opacity: 0, duration: 0.35, delay: 0.45 })
+  g.remove()
 }
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>) {

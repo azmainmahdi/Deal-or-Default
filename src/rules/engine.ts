@@ -10,17 +10,22 @@ import {
 } from './ops'
 import { roll, shuffle } from './rng'
 import { finalLedger } from './scoring'
-import type { Decision, Effect, GameEvent, GameState, Intent, Seat } from './types'
+import type { CountryId, Decision, Effect, GameEvent, GameState, Intent, Seat } from './types'
 
 export interface StepResult { state: GameState; events: GameEvent[]; error?: string }
 
-export function newGame(opts: { names: string[]; seed: number; config?: Partial<Config> }): StepResult {
+/** countries: seat-ordered picks from the country-card draft; omitted = dealt at random. */
+export function newGame(opts: { names: string[]; seed: number; config?: Partial<Config>; countries?: CountryId[] }): StepResult {
   const config = { ...DEFAULT_CONFIG, ...opts.config }
   const n = opts.names.length
   if (n < 2 || n > COUNTRY_IDS.length) throw new Error(`2–${COUNTRY_IDS.length} players, got ${n}`)
   let rng = opts.seed >>> 0
   let countries, deck, first
-  ;[countries, rng] = shuffle(COUNTRY_IDS, rng)
+  if (opts.countries) {
+    const ok = opts.countries.length === n && new Set(opts.countries).size === n && opts.countries.every((c) => COUNTRY_IDS.includes(c))
+    if (!ok) throw new Error('countries must be one distinct country per player')
+    countries = opts.countries
+  } else [countries, rng] = shuffle(COUNTRY_IDS, rng)
   ;[deck, rng] = shuffle(config.deck, rng)
   ;[first, rng] = config.firstPlayer === 'random' ? roll(rng, n) : [1, rng]
   const s: GameState = {

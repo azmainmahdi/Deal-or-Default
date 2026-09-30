@@ -7,9 +7,9 @@ const PIPS: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0,
 // Cube rotation that brings each face to the front.
 const ORIENT: Record<number, { x: number; y: number }> = { 1: { x: 0, y: 0 }, 2: { x: 0, y: -90 }, 3: { x: -90, y: 0 }, 4: { x: 90, y: 0 }, 5: { x: 0, y: 90 }, 6: { x: 0, y: 180 } }
 
-export const Die = forwardRef<DieHandle, { note?: string }>(function Die({ note }, ref) {
-  const cube = useRef<HTMLDivElement>(null)
-  const hop = useRef<HTMLDivElement>(null)
+export const Die = forwardRef<DieHandle, { note?: string; onRoll?: () => void }>(function Die({ note, onRoll }, ref) {
+  const cube = useRef<HTMLSpanElement>(null)
+  const hop = useRef<HTMLSpanElement>(null)
   const rot = useRef({ x: -20, y: 25 })
 
   useImperativeHandle(ref, () => ({
@@ -25,17 +25,18 @@ export const Die = forwardRef<DieHandle, { note?: string }>(function Die({ note 
   }))
 
   return (
-    <div className="tray">
-      <div className="die-hop" ref={hop}>
-        <div className="die3d" ref={cube} style={{ transform: 'rotateX(-20deg) rotateY(25deg)' }}>
+    <button type="button" className={`tray ${onRoll ? 'ready' : ''}`} onClick={onRoll} disabled={!onRoll} aria-label={onRoll ? 'Roll the die' : 'Die'}>
+      <span className="die-hop" ref={hop}>
+        <span className="die3d" ref={cube} style={{ transform: 'rotateX(-20deg) rotateY(25deg)' }}>
           {[1, 2, 3, 4, 5, 6].map((f) => (
-            <div key={f} className={`face f${f}`}>
+            <span key={f} className={`face f${f}`}>
               {Array.from({ length: 9 }, (_, i) => <i key={i} className={PIPS[f]!.includes(i) ? 'on' : ''} />)}
-            </div>
+            </span>
           ))}
-        </div>
-      </div>
-      {note && <div className="die-note">{note}</div>}
-    </div>
+        </span>
+      </span>
+      {note && <span className="die-note">{note}</span>}
+      {onRoll && <span className="die-hint">Tap to roll</span>}
+    </button>
   )
 })

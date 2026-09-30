@@ -1,89 +1,194 @@
-import { useEffect, useState } from 'react'
+import { gsap } from 'gsap'
+import { useEffect, useRef, useState } from 'react'
 import { COUNTRIES } from '../rules/countries'
 import { legalIntents, newGame, step } from '../rules/engine'
-import type { GameEvent, GameState, Intent } from '../rules/types'
-import { Board, PAWN_COLORS } from './Board'
+import type { CardId, GameEvent, GameState, Intent } from '../rules/types'
+import { flyCard, play } from './anim/director'
+import { Board, PAWN_COLORS, type BoardHandle } from './Board'
+import { CardTable } from './Cards'
 import { describe } from './describe'
+import { Die, type DieHandle } from './Die'
 import { Dock } from './Dock'
-import { Ledger } from './Ledger'
+import { Ledger, type Shown } from './Ledger'
+import { Num } from './Num'
 
 const SAVE = 'dod-local-game'
-interface Saved { state: GameState; log: string[]; die: number | null }
+const PREFS = 'dod-prefs'
+const TABLES = [['a', 'Boardroom'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
+type Table = (typeof TABLES)[number][0]
 
-function load(): Saved | null {
-  try {
-    const raw = localStorage.getItem(SAVE)
-    return raw ? (JSON.parse(raw) as Saved) : null
-  } catch { return null }
+interface View {
+  players: Shown[]
+  die: Extract<GameEvent, { type: 'diceRolled' }> | null
+  card: CardId | null
+  discardTop?: CardId
+  deck: number
+  active: number
+  log: string[]
 }
-function save(g: Saved | null) {
-  try { g ? localStorage.setItem(SAVE, JSON.stringify(g)) : localStorage.removeItem(SAVE) } catch { /* private mode: play on without saving */ }
+
+function viewOf(s: GameState, prev?: View): View {
+  const d = s.decision
+  return {
+    players: s.players.map(({ square, capital, debt, waivers }) => ({ square, capital, debt, waivers })),
+    die: prev?.die ?? null,
+    card: d?.kind === 'ackCard' || d?.kind === 'cardChoice' ? d.card : null,
+    discardTop: s.discard[s.discard.length - 1],
+    deck: s.deck.length,
+    active: d?.player ?? s.current,
+    log: prev?.log ?? [],
+  }
+}
+
+function read<T>(key: string): T | null {
+  try { const raw = localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : null } catch { return null }
+}
+function write(key: string, v: unknown) {
+  try { v === null ? localStorage.removeItem(key) : localStorage.setItem(key, JSON.stringify(v)) } catch { /* no storage: play on unsaved */ }
 }
 
 export function App() {
-  const [game, setGame] = useState<Saved | null>(load)
-  useEffect(() => save(game), [game])
+  const [saved] = useState(() => read<{ state: GameState; log: string[] }>(SAVE))
+  const [state, setState] = useState<GameState | null>(saved?.state ?? null)
+  const [view, setView] = useState<View | null>(() => (saved ? { ...viewOf(saved.state), log: saved.log } : null))
+  const [busy, setBusy] = useState(false)
+  const [prefs, setPrefs] = useState(() => ({ table: 'c' as Table, speed: 1, ...read<{ table: Table; speed: number }>(PREFS) }))
+  const board = useRef<BoardHandle>(null)
+  const die = useRef<DieHandle>(null)
+  const skipping = useRef(false)
 
-  function apply(state: GameState, events: GameEvent[], prev: Saved | null) {
-    const lines = events.map((e) => describe(e, state)).filter((x): x is string => !!x)
-    const rolled = [...events].reverse().find((e) => e.type === 'diceRolled')
-    setGame({ state, log: [...(prev?.log ?? []), ...lines].slice(-200), die: rolled?.type === 'diceRolled' ? rolled.value : prev?.die ?? null })
+  useEffect(() => write(PREFS, prefs), [prefs])
+  useEffect(() => { if (state && view) write(SAVE, { state, log: view.log.slice(-200) }) }, [state, view])
+  useEffect(() => { gsap.globalTimeline.timeScale(matchMedia('(prefers-reduced-motion: reduce)').matches ? 8 : prefs.speed) }, [prefs.speed])
+
+  async function run(prev: GameState | null, next: GameState, events: GameEvent[]) {
+    setState(next)
+    if (!prev || !board.current || !die.current) {
+      setView((v) => ({ ...viewOf(next, v ?? undefined), log: [...(v?.log ?? []), ...events.map((e) => describe(e, next)).filter((x): x is string => !!x)] }))
+      return
+    }
+    setBusy(true)
+    // A card that was waiting in the slot goes to the discard pile before its effects play.
+    const pd = prev.decision
+    if ((pd?.kind === 'ackCard' || pd?.kind === 'cardChoice') && next.discard.length > prev.discard.length) {
+      setView((v) => v && { ...v, card: null })
+      await flyCard(pd.card, '[data-slot]', '[data-discard]', false)
+      setView((v) => v && { ...v, discardTop: pd.card })
+    }
+    const squares = prev.players.map((pl) => pl.square)
+    await play(events, { board: board.current, die: die.current, squares }, (e) => setView((v) => v && applyEvent(v, e, next)))
+    skipping.current = false
+    gsap.globalTimeline.timeScale(prefs.speed)
+    setView((v) => viewOf(next, v ?? undefined))
+    board.current.layout(next.players.map((pl) => pl.square), 0.2)
+    setBusy(false)
   }
 
   function send(i: Intent) {
-    if (!game) return
-    const r = step(game.state, i)
-    if (!r.error) apply(r.state, r.events, game)
+    if (!state || busy) return
+    const r = step(state, i)
+    if (!r.error) void run(state, r.state, r.events)
+  }
+
+  function start(names: string[]) {
+    const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0 })
+    setView({ ...viewOf(r.state), log: [] })
+    void run(null, r.state, r.events)
+  }
+
+  function skip() {
+    skipping.current = true
+    gsap.globalTimeline.timeScale(40)
   }
 
   // Keyboard: Space rolls or applies a card, 0–4 invest, Y/N answer yes/no prompts.
   useEffect(() => {
-    if (!game || game.state.phase !== 'playing') return
+    if (!state || state.phase !== 'playing') return
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return
-      const legal = legalIntents(game.state)
+      if (busy) { if (e.key === ' ' || e.key === 'Escape') { e.preventDefault(); skip() } return }
       const k = e.key.toLowerCase()
-      const hit = legal.find((i) =>
+      const hit = legalIntents(state).find((i) =>
         (k === ' ' && (i.type === 'roll' || i.type === 'ack')) ||
         (i.type === 'invest' && k === String(i.chips)) ||
         (k === 'y' && ((i.type === 'hedge' && i.hedge) || (i.type === 'waiver' && i.use) || (i.type === 'takeover' && i.victim !== null))) ||
         (k === 'n' && ((i.type === 'hedge' && !i.hedge) || (i.type === 'waiver' && !i.use) || (i.type === 'takeover' && i.victim === null))))
-      if (hit) {
-        e.preventDefault()
-        send(hit)
-      }
+      if (hit) { e.preventDefault(); send(hit) }
     }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
   })
 
-  if (!game) return <Setup onStart={(names) => { const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0 }); apply(r.state, r.events, null) }} />
-  const { state: s, log, die } = game
+  const tableClass = `table t-${prefs.table}`
+
+  if (!state || !view) return <div className={tableClass}><Setup onStart={start} /></div>
+
+  const s = state
+  const dieNote = view.die && (view.die.crunched || view.die.bonus)
+    ? `${view.die.raw}${view.die.crunched ? ' → ½' : ''}${view.die.bonus ? ` +${view.die.bonus}` : ''} = ${view.die.value}` : undefined
 
   return (
-    <div className="game">
+    <div className={tableClass}>
       <header className="topbar">
-        <h1>Deal or Default</h1>
+        <img src="./logo.png" alt="Deal or Default" className="toplogo" />
         <span className="turn">Turn {s.turn}</span>
-        <button className="quiet" onClick={() => confirm('Abandon this game?') && setGame(null)}>New game</button>
+        <div className="seg" role="group" aria-label="Table">
+          {TABLES.map(([k, name]) => (
+            <button key={k} aria-pressed={prefs.table === k} onClick={() => setPrefs({ ...prefs, table: k })}>{name}</button>
+          ))}
+        </div>
+        <div className="seg" role="group" aria-label="Animation speed">
+          {[1, 2].map((x) => <button key={x} aria-pressed={prefs.speed === x} onClick={() => setPrefs({ ...prefs, speed: x })}>{x}×</button>)}
+        </div>
+        <button className="quiet" onClick={() => { if (confirm('Abandon this game?')) { write(SAVE, null); setState(null); setView(null) } }}>New game</button>
       </header>
-      <main className="layout">
-        <div className="boardwrap">{s.phase === 'finished' ? <Final s={s} onNew={() => setGame(null)} /> : <Board s={s} />}</div>
+
+      <main className="stage">
+        <div className="boardzone">
+          <div className="tilt">
+            <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} />
+          </div>
+        </div>
+
         <aside className="side">
-          {s.phase === 'playing' && (
-            <>
-              <div className="die" aria-label={die ? `Last roll ${die}` : 'No roll yet'}>{die ?? '–'}</div>
-              <Dock s={s} onIntent={send} />
-            </>
-          )}
-          <section className="log" aria-label="Game log">
-            <ol aria-live="polite">{log.slice(-40).map((l, i) => <li key={log.length - 40 + i}>{l}</li>)}</ol>
-          </section>
+          <CardTable deck={view.deck} current={view.card} discardTop={view.discardTop} />
+          <div className="midrow">
+            <Die ref={die} note={dieNote} />
+            <div className="dockwrap">
+              {busy ? (
+                <div className="playing"><span>Playing…</span><button className="quiet" onClick={skip}>Skip</button></div>
+              ) : s.phase === 'playing' ? <Dock s={s} onIntent={send} /> : null}
+            </div>
+          </div>
+          <Ledger s={s} shown={view.players} active={view.active} />
+          <details className="log">
+            <summary>Game log</summary>
+            <ol aria-live="polite">{view.log.slice(-60).map((l, i) => <li key={view.log.length - 60 + i}>{l}</li>)}</ol>
+          </details>
         </aside>
-        <Ledger s={s} />
       </main>
+
+      {s.phase === 'finished' && !busy && <Final s={s} onNew={() => { write(SAVE, null); setState(null); setView(null) }} />}
     </div>
   )
+}
+
+function applyEvent(v: View, e: GameEvent, s: GameState): View {
+  const players = v.players.map((p) => ({ ...p }))
+  const line = describe(e, s)
+  const log = line ? [...v.log, line] : v.log
+  const pl = 'player' in e ? players[e.player] : undefined
+  switch (e.type) {
+    case 'moved': if (pl) pl.square = e.path[e.path.length - 1]!; break
+    case 'capital': if (pl) pl.capital += e.delta; break
+    case 'debt': if (pl) pl.debt += e.delta; break
+    case 'waiver': if (pl) pl.waivers += e.delta; break
+    case 'waiverUsed': break
+    case 'diceRolled': return { ...v, players, log, die: e }
+    case 'cardDrawn': return { ...v, players, log, card: e.card, deck: Math.max(0, v.deck - 1) }
+    case 'turnStarted': return { ...v, players, log, active: e.player }
+  }
+  return { ...v, players, log }
 }
 
 function Setup({ onStart }: { onStart: (names: string[]) => void }) {
@@ -91,20 +196,20 @@ function Setup({ onStart }: { onStart: (names: string[]) => void }) {
   const clean = names.map((n, i) => n.trim() || `Player ${i + 1}`)
   return (
     <main className="setup">
-      <img src="./logo.png" alt="Deal or Default" width={260} />
+      <img src="./logo.png" alt="Deal or Default" width={280} />
       <h1>Same-screen game</h1>
       <p>2 to 6 players on this device. Countries are dealt at random.</p>
       <form onSubmit={(e) => { e.preventDefault(); onStart(clean) }}>
         {names.map((n, i) => (
           <div className="namerow" key={i}>
-            <span className="dot" style={{ background: PAWN_COLORS[i] }} aria-hidden="true" />
+            <span className="dot seat" style={{ background: PAWN_COLORS[i] }} aria-hidden="true">{i + 1}</span>
             <input aria-label={`Player ${i + 1} name`} placeholder={`Player ${i + 1}`} value={n} maxLength={16}
               onChange={(e) => setNames(names.map((x, j) => (j === i ? e.target.value : x)))} />
             {names.length > 2 && <button type="button" className="quiet" aria-label={`Remove player ${i + 1}`} onClick={() => setNames(names.filter((_, j) => j !== i))}>Remove</button>}
           </div>
         ))}
         {names.length < 6 && <button type="button" className="quiet" onClick={() => setNames([...names, ''])}>Add player</button>}
-        <button className="primary" type="submit">Start game</button>
+        <button className="primary" type="submit">Deal the countries</button>
       </form>
     </main>
   )
@@ -112,27 +217,32 @@ function Setup({ onStart }: { onStart: (names: string[]) => void }) {
 
 function Final({ s, onNew }: { s: GameState; onNew: () => void }) {
   const r = s.result!
+  const [go, setGo] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setGo(true), 300); return () => clearTimeout(t) }, [])
   return (
-    <section className="final" aria-label="Final ledger">
-      <h2>{r.winners.map((w) => s.players[w]!.name).join(' and ')} win{r.winners.length === 1 ? 's' : ''}</h2>
-      <table>
-        <thead><tr><th>#</th><th>Player</th><th>Capital</th><th>incl. bonus</th><th>incl. matured profit</th><th>− Debt × {s.config.debtWeight}</th><th>Unfinished deals</th><th>Net Worth</th></tr></thead>
-        <tbody>
-          {r.rows.map((x) => (
-            <tr key={x.player}>
-              <td>{x.rank}</td>
-              <td>{s.players[x.player]!.name} <small>{COUNTRIES[s.players[x.player]!.country].name}</small></td>
-              <td>{x.capital}</td>
-              <td>{x.bonus ? `+${x.bonus}` : ''}</td>
-              <td>{x.matured}</td>
-              <td>{x.debtCost ? `−${x.debtCost}` : 0}</td>
-              <td><s>{x.pendingLost}</s></td>
-              <td><b>{x.netWorth}</b></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button className="primary" onClick={onNew}>New game</button>
-    </section>
+    <div className="overlay">
+      <section className="final" aria-label="Final ledger">
+        <p className="eyebrow">Final ledger</p>
+        <h2>{r.winners.map((w) => s.players[w]!.name).join(' and ')} win{r.winners.length === 1 ? 's' : ''}</h2>
+        <table>
+          <thead><tr><th>#</th><th>Player</th><th>Capital</th><th>incl. bonus</th><th>incl. matured</th><th>− Debt × {s.config.debtWeight}</th><th>Unfinished deals</th><th>Net Worth</th></tr></thead>
+          <tbody>
+            {r.rows.map((x, i) => (
+              <tr key={x.player} style={{ animationDelay: `${0.4 + i * 0.35}s` }} className={r.winners.includes(x.player) ? 'win' : ''}>
+                <td>{r.winners.includes(x.player) ? <span className="crown" aria-label="winner">♛</span> : x.rank}</td>
+                <td><span className="dot seat" style={{ background: PAWN_COLORS[x.player] }}>{x.player + 1}</span> {s.players[x.player]!.name} <small>{COUNTRIES[s.players[x.player]!.country].name}</small></td>
+                <td><Num value={go ? x.capital : 0} /></td>
+                <td>{x.bonus ? `+${x.bonus}` : ''}</td>
+                <td>{x.matured}</td>
+                <td>{x.debtCost ? `−${x.debtCost}` : 0}</td>
+                <td><s>{x.pendingLost}</s></td>
+                <td><b><Num value={go ? x.netWorth : 0} /></b></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button className="primary" onClick={onNew}>New game</button>
+      </section>
+    </div>
   )
 }

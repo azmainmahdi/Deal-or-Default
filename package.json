@@ -13,6 +13,7 @@
     "report": "tsx scripts/report.ts"
   },
   "dependencies": {
+    "gsap": "^3.15.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

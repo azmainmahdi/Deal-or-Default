@@ -22,6 +22,7 @@ function label(i: Intent, s: GameState): string {
 
 function prompt(s: GameState): string {
   const d = s.decision!
+  const card = d.kind === 'ackCard' ? CARDS[d.card] : null
   const pl = s.players[d.player]!
   switch (d.kind) {
     case 'debtWindow': return `Borrow, repay, or roll.${s.turnFlags.noRepay ? ' (Debt Spiral: no repaying this turn.)' : ''}${pl.square >= s.config.crunchFrom && pl.debt > 0 ? ' Crunch: your roll is halved while in debt.' : ''}`
@@ -31,7 +32,7 @@ function prompt(s: GameState): string {
     case 'waiver': return `Tariff from ${s.players[d.from]!.name}: back ${d.setback}, unless you spend a waiver.`
     case 'cardChoice': return 'Choose one.'
     case 'takeover': return `Hostile takeover: pay ${s.config.takeoverCost} to take a rival's smallest project.`
-    case 'ackCard': return ''
+    case 'ackCard': return card ? `${card.name}: ${card.text}` : ''
   }
 }
 
@@ -39,18 +40,10 @@ export function Dock({ s, onIntent }: { s: GameState; onIntent: (i: Intent) => v
   const d = s.decision
   if (!d) return null
   const pl = s.players[d.player]!
-  const card = d.kind === 'ackCard' || d.kind === 'cardChoice' ? CARDS[d.card] : null
   const intents = legalIntents(s)
   return (
     <section className="dock" aria-label="Your decision" style={{ '--pc': PAWN_COLORS[d.player] } as React.CSSProperties}>
       <h2><span className="dot" aria-hidden="true" />{pl.name}</h2>
-      {card && (
-        <div className={`card ${card.kind}`}>
-          <small>{card.kind === 'beneficial' ? 'Beneficial event' : 'Adverse event'}</small>
-          <b>{card.name}</b>
-          <p>{card.text}</p>
-        </div>
-      )}
       <p>{prompt(s)}</p>
       <div className="buttons">
         {intents.map((i, k) => (

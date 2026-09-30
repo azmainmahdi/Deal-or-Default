@@ -1,20 +1,21 @@
-/* Theme tokens (plan section 7). The deco redesign changes only this folder, icons and board paths. */
+/* Theme tokens (plan section 7). Table looks switch via .t-a/.t-b/.t-c/.t-d in app.css. */
 :root {
   color-scheme: dark;
-  --bg: #121417;
   --panel: #1a1d22;
   --panel-2: #22262c;
-  --line: #2e3238;
+  --panel-glass: #0e1013cc;
+  --line: #ffffff22;
   --gold: #b8955a;
   --gold-hi: #e3bd6a;
   --text: #efe6d2;
-  --text-2: #c3b9a4;
+  --text-2: #d2c8b2;
   --muted: #8e8676;
-  --tile-a: #1d2025;
-  --tile-b: #23272d;
-  --ladder: #2f9e5b;
-  --snake: #d2344a;
-  --good: #2f9e5b;
-  --bad: #d2344a;
+  --tile-a: #15181c;
+  --tile-b: #1c2025;
+  --ledger-bg: #1a1d22ee;
+  --ledger-ink: #efe6d2;
+  --ledger-accent: #e3bd6a;
   --font: "Josefin Sans", system-ui, sans-serif;
 }
+.t-a { --ledger-bg: #f4ead3; --ledger-ink: #1d1a14; --ledger-accent: #8a6420; }
+.t-b { --ledger-bg: #0c2c1ef0; --tile-a: #161a1e; --tile-b: #1e2328; }

@@ -6,8 +6,9 @@ import { botIntent } from '../rules/sim'
 import type { CardId, CountryId, GameEvent, GameState, Intent } from '../rules/types'
 import { flyCard, play } from './anim/director'
 import { Board, PAWN_COLORS, type BoardHandle, type RouteStyle } from './Board'
-import { CardTable, Reveal } from './Cards'
+import { CardTable, CountryCard, Reveal } from './Cards'
 import { Draft } from './Draft'
+import { Rules } from './Rules'
 import { describe } from './describe'
 import { Die, type DieHandle } from './Die'
 import { Dock } from './Dock'
@@ -76,6 +77,12 @@ export function App() {
       return
     }
     setBusy(true)
+    // Skip, or a hidden tab, fast-forwards: the browser stops animation frames in background tabs,
+    // so we pump GSAP's ticker ourselves and the batch finishes instead of stalling.
+    if (document.hidden) skip()
+    const onHide = () => { if (document.hidden) skip() }
+    document.addEventListener('visibilitychange', onHide)
+    const pump = setInterval(() => { if (skipping.current) gsap.ticker.tick() }, 40)
     // A card that was waiting in the slot goes to the discard pile before its effects play.
     const pd = prev.decision
     if ((pd?.kind === 'ackCard' || pd?.kind === 'cardChoice') && next.discard.length > prev.discard.length) {
@@ -89,6 +96,8 @@ export function App() {
       play(events, { board: board.current, die: die.current, squares, names: next.players.map((p) => p.name), colors: PAWN_COLORS }, (e) => setView((v) => v && applyEvent(v, e, next))),
       new Promise((r) => setTimeout(r, 20_000)),
     ])
+    clearInterval(pump)
+    document.removeEventListener('visibilitychange', onHide)
     skipping.current = false
     gsap.globalTimeline.timeScale(prefs.speed)
     setView((v) => viewOf(next, v ?? undefined))
@@ -120,7 +129,7 @@ export function App() {
 
   function skip() {
     skipping.current = true
-    gsap.globalTimeline.timeScale(40)
+    gsap.globalTimeline.timeScale(1000)
   }
 
   // Keyboard: Space rolls or applies a card, 0–4 invest, Y/N answer yes/no prompts.
@@ -152,6 +161,7 @@ export function App() {
 
   const s = state
   const rollNow = !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'roll') : undefined
+  const ackNow = !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'ack') : undefined
   // Squares the current roll could reach glow before the die is thrown.
   const reach = (() => {
     if (!rollNow || demo) return []
@@ -166,7 +176,7 @@ export function App() {
     <div className={tableClass}>
       <header className="topbar">
         <img src="./logo.png" alt="Deal or Default" className="toplogo" />
-        <span className="turn">Turn {s.turn}</span>
+        <span className="turn"><em>Round {Math.ceil(s.turn / s.players.length)}</em>Turn {s.turn}</span>
         {demo && <span className="demo-chip">Demo <button className="quiet" onClick={() => setDemo(false)}>Take over</button></span>}
         <details className="settings">
           <summary aria-label="Settings">Table &amp; sound</summary>
@@ -199,7 +209,7 @@ export function App() {
 
       <main className="stage">
         <div className="boardzone">
-          <Reveal id={view.card} />
+          <Reveal id={view.card} onApply={ackNow && !demo ? () => send(ackNow) : undefined} />
           <div className="tilt">
             <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} routeStyle={prefs.routes} reach={reach} />
           </div>
@@ -223,7 +233,7 @@ export function App() {
         </aside>
       </main>
 
-      {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} />}
+      {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} onRematch={() => { const names = s.players.map((p) => p.name); quit(); setDemo(demo); setDraft({ names, auto: demo }) }} />}
       {!portraitOk && (
         <div className="rotate">
           <div className="phone" aria-hidden="true" />
@@ -263,40 +273,57 @@ function applyEvent(v: View, e: GameEvent, s: GameState): View {
 }
 
 function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo: () => void }) {
-  const [names, setNames] = useState(['', ''])
+  const [names, setNames] = useState(['', '', '', ''])
+  const [rules, setRules] = useState(false)
   const clean = names.map((n, i) => n.trim() || `Player ${i + 1}`)
+  const setCount = (n: number) => setNames(Array.from({ length: n }, (_, i) => names[i] ?? ''))
   return (
-    <main className="setup">
-      <img src="./logo.png" alt="Deal or Default" width={280} />
-      <h1>Same-screen game</h1>
-      <p>2 to 6 players on this device. Countries are dealt at random.</p>
-      <form onSubmit={(e) => { e.preventDefault(); onStart(clean) }}>
-        {names.map((n, i) => (
-          <div className="namerow" key={i}>
-            <span className="dot seat" style={{ background: PAWN_COLORS[i] }} aria-hidden="true">{i + 1}</span>
-            <input aria-label={`Player ${i + 1} name`} placeholder={`Player ${i + 1}`} value={n} maxLength={16}
-              onChange={(e) => setNames(names.map((x, j) => (j === i ? e.target.value : x)))} />
-            {names.length > 2 && <button type="button" className="quiet" aria-label={`Remove player ${i + 1}`} onClick={() => setNames(names.filter((_, j) => j !== i))}>Remove</button>}
-          </div>
-        ))}
-        {names.length < 6 && <button type="button" className="quiet" onClick={() => setNames([...names, ''])}>Add player</button>}
-        <button className="primary" type="submit">Deal the countries</button>
+    <main className="title-screen">
+      <div className="rays" aria-hidden="true" />
+      <img src="./logo.png" alt="Deal or Default" className="title-logo" />
+      <p className="tagline">Climb the ladders. Hedge the crashes. Finish richest.</p>
+      <form className="title-panel" onSubmit={(e) => { e.preventDefault(); onStart(clean) }}>
+        <h2>Who is at the table?</h2>
+        <div className="seg count" role="group" aria-label="Number of players">
+          {[2, 3, 4, 5, 6].map((n) => <button type="button" key={n} aria-pressed={names.length === n} onClick={() => setCount(n)}>{n}</button>)}
+        </div>
+        <div className="names">
+          {names.map((n, i) => (
+            <label className="namerow" key={i}>
+              <span className="token" style={{ '--pc': PAWN_COLORS[i] } as React.CSSProperties} aria-hidden="true">{i + 1}</span>
+              <input aria-label={`Player ${i + 1} name`} placeholder={`Player ${i + 1}`} value={n} maxLength={16}
+                onChange={(e) => setNames(names.map((x, j) => (j === i ? e.target.value : x)))} />
+            </label>
+          ))}
+        </div>
+        <button className="primary big" type="submit">Deal the countries</button>
       </form>
-      <button className="demo-btn" onClick={onDemo}>Watch a demo game</button>
-      <p className="hint">Four bots play a full game while you watch. Take over any time.</p>
+      <div className="title-actions">
+        <button className="ghost" onClick={onDemo}>Watch a demo game</button>
+        <button className="ghost" onClick={() => setRules(true)}>How to play</button>
+      </div>
+      {rules && <Rules onClose={() => setRules(false)} />}
     </main>
   )
 }
 
-function Final({ s, onNew }: { s: GameState; onNew: () => void }) {
+const CONFETTI = Array.from({ length: 70 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 14) * 0.18, dur: 2.6 + (i % 5) * 0.4, hue: i % 3 }))
+
+function Final({ s, onNew, onRematch }: { s: GameState; onNew: () => void; onRematch: () => void }) {
   const r = s.result!
   const [go, setGo] = useState(false)
   useEffect(() => { const t = setTimeout(() => setGo(true), 300); return () => clearTimeout(t) }, [])
   return (
     <div className="overlay">
       <section className="final" aria-label="Final ledger">
-        <p className="eyebrow">Final ledger</p>
-        <h2>{r.winners.map((w) => s.players[w]!.name).join(' and ')} win{r.winners.length === 1 ? 's' : ''}</h2>
+        <div className="final-head">
+          <div className="final-cards">{r.winners.map((w) => <CountryCard key={w} c={s.players[w]!.country} />)}</div>
+          <div>
+            <p className="eyebrow">Final ledger</p>
+            <h2>{r.winners.map((w) => s.players[w]!.name).join(' and ')} win{r.winners.length === 1 ? 's' : ''}</h2>
+            <p className="final-sub">Net Worth {r.rows[0]!.netWorth}, {r.rows[0]!.square === 100 ? 'reached 100' : `square ${r.rows[0]!.square}`}</p>
+          </div>
+        </div>
         <table>
           <thead><tr><th>#</th><th>Player</th><th>Capital</th><th>incl. bonus</th><th>incl. matured</th><th>− Debt × {s.config.debtWeight}</th><th>Unfinished deals</th><th>Net Worth</th></tr></thead>
           <tbody>
@@ -314,8 +341,14 @@ function Final({ s, onNew }: { s: GameState; onNew: () => void }) {
             ))}
           </tbody>
         </table>
-        <button className="primary" onClick={onNew}>New game</button>
+        <div className="final-actions">
+          <button className="primary" onClick={onRematch}>Rematch</button>
+          <button onClick={onNew}>New players</button>
+        </div>
       </section>
+      <div className="confetti" aria-hidden="true">
+        {CONFETTI.map((c, i) => <i key={i} className={`h${c.hue}`} style={{ left: `${c.left}%`, animationDelay: `${c.delay}s`, animationDuration: `${c.dur}s` }} />)}
+      </div>
     </div>
   )
 }

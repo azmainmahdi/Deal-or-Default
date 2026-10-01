@@ -42,12 +42,15 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         await flyCard(e.card, '[data-deck]', '[data-reveal-spot]', 'art', true)
         apply(e)
         break
-      case 'capital':
-        apply(e)
+      case 'capital': {
+        const spend = /invested|hedged|takeover|repaid/.test(e.reason)
+        const coinsDone = coins2(stage, e.player, e.delta, spend)
         float(e.player, `${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? 'gain' : 'loss')
-        if (e.delta < 0) sfx.lose()
-        await wait(0.25)
+        if (e.delta < 0 && !spend) sfx.lose()
+        await coinsDone
+        apply(e) // the number rolls as the coins land
         break
+      }
       case 'debt':
         apply(e)
         float(e.player, `${e.delta > 0 ? '+' : ''}${e.delta} debt`, 'debt')
@@ -76,6 +79,7 @@ export async function play(events: GameEvent[], stage: Stage, apply: (e: GameEve
         break
       case 'projectLost':
         apply(e)
+        shakeBoard()
         await pulse(stage, stage.squares[e.player]!, 'loss')
         break
       case 'waiverUsed':
@@ -122,7 +126,7 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
     tl.to(body, { scale: 1, rotation: 0, duration: 0.2 })
     if (e.via === 'ladder') trail(stage, from, 'gold')
   } else {
-    const step = e.via === 'walk' ? 0.2 : 0.12
+    const step = e.via === 'walk' ? 0.17 : 0.11
     for (const sq of e.path.slice(1)) {
       const c = centerOf(sq)
       tl.call(sfx.hop).to(pawn, { x: c.x, y: c.y, duration: step, ease: 'none' })
@@ -133,6 +137,7 @@ async function move(stage: Stage, e: Extract<GameEvent, { type: 'moved' }>) {
   await tl
   stage.squares[e.player] = to
   await board.layout(stage.squares, 0.18)
+  if (e.via === 'walk') void pulse(stage, to, 'dust', 0.8)
   if (e.via !== 'ladder' && e.via !== 'snake') await flare(stage, to)
 }
 
@@ -159,7 +164,7 @@ async function flare(stage: Stage, sq: number) {
     .fromTo(box, { opacity: 0, scale: 1.3, transformOrigin: 'center' }, { opacity: 1, scale: 1, duration: 0.25, ease: 'back.out(2)' })
     .fromTo(sweep, { x: 0, opacity: 0.9 }, { x: 62, opacity: 0, duration: 0.45, ease: 'power1.inOut' }, 0.05)
     .fromTo(tag, { opacity: 0, scale: 0.4, transformOrigin: '50% 100%' }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(3)' }, 0.05)
-    .to(g, { opacity: 0, duration: 0.35, delay: 0.45 })
+    .to(g, { opacity: 0, duration: 0.3, delay: 0.35 })
   g.remove()
 }
 
@@ -169,7 +174,7 @@ function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<strin
   return el
 }
 
-async function pulse(stage: Stage, square: number, kind: 'tariff' | 'shield' | 'loss' | 'gold', size = 1.4) {
+async function pulse(stage: Stage, square: number, kind: 'tariff' | 'shield' | 'loss' | 'gold' | 'dust', size = 1.4) {
   const c = centerOf(square)
   const ring = svgEl('circle', { cx: c.x, cy: c.y, r: 40, class: `ring ${kind}` })
   stage.board.fx().appendChild(ring)
@@ -213,6 +218,40 @@ async function coins(stage: Stage, p: number) {
   await tl
 }
 
+const center = (el: Element) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+
+/** Coins between the board and a player's Capital chip. Gains fly in from the pawn, spending
+ *  flies out to the pawn, other losses lift off the chip and vanish. */
+async function coins2(stage: Stage, p: number, delta: number, spend: boolean) {
+  const chip = document.querySelector(`[data-ledger="${p}"] .chip.capital`)
+  if (!chip || !delta) return
+  const pawn = center(stage.board.pawn(p))
+  const c = center(chip)
+  const n = Math.min(8, Math.max(2, Math.abs(delta)))
+  const tl = gsap.timeline()
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div')
+    el.className = 'coin-fly'
+    document.body.appendChild(el)
+    const jx = (Math.random() - 0.5) * 30, jy = (Math.random() - 0.5) * 20
+    const from = delta > 0 ? { x: pawn.x + jx, y: pawn.y + jy } : c
+    const to = delta > 0 ? c : spend ? { x: pawn.x + jx, y: pawn.y + jy } : { x: c.x + jx * 2, y: c.y - 70 }
+    const lift = Math.min(from.y, to.y) - 60 - Math.random() * 40
+    gsap.set(el, { x: from.x, y: from.y, xPercent: -50, yPercent: -50 })
+    tl.to(el, { x: to.x, duration: 0.55, ease: 'power1.inOut' }, i * 0.05)
+      .to(el, { keyframes: [{ y: lift, duration: 0.28, ease: 'power2.out' }, { y: to.y, duration: 0.27, ease: 'power2.in' }] }, i * 0.05)
+      .to(el, { opacity: 0, scale: 0.6, duration: 0.15, onComplete: () => el.remove() }, i * 0.05 + 0.5)
+    if (delta > 0) tl.call(sfx.hop, [], i * 0.05 + 0.55)
+  }
+  if (delta > 0) tl.fromTo(chip, { scale: 1 }, { scale: 1.35, duration: 0.12, yoyo: true, repeat: 1, transformOrigin: 'center' }, n * 0.05 + 0.45)
+  await tl
+}
+
+function shakeBoard() {
+  const el = document.querySelector('.tilt')
+  if (el) gsap.fromTo(el, { x: -7 }, { x: 7, duration: 0.05, repeat: 7, yoyo: true, ease: 'none', clearProps: 'x' })
+}
+
 /** "Rafi's turn" ribbon across the table, so a passed phone knows whose go it is. */
 async function banner(name: string, color: string) {
   const el = document.createElement('div')
@@ -221,8 +260,8 @@ async function banner(name: string, color: string) {
   document.body.appendChild(el)
   sfx.turn()
   await gsap.timeline()
-    .fromTo(el, { xPercent: -50, x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power2.out' })
-    .to(el, { x: 80, opacity: 0, duration: 0.3, ease: 'power2.in', delay: 0.5 })
+    .fromTo(el, { xPercent: -50, x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.22, ease: 'power2.out' })
+    .to(el, { x: 80, opacity: 0, duration: 0.25, ease: 'power2.in', delay: 0.3 })
   el.remove()
 }
 

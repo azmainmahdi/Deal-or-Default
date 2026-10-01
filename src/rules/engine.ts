@@ -12,6 +12,15 @@ import { roll, shuffle } from './rng'
 import { finalLedger } from './scoring'
 import type { CountryId, Decision, Effect, GameEvent, GameState, Intent, Seat } from './types'
 
+/** What a ladder investment returns, perks included. Shared with the UI so its labels match. */
+export function projectTerms(country: CountryId, chips: number, delta: number, config: Config): { ttm: number; profit: number } {
+  const fast = country === 'bangladesh' && delta <= config.bangladeshMaxDelta
+  return {
+    ttm: fast ? Math.max(config.bangladeshMinTtm, chips - 1) : chips,
+    profit: chips * delta + (country === 'germany' && chips === config.germanyBonusChips ? 1 : 0),
+  }
+}
+
 export interface StepResult { state: GameState; events: GameEvent[]; error?: string }
 
 /** countries: seat-ordered picks from the country-card draft; omitted = dealt at random. */
@@ -128,14 +137,7 @@ function resolveDecision(c: Ctx, d: Decision, i: Intent): Effect[] {
       if (d.kind !== 'invest' || i.chips === 0) return []
       const delta = d.to - d.from
       addCapital(c, p, -i.chips, 'invested')
-      const fast = pl.country === 'bangladesh' && delta <= s.config.bangladeshMaxDelta
-      const project = {
-        id: s.nextProjectId++,
-        chips: i.chips,
-        delta,
-        ttm: fast ? Math.max(s.config.bangladeshMinTtm, i.chips - 1) : i.chips,
-        profit: i.chips * delta + (pl.country === 'germany' && i.chips === s.config.germanyBonusChips ? 1 : 0),
-      }
+      const project = { id: s.nextProjectId++, chips: i.chips, delta, ...projectTerms(pl.country, i.chips, delta, s.config) }
       pl.projects.push(project)
       move(c, p, d.to, 'ladder')
       c.ev.push({ type: 'projectCreated', player: p, project: { ...project } })

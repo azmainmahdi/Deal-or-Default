@@ -63,10 +63,15 @@ export function CardTable({ deck, discardTop }: { deck: number; discardTop: Card
 }
 
 /** The drawn card, big over the board until it is applied. */
-export function Reveal({ id }: { id: CardId | null }) {
+export function Reveal({ id, onApply }: { id: CardId | null; onApply?: () => void }) {
   return (
     <div className="reveal-spot" data-reveal-spot>
-      {id && <div className="reveal" key={id}><EventText id={id} /></div>}
+      {id && (
+        <button type="button" className={`reveal ${onApply ? 'tappable' : ''}`} key={id} onClick={onApply} disabled={!onApply} aria-label={onApply ? 'Apply card' : undefined}>
+          <EventText id={id} />
+          {onApply && <span className="reveal-hint">Tap the card to apply it</span>}
+        </button>
+      )}
     </div>
   )
 }

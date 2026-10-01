@@ -18,8 +18,8 @@ export const Die = forwardRef<DieHandle, { note?: string; onRoll?: () => void }>
       const turn = (cur: number, target: number) => cur - (cur % 360) + 720 + target
       rot.current = { x: turn(rot.current.x, o.x), y: turn(rot.current.y, o.y) }
       const tl = gsap.timeline()
-      tl.fromTo(hop.current, { y: -70, scale: 1.15 }, { y: 0, scale: 1, duration: 0.9, ease: 'bounce.out' }, 0)
-      tl.to(cube.current, { rotationX: rot.current.x, rotationY: rot.current.y, duration: 1.0, ease: 'power3.out' }, 0)
+      tl.fromTo(hop.current, { y: -70, scale: 1.15 }, { y: 0, scale: 1, duration: 0.8, ease: 'bounce.out' }, 0)
+      tl.to(cube.current, { rotationX: rot.current.x, rotationY: rot.current.y, duration: 0.85, ease: 'power3.out' }, 0)
       return tl
     },
   }))

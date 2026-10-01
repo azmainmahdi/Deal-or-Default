@@ -77,9 +77,26 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
             <stop offset="0.5" stopColor="#ffe9b0" stopOpacity="0.16" />
             <stop offset="0.58" stopColor="#fff" stopOpacity="0" />
           </linearGradient>
+          {PAWN_COLORS.map((c, i) => (
+            <radialGradient key={i} id={`pawn-${i}`} cx="35%" cy="30%" r="75%">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
+              <stop offset="0.25" stopColor={c} />
+              <stop offset="1" stopColor={c} stopOpacity="1" />
+            </radialGradient>
+          ))}
+          <linearGradient id="gold-rim" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#fbe7a1" /><stop offset="0.5" stopColor="#c9962f" /><stop offset="1" stopColor="#f5d67b" />
+          </linearGradient>
+          <linearGradient id="tile-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#222c4b" /><stop offset="1" stopColor="#18203a" />
+          </linearGradient>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
         <rect x={-24} y={-24} width={1048} height={1048} rx={16} className="frame" />
+        <rect x={-17} y={-17} width={1034} height={1034} rx={11} className="frame-line" />
+        {[[-24, -24, 1, 1], [1024, -24, -1, 1], [-24, 1024, 1, -1], [1024, 1024, -1, -1]].map(([x, y, sx, sy], i) => (
+          <path key={i} className="frame-corner" transform={`translate(${x},${y}) scale(${sx},${sy})`} d="M4 34V4h30M11 26V11h15M18 18h0" />
+        ))}
         <rect x={-10} y={-10} width={1020} height={1020} rx={8} className="felt" />
         <image href="logo.png" x={290} y={380} width={420} height={286} className="watermark" />
 
@@ -129,11 +146,15 @@ export const Board = forwardRef<BoardHandle, { squaresOf: number[]; active: numb
 
         {squaresOf.map((_, p) => (
           <g key={`p${p}`} ref={(el) => { if (el) pawns.current[p] = el }} className={`pawn ${p === active ? 'active' : ''}`}>
-            <ellipse className="shadow" rx={17} ry={7} cy={16} />
+            <ellipse className="shadow" rx={19} ry={7} cy={18} />
+            {p === active && <circle r={28} className="halo" />}
             <g ref={(el) => { if (el) bodies.current[p] = el }}>
-              <circle r={19} fill={PAWN_COLORS[p]} />
-              <circle r={19} className="shine" />
+              <circle r={21} fill={PAWN_COLORS[p]} className="base" />
+              <circle r={21} fill={`url(#pawn-${p})`} />
+              <circle r={21} className="rim" />
+              <circle r={15} className="inner" />
               <text textAnchor="middle" dy="7">{p + 1}</text>
+              <ellipse rx={9} ry={4.5} cx={-5} cy={-11} className="gloss" />
             </g>
             <title>{names[p]}</title>
           </g>

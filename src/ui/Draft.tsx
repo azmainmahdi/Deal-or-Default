@@ -27,13 +27,14 @@ export function Draft({ names, auto, onDone }: { names: string[]; auto: boolean;
     if (phase !== 'show') return
     setPhase('shuffle')
     sfx.flip()
-    await gsap.timeline().to({}, { duration: 0.6 }) // cards flip face down (CSS)
+    const now = <T extends gsap.core.Animation>(t: T) => (document.hidden ? t.progress(1) : t) // hidden tab: no frames, finish at once
+    await now(gsap.timeline().to({}, { duration: 0.6 })) // cards flip face down (CSS)
     for (let i = 0; i < 3; i++) {
       const cards = row.current!.querySelectorAll('.draft-card')
       const state = Flip.getState(cards)
       flushSync(() => setOrder((o) => shuffled(o))) // reorder and animate in the same frame: no flash of the new order
       sfx.dice()
-      await Flip.from(state, { duration: 0.45, ease: 'power2.inOut', stagger: 0.02, absolute: true })
+      await now(Flip.from(state, { duration: 0.45, ease: 'power2.inOut', stagger: 0.02, absolute: true }))
     }
     setPhase('pick')
   }

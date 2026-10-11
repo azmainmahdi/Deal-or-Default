@@ -1,3 +1,5 @@
+// The scoreboard. Built around money: coins now, and FDI projects paying in soon.
+// Debt and Net Worth only show when they differ from plain coins (debt is rare).
 import { COUNTRIES } from '../rules/countries'
 import type { GameState } from '../rules/types'
 import { PAWN_COLORS } from './Board'
@@ -11,65 +13,50 @@ const STATUS: Record<string, string> = {
   embargo: 'Embargo', noRepay: 'No repay', sanctionThreat: 'Sanction threat',
 }
 
-/** Octagonal chips like the printed ones: gold for Capital, copper with a hole for Debt. */
-function Chip({ kind }: { kind: 'capital' | 'debt' }) {
+export function Ledger({ s, shown, active, you }: { s: GameState; shown: Shown[]; active: number; you?: number }) {
   return (
-    <svg className={`chip ${kind}`} viewBox="-12 -12 24 24" aria-hidden="true">
-      <path d="M-5-11.5h10l6.5 6.5v10L5 11.5h-10l-6.5-6.5v-10z" />
-      {kind === 'debt' ? <circle r="4" className="hole" /> : <path d="M-3.5-8h7l5 5v6l-5 5h-7l-5-5v-6z" className="inner" />}
-    </svg>
-  )
-}
-
-export function Ledger({ s, shown, active }: { s: GameState; shown: Shown[]; active: number }) {
-  return (
-    <div className="ledgers">
+    <div className="board-score" role="table" aria-label="Players">
       {s.players.map((pl, p) => {
         const v = shown[p] ?? pl
+        const projects = [...pl.projects].sort((a, b) => a.ttm - b.ttm)
+        const nextTurn = projects.filter((x) => x.ttm <= 1).reduce((a, x) => a + x.profit, 0)
+        const pipeline = projects.reduce((a, x) => a + x.profit, 0)
+        const nw = v.capital - s.config.debtWeight * v.debt
         return (
-          <article key={p} data-ledger={p} className={`ledger plaque ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
-            <svg className="pl-frame" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
-              <path vectorEffect="non-scaling-stroke" d="M12 3H288L297 12V108L288 117H12L3 108V12Z" />
-              <path vectorEffect="non-scaling-stroke" className="inner" d="M16 7H284L293 16V104L284 113H16L7 104V16Z" />
-              <path vectorEffect="non-scaling-stroke" className="step" d="M3 22H9V9H22V3M297 22H291V9H278V3M3 98H9V111H22V117M297 98H291V111H278V117" />
-            </svg>
-            <div className="pl-arch">
-              <span className="pl-sun" aria-hidden="true" />
-              <span className="pl-portrait" style={{ backgroundImage: `url(./art/countries/${pl.country}.jpg)` }} />
+          <article key={p} role="row" data-ledger={p} className={`score-row ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
+            <div className="sr-who">
               <Flag c={pl.country} />
-              <span className="pl-seat" data-n={p + 1} />
-            </div>
-            <div className="lg-body">
-              <header>
-                <b>{pl.name}</b>
-                <span className="sq">Sq {v.square}</span>
-              </header>
-              <p className="country" title={COUNTRIES[pl.country].perk}><span>{COUNTRIES[pl.country].name}</span> {COUNTRIES[pl.country].perk}</p>
-              <div className="purse">
-                <span title="Capital"><Chip kind="capital" /><Num value={v.capital} /></span>
-                <span title="Debt"><Chip kind="debt" /><Num value={v.debt} /></span>
-                <span title="Tariff Waivers" className="tickets">
-                  {Array.from({ length: Math.min(v.waivers, 4) }, (_, i) => <i key={i} />)}
-                  {v.waivers === 0 ? <em>no waiver</em> : v.waivers > 4 ? <em>×{v.waivers}</em> : null}
-                </span>
-                <span className="nw" title="Net Worth = Capital − 1.5 × Debt">NW <Num value={v.capital - s.config.debtWeight * v.debt} /></span>
+              <div className="sr-name">
+                <b>{pl.name}{p === you ? <em> (you)</em> : null}</b>
+                <small title={COUNTRIES[pl.country].perk}>{COUNTRIES[pl.country].name} · sq {v.square}</small>
               </div>
-              {pl.projects.length > 0 && (
-                <ul className="projects" aria-label="Pending projects">
-                  {pl.projects.map((x) => (
-                    <li key={x.id} title={`${x.profit} profit in ${x.ttm} turns`}>
-                      <span className="clock" style={{ '--t': Math.min(1, x.ttm / 4) } as React.CSSProperties} aria-hidden="true" />+{x.profit}<small>{x.ttm}t</small>
-                    </li>
+            </div>
+            <div className="sr-coins" title="Capital">
+              <svg className="chip capital" viewBox="-12 -12 24 24" aria-hidden="true"><path d="M-5-11.5h10l6.5 6.5v10L5 11.5h-10l-6.5-6.5v-10z" /><path d="M-3.5-8h7l5 5v6l-5 5h-7l-5-5v-6z" className="inner" /></svg>
+              <Num value={v.capital} />
+              <span className="sr-waiver" title={`${v.waivers} Tariff Waiver${v.waivers === 1 ? '' : 's'}`}><i />{v.waivers}</span>
+            </div>
+            <div className="sr-pipe" aria-label="FDI projects">
+              {projects.length === 0 ? <span className="sr-none">No projects</span> : (
+                <>
+                  {nextTurn > 0 && <span className="sr-next">+{nextTurn} next turn</span>}
+                  {projects.map((x) => (
+                    <span key={x.id} className={`proj ${x.ttm <= 1 ? 'soon' : ''}`} title={`+${x.profit} in ${x.ttm} turn${x.ttm === 1 ? '' : 's'}`}>
+                      +{x.profit}
+                      <i className="ttm" aria-label={`${x.ttm} turns`}>{Array.from({ length: Math.min(x.ttm, 4) }, (_, k) => <b key={k} />)}</i>
+                    </span>
                   ))}
-                </ul>
-              )}
-              {(pl.statuses.length > 0 || pl.fraud) && (
-                <p className="statuses">
-                  {pl.statuses.map((st, i) => <span key={i}>{STATUS[st.kind]} ({st.turns})</span>)}
-                  {pl.fraud && <span>Insurance fraud</span>}
-                </p>
+                  {projects.length > 1 && <span className="sr-total">= +{pipeline}</span>}
+                </>
               )}
             </div>
+            {(v.debt > 0 || pl.statuses.length > 0 || pl.fraud) && (
+              <div className="sr-tags">
+                {v.debt > 0 && <span className="tag debt">Debt {v.debt} · Net <Num value={nw} /></span>}
+                {pl.statuses.map((st, i) => <span key={i} className="tag status">{STATUS[st.kind]} ({st.turns})</span>)}
+                {pl.fraud && <span className="tag status">Insurance fraud</span>}
+              </div>
+            )}
           </article>
         )
       })}

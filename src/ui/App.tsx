@@ -5,8 +5,9 @@ import { legalIntents, newGame, step } from '../rules/engine'
 import { botIntent } from '../rules/sim'
 import type { CardId, CountryId, GameEvent, GameState, Intent } from '../rules/types'
 import { flyCard, play } from './anim/director'
-import { Board, PAWN_COLORS, type BoardHandle, type RouteStyle } from './Board'
-import { CardTable, CountryCard, Reveal } from './Cards'
+import { Board, PAWN_COLORS, type BoardHandle } from './Board'
+import { CardTable, CountryCard } from './Cards'
+import { Decide, STAGE_KINDS } from './Decide'
 import { Draft } from './Draft'
 import { Rules } from './Rules'
 import { describe } from './describe'
@@ -18,20 +19,23 @@ import { setMuted } from './sound'
 import { connect, type Net } from '../client/online'
 import { roomCode, type LobbyPlayer, type ServerMsg } from '../client/protocol'
 import { Lobby } from './Lobby'
+import { Hardwood } from './Hardwood'
 
 interface Online { room: string; seat: number; players: LobbyPlayer[]; host: number; started: boolean; connected: boolean; error?: string }
 
 const SAVE = 'dod-local-game'
+const LAST_ROOM = 'dod-last-room'
 const PREFS = 'dod-prefs'
 const DEMO_NAMES = ['Ada', 'Bashir', 'Chen', 'Dara']
-const TABLES = [['a', 'Wood'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
+const TABLES = [['a', 'Hardwood'], ['b', 'Felt'], ['c', 'Marble'], ['d', 'World']] as const
+const DICE = [['classic', 'Classic'], ['ivory', 'Ivory'], ['lacquer', 'Lacquer'], ['brass', 'Brass']] as const
+type DieStyle = (typeof DICE)[number][0]
 type Table = (typeof TABLES)[number][0]
 
 interface View {
   players: Shown[]
   die: Extract<GameEvent, { type: 'diceRolled' }> | null
   card: CardId | null
-  discardTop?: CardId
   deck: number
   active: number
   log: string[]
@@ -43,7 +47,6 @@ function viewOf(s: GameState, prev?: View): View {
     players: s.players.map(({ square, capital, debt, waivers }) => ({ square, capital, debt, waivers })),
     die: prev?.die ?? null,
     card: d?.kind === 'ackCard' || d?.kind === 'cardChoice' ? d.card : null,
-    discardTop: s.discard[s.discard.length - 1],
     deck: s.deck.length,
     active: d?.player ?? s.current,
     log: prev?.log ?? [],
@@ -62,9 +65,8 @@ export function App() {
   const [state, setState] = useState<GameState | null>(saved?.state ?? null)
   const [view, setView] = useState<View | null>(() => (saved ? { ...viewOf(saved.state), log: saved.log } : null))
   const [busy, setBusy] = useState(false)
-  const [prefs, setPrefs] = useState(() => ({ table: 'a' as Table, speed: 1, sound: true, routes: 'market' as RouteStyle, ...read<{ table: Table; speed: number; sound: boolean; routes: RouteStyle }>(PREFS) }))
+  const [prefs, setPrefs] = useState(() => ({ table: 'a' as Table, speed: 1, sound: true, die: 'lacquer' as DieStyle, ...read<{ table: Table; speed: number; sound: boolean; die: DieStyle }>(PREFS) }))
   const [demo, setDemo] = useState(false)
-  const [portraitOk, setPortraitOk] = useState(false)
   const [draft, setDraft] = useState<{ names: string[]; auto: boolean } | null>(null)
   const [arming, setArming] = useState(false) // confirm() is blocked in some hosts, so confirm in-page
   const board = useRef<BoardHandle>(null)
@@ -98,8 +100,7 @@ export function App() {
     const pd = prev.decision
     if ((pd?.kind === 'ackCard' || pd?.kind === 'cardChoice') && next.discard.length > prev.discard.length) {
       setView((v) => v && { ...v, card: null })
-      await flyCard(pd.card, '[data-reveal-spot]', '[data-discard]', 'text', false)
-      setView((v) => v && { ...v, discardTop: pd.card })
+      await flyCard(pd.card, '[data-reveal-spot]', '[data-deck]', 'text', false)
     }
     const squares = prev.players.map((pl) => pl.square)
     // Safety net: a stalled animation must never lock the game; after 20s the screen snaps to the real state.
@@ -131,12 +132,17 @@ export function App() {
   })
 
   function quit() {
-    if (net.current) { net.current.close(); net.current = null; setOnline(null); history.replaceState(null, '', location.pathname) }
+    if (net.current) { net.current.close(); net.current = null; setOnline(null); write(LAST_ROOM, null); history.replaceState(null, '', location.pathname) }
     else write(SAVE, null)
     stateRef.current = null
     lastSeq.current = 0
     setDemo(false); setState(null); setView(null)
   }
+
+  useEffect(() => {
+    const last = read<{ room: string; name: string }>(LAST_ROOM)
+    if (!net.current && last && location.hash.slice(1).toUpperCase() === last.room) goOnline(last.room, last.name)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function onServer(m: ServerMsg) {
     if (m.t === 'welcome') setOnline((o) => o && { ...o, seat: m.seat, error: undefined })
@@ -155,6 +161,7 @@ export function App() {
     write(SAVE, null)
     setOnline({ room, seat: -1, players: [], host: -1, started: false, connected: false })
     history.replaceState(null, '', `#${room}`)
+    write(LAST_ROOM, { room, name })
     net.current = connect(room, name, onServer, (open) => setOnline((o) => o && { ...o, connected: open }))
   }
 
@@ -190,9 +197,11 @@ export function App() {
   })
 
   const tableClass = `table t-${prefs.table}`
+  const wood = prefs.table === 'a' ? <Hardwood /> : null
 
   if (online && (!state || !view)) return (
     <div className={tableClass}>
+      {wood}
       <Lobby room={online.room} players={online.players} you={online.seat} host={online.host} error={online.error}
         onStart={() => net.current?.send({ t: 'start' })} onLeave={quit} />
     </div>
@@ -200,6 +209,7 @@ export function App() {
 
   if (!state || !view) return (
     <div className={tableClass}>
+      {wood}
       {draft ? <Draft names={draft.names} auto={draft.auto} onDone={(c) => start(draft.names, c)} />
         : <Setup onStart={(names) => setDraft({ names, auto: false })} onDemo={() => { setDemo(true); setDraft({ names: DEMO_NAMES, auto: true }) }} onOnline={goOnline} />}
     </div>
@@ -209,7 +219,6 @@ export function App() {
   // Online, each phone acts only on its own decisions; same-screen, everyone shares the device.
   const mine = !online || s.decision?.player === online.seat
   const rollNow = mine && !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'roll') : undefined
-  const ackNow = mine && !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'ack') : undefined
   // Squares the current roll could reach glow before the die is thrown.
   const reach = (() => {
     if (!rollNow || demo) return []
@@ -222,6 +231,7 @@ export function App() {
 
   return (
     <div className={tableClass}>
+      {wood}
       <header className="topbar">
         <img src="./logo.png" alt="Deal or Default" className="toplogo" />
         <span className="turn"><em>Round {Math.ceil(s.turn / s.players.length)}</em>Turn {s.turn}</span>
@@ -239,10 +249,9 @@ export function App() {
             <div className="seg" role="group" aria-label="Animation speed">
               {[1, 2].map((x) => <button key={x} aria-pressed={prefs.speed === x} onClick={() => setPrefs({ ...prefs, speed: x })}>{x}×</button>)}
             </div>
-            <p>Snakes &amp; ladders</p>
-            <div className="seg" role="group" aria-label="Route style">
-              <button aria-pressed={prefs.routes === 'market'} onClick={() => setPrefs({ ...prefs, routes: 'market' })}>Market lines</button>
-              <button aria-pressed={prefs.routes === 'printed'} onClick={() => setPrefs({ ...prefs, routes: 'printed' })}>Printed</button>
+            <p>Die</p>
+            <div className="seg" role="group" aria-label="Die style">
+              {DICE.map(([k, name]) => <button key={k} aria-pressed={prefs.die === k} onClick={() => setPrefs({ ...prefs, die: k })}>{name}</button>)}
             </div>
             <p>Sound</p>
             <div className="seg" role="group" aria-label="Sound">
@@ -259,42 +268,35 @@ export function App() {
 
       <main className="stage">
         <div className="boardzone">
-          <Reveal id={view.card} onApply={ackNow && !demo ? () => send(ackNow) : undefined} />
           <div className="tilt">
-            <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} routeStyle={prefs.routes} reach={reach} />
+            <Board ref={board} squaresOf={view.players.map((p) => p.square)} active={view.active} names={s.players.map((p) => p.name)} countries={s.players.map((p) => p.country)} reach={reach} />
           </div>
+          <Decide s={s} card={view.card} mine={mine && !demo} busy={busy} onIntent={send} />
         </div>
 
         <aside className="side">
-          <CardTable deck={view.deck} discardTop={view.discardTop} />
-          <div className="midrow">
+          <div className={`actionbar die-${prefs.die}`}>
             <Die ref={die} note={dieNote} onRoll={rollNow && !demo ? () => send(rollNow) : undefined} />
             <div className="dockwrap">
               {busy ? (
                 <div className="playing"><span>Playing…</span><button className="quiet" onClick={skip}>Skip</button></div>
-              ) : s.phase !== 'playing' ? null : mine ? <Dock s={s} onIntent={send} /> : (
+              ) : s.phase !== 'playing' ? null : s.decision && STAGE_KINDS.has(s.decision.kind) ? (
+                <div className="playing"><span>{mine ? 'Choose on the board' : `${s.players[s.decision.player]!.name} is deciding…`}</span></div>
+              ) : mine ? <Dock s={s} onIntent={send} /> : (
                 <div className="playing"><span>Waiting for {s.players[s.decision?.player ?? s.current]!.name}…</span></div>
               )}
             </div>
           </div>
-          <Ledger s={s} shown={view.players} active={view.active} />
+          <Ledger s={s} shown={view.players} active={view.active} you={online?.seat} />
           <details className="log">
             <summary>Game log</summary>
             <ol aria-live="polite">{view.log.slice(-60).map((l, i) => <li key={view.log.length - 60 + i}>{l}</li>)}</ol>
           </details>
         </aside>
+        <CardTable deck={view.deck} />
       </main>
 
       {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} online={!!online} onRematch={() => { const names = s.players.map((p) => p.name); quit(); setDemo(demo); setDraft({ names, auto: demo }) }} />}
-      {!portraitOk && (
-        <div className="rotate">
-          <div className="phone" aria-hidden="true" />
-          <h2>Turn your phone sideways</h2>
-          <p>The table is built for landscape.</p>
-          {document.fullscreenEnabled && <button className="primary" onClick={fullscreen}>Full screen, landscape</button>}
-          <button className="quiet" onClick={() => setPortraitOk(true)}>Play upright anyway</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -332,6 +334,7 @@ function Setup({ onStart, onDemo, onOnline }: { onStart: (names: string[]) => vo
   const [code, setCode] = useState(invited)
   const [myName, setMyName] = useState(() => read<string>('dod-name') ?? '')
   const go = (room: string) => { write('dod-name', myName.trim()); onOnline(room, myName.trim() || 'Player') }
+  const last = read<{ room: string; name: string }>(LAST_ROOM)
   const clean = names.map((n, i) => n.trim() || `Player ${i + 1}`)
   const setCount = (n: number) => setNames(Array.from({ length: n }, (_, i) => names[i] ?? ''))
   return (
@@ -372,6 +375,7 @@ function Setup({ onStart, onDemo, onOnline }: { onStart: (names: string[]) => vo
         <button className="primary big" type="submit">Deal the countries</button>
       </form>
       )}
+      {last && <button className="primary big rejoin" onClick={() => onOnline(last.room, last.name)}>Rejoin room {last.room} as {last.name}</button>}
       <div className="title-actions">
         <button className="ghost" onClick={onDemo}>Watch a demo game</button>
         <button className="ghost" onClick={() => setRules(true)}>How to play</button>

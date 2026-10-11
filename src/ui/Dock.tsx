@@ -7,8 +7,8 @@ import { PAWN_COLORS } from './Board'
 
 const OPTION_LABEL: Record<string, string> = { capital: '+2 Capital', repay: 'Remove 1 Debt', pay: 'Pay 2 Capital', debt: 'Take 1 Debt' }
 
-const KEY: Record<string, string> = { roll: 'Space', ack: 'Space', 'invest:0': '0', 'invest:1': '1', 'invest:2': '2', 'invest:3': '3', 'invest:4': '4', 'yes': 'Y', 'no': 'N' }
-function keyOf(i: Intent): string {
+export const KEY: Record<string, string> = { roll: 'Space', ack: 'Space', 'invest:0': '0', 'invest:1': '1', 'invest:2': '2', 'invest:3': '3', 'invest:4': '4', 'yes': 'Y', 'no': 'N' }
+export function keyOf(i: Intent): string {
   if (i.type === 'invest') return `invest:${i.chips}`
   if (i.type === 'hedge') return i.hedge ? 'yes' : 'no'
   if (i.type === 'waiver') return i.use ? 'yes' : 'no'
@@ -17,7 +17,7 @@ function keyOf(i: Intent): string {
 }
 
 /** Button text plus the outcome in small print, so every choice says what it does. */
-function label(i: Intent, s: GameState): [string, string?] {
+export function label(i: Intent, s: GameState): [string, string?] {
   const d = s.decision!
   const pl = s.players[i.player]!
   switch (i.type) {
@@ -49,7 +49,7 @@ function label(i: Intent, s: GameState): [string, string?] {
   }
 }
 
-function prompt(s: GameState): string {
+export function prompt(s: GameState): string {
   const d = s.decision!
   const card = d.kind === 'ackCard' ? CARDS[d.card] : null
   const pl = s.players[d.player]!

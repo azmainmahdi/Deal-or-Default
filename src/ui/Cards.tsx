@@ -10,8 +10,8 @@ const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt
 
 const CORNERS = `<svg class="deco" viewBox="0 0 320 200" preserveAspectRatio="none" aria-hidden="true">${
   [[0, 0, 1, 1], [320, 0, -1, 1], [0, 200, 1, -1], [320, 200, -1, -1]].map(([x, y, sx, sy]) =>
-    `<g transform="translate(${x},${y}) scale(${sx},${sy})"><path d="M10 10h70M10 16h50M10 10v44M16 16v26M22 22h18v18h-18z M22 31h9"/></g>`).join('')
-}<path d="M130 10h60M140 16l20 10 20-10M130 190h60M140 184l20-10 20 10"/></svg>`
+    `<g transform="translate(${x},${y}) scale(${sx! * 0.62},${sy! * 0.62})"><path d="M10 10h70M10 16h50M10 10v44M16 16v26M22 22h18v18h-18z M22 31h9"/></g>`).join('')
+}<path d="M140 8h40M148 13l12 6 12-6M140 192h40M148 187l12-6 12 6"/></svg>`
 
 const bolt = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 14h6l-1 8 8-12h-6z"/></svg>`
 
@@ -44,19 +44,15 @@ export function EventText({ id }: { id: CardId }) {
   return <div className="card-face" dangerouslySetInnerHTML={{ __html: eventTextHtml(id) }} />
 }
 
-/** Deck (face down) and discard pile (text side up). */
-export function CardTable({ deck, discardTop }: { deck: number; discardTop: CardId | undefined }) {
+/** The face-down event deck. On phones it only peeks in from the edge (it has no actions). */
+export function CardTable({ deck }: { deck: number }) {
   return (
     <div className="cardtable">
-      <div className="pile deck" data-deck>
-        {Array.from({ length: Math.max(1, Math.min(5, Math.ceil(deck / 5))) }, (_, i) => (
+      <div className="pile deck" data-deck title={`${deck} event cards left`}>
+        {Array.from({ length: Math.max(1, Math.min(4, Math.ceil(deck / 6))) }, (_, i) => (
           <img key={i} src="./card-back.png" alt="" style={{ transform: `translate(${i * 1.5}px, ${-i * 2.5}px)` }} />
         ))}
-        <span className="pile-label">Event deck · {deck}</span>
-      </div>
-      <div className="pile discard" data-discard>
-        {discardTop ? <EventText id={discardTop} /> : <span className="pile-label ghost">Discard</span>}
-        {discardTop && <span className="pile-label">Discard</span>}
+        <span className="pile-label">Events · {deck}</span>
       </div>
     </div>
   )

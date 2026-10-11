@@ -45,8 +45,44 @@ function noise(dur: number, { vol = 0.2, at = 0, freq = 2000 } = {}) {
   src.start(t)
 }
 
+/** One wooden knock: a short low thump plus a muffled click. */
+function knock(at: number, vol: number, freq: number) {
+  const a = ac()
+  if (!a) return
+  const t = a.currentTime + at
+  const o = a.createOscillator(), g = a.createGain()
+  o.type = 'sine'
+  o.frequency.setValueAtTime(freq * 1.6, t)
+  o.frequency.exponentialRampToValueAtTime(freq, t + 0.05)
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.004)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
+  o.connect(g).connect(a.destination)
+  o.start(t)
+  o.stop(t + 0.12)
+  const len = Math.ceil(a.sampleRate * 0.03)
+  const buf = a.createBuffer(1, len, a.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3)
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), ng = a.createGain()
+  src.buffer = buf
+  f.type = 'lowpass'
+  f.frequency.value = 1400
+  ng.gain.value = vol * 0.6
+  src.connect(f).connect(ng).connect(a.destination)
+  src.start(t)
+}
+
 export const sfx = {
-  dice() { for (let i = 0; i < 7; i++) noise(0.05, { at: i * 0.09 + Math.random() * 0.03, vol: 0.35 - i * 0.04, freq: 1800 + Math.random() * 1200 }) },
+  // A die on a wooden table: a few soft, low knocks that get closer together and quieter as
+  // it settles. Low-passed so there is no metallic rattle.
+  dice() {
+    const hits = [0, 0.2, 0.34, 0.44, 0.51, 0.56]
+    hits.forEach((t, i) => {
+      const v = 0.32 * Math.pow(0.68, i)
+      knock(t, v, 150 + Math.random() * 40)
+    })
+  },
   hop() { tone(520 + Math.random() * 60, 0.06, { type: 'triangle', vol: 0.08 }) },
   climb() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { type: 'triangle', at: i * 0.18, vol: 0.12 })) },
   slide() { tone(700, 1.0, { type: 'sawtooth', vol: 0.05, slideTo: 110 }) },

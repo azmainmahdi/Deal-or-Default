@@ -17,7 +17,7 @@ export function centerOf(square: number): { x: number; y: number } {
 export function fan(k: number, n: number): { dx: number; dy: number } {
   if (n === 1) return { dx: 0, dy: 0 }
   const a = (2 * Math.PI * k) / n - Math.PI / 2
-  return { dx: 22 * Math.cos(a), dy: 22 * Math.sin(a) }
+  return { dx: (n > 3 ? 26 : 22) * Math.cos(a), dy: (n > 3 ? 26 : 22) * Math.sin(a) }
 }
 
 /** Printed-board style route for a ladder or snake: out of the source tile to the row gap,
@@ -70,4 +70,22 @@ export function laneMarketD(pts: Pt[], kind: 'ladder' | 'snake', trim = false): 
     }
   }
   return `M${out.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(' L')}`
+}
+
+/** Printed-board routing: leave the source tile diagonally at a corner, run along the gutters
+ *  between squares, and enter the destination diagonally at its corner. Never crosses a tile face.
+ *  Returns the drawn line plus the full pawn path (centre to centre). */
+export function gutterRoute(from: number, to: number, lane = 0): { line: Pt[]; motion: Pt[] } {
+  const s = cellOf(from), d = cellOf(to)
+  const up = to > from
+  const dRight = d.x > s.x || (d.x === s.x && from % 2 === 0)
+  const sideS = dRight ? CELL : 0                     // source corner on the side facing the destination
+  const sideD = d.x > s.x ? 0 : d.x < s.x ? CELL : sideS // destination corner facing the source
+  const off = lane * 4
+  const A = { x: s.x + sideS + off, y: s.y + (up ? 0 : CELL) + off }
+  const B = { x: d.x + sideD + off, y: d.y + (up ? CELL : 0) + off }
+  const inS = { x: s.x + sideS + (sideS ? -26 : 26), y: s.y + (up ? 26 : CELL - 26) }
+  const inD = { x: d.x + sideD + (sideD ? -24 : 24), y: d.y + (up ? CELL - 24 : 24) }
+  const line = [inS, A, { x: A.x, y: B.y }, B, inD]
+  return { line, motion: [centerOf(from), ...line, centerOf(to)] }
 }

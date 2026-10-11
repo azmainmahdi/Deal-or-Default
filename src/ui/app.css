@@ -528,3 +528,17 @@ button.ghost { background: #0009; border: 1px solid var(--gold); color: var(--go
 .final-cards .country-card { width: 96px; transform: rotate(-4deg); animation: dealin .7s .2s cubic-bezier(.2, 1.3, .5, 1); }
 .final-sub { margin: 4px 0 0; color: #6b6250; }
 @media (orientation: landscape) and (max-height: 540px) { .final-cards { display: none; } }
+
+/* ================= online ================= */
+.seg.mode { position: relative; }
+.seg.mode button { padding: 6px 16px; font-weight: 700; }
+.join-row { display: flex; gap: 8px; }
+.join-row input { width: 120px; text-align: center; letter-spacing: .3em; font: 800 20px "Fraunces", Georgia, serif; text-transform: uppercase; min-height: 48px; border-radius: 8px; border: 1px solid #c9913f88; background: #0b0f19; color: var(--text); }
+.join-row button { flex: 1; }
+.room-code { margin: 0; font: 800 54px/1 "Fraunces", Georgia, serif; letter-spacing: .25em; color: var(--gold-hi); text-shadow: 0 0 24px #f5d67b44; }
+.lobby-hint { margin: 0; color: var(--text-2); font-size: 14px; }
+.lobby-row { gap: 10px; text-align: left; }
+.lobby-row b { flex: 1; } .lobby-row small { color: var(--text-2); }
+.lobby-row.offline { opacity: .5; }
+.error, .room-error { color: #ff8a95; font-size: 14px; margin: 0; }
+.room-chip.down { border-color: #ff6b7a; color: #ff8a95; }

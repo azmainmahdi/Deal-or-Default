@@ -1,6 +1,6 @@
-node_modules
-dist
+.DS_Store
 .vercel
 .wrangler
-.DS_Store
 artifact
+dist
+node_modules

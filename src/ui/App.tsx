@@ -15,6 +15,11 @@ import { Dock } from './Dock'
 import { Ledger, type Shown } from './Ledger'
 import { Num } from './Num'
 import { setMuted } from './sound'
+import { connect, type Net } from '../client/online'
+import { roomCode, type LobbyPlayer, type ServerMsg } from '../client/protocol'
+import { Lobby } from './Lobby'
+
+interface Online { room: string; seat: number; players: LobbyPlayer[]; host: number; started: boolean; connected: boolean; error?: string }
 
 const SAVE = 'dod-local-game'
 const PREFS = 'dod-prefs'
@@ -65,12 +70,18 @@ export function App() {
   const board = useRef<BoardHandle>(null)
   const die = useRef<DieHandle>(null)
   const skipping = useRef(false)
+  const [online, setOnline] = useState<Online | null>(null)
+  const net = useRef<Net | null>(null)
+  const stateRef = useRef<GameState | null>(state)
+  const chain = useRef<Promise<void>>(Promise.resolve())
+  const lastSeq = useRef(0)
 
   useEffect(() => { write(PREFS, prefs); setMuted(!prefs.sound) }, [prefs])
-  useEffect(() => { if (state && view) write(SAVE, { state, log: view.log.slice(-200) }) }, [state, view])
+  useEffect(() => { if (state && view && !online) write(SAVE, { state, log: view.log.slice(-200) }) }, [state, view, online])
   useEffect(() => { gsap.globalTimeline.timeScale(matchMedia('(prefers-reduced-motion: reduce)').matches ? 8 : prefs.speed) }, [prefs.speed])
 
   async function run(prev: GameState | null, next: GameState, events: GameEvent[]) {
+    stateRef.current = next
     setState(next)
     if (!prev || !board.current || !die.current) {
       setView((v) => ({ ...viewOf(next, v ?? undefined), log: [...(v?.log ?? []), ...events.map((e) => describe(e, next)).filter((x): x is string => !!x)] }))
@@ -107,6 +118,7 @@ export function App() {
 
   function send(i: Intent) {
     if (!state || busy) return
+    if (net.current) { net.current.send({ t: 'intent', intent: i }); return } // online: the room decides
     const r = step(state, i)
     if (!r.error) void run(state, r.state, r.events)
   }
@@ -118,7 +130,33 @@ export function App() {
     return () => clearTimeout(t)
   })
 
-  function quit() { write(SAVE, null); setDemo(false); setState(null); setView(null) }
+  function quit() {
+    if (net.current) { net.current.close(); net.current = null; setOnline(null); history.replaceState(null, '', location.pathname) }
+    else write(SAVE, null)
+    stateRef.current = null
+    lastSeq.current = 0
+    setDemo(false); setState(null); setView(null)
+  }
+
+  function onServer(m: ServerMsg) {
+    if (m.t === 'welcome') setOnline((o) => o && { ...o, seat: m.seat, error: undefined })
+    if (m.t === 'lobby') setOnline((o) => o && { ...o, players: m.players, host: m.host, started: m.started })
+    if (m.t === 'reject') setOnline((o) => o && { ...o, error: m.reason })
+    if (m.t === 'update') {
+      // Updates play strictly in order. A gap (missed message) asks the room for a fresh snapshot.
+      if (lastSeq.current && m.seq !== lastSeq.current + 1 && m.events.length) { net.current?.send({ t: 'sync' }); return }
+      lastSeq.current = m.seq
+      if (!stateRef.current) setView({ ...viewOf(m.state), log: [] })
+      chain.current = chain.current.then(() => run(stateRef.current, m.state, m.events))
+    }
+  }
+
+  function goOnline(room: string, name: string) {
+    write(SAVE, null)
+    setOnline({ room, seat: -1, players: [], host: -1, started: false, connected: false })
+    history.replaceState(null, '', `#${room}`)
+    net.current = connect(room, name, onServer, (open) => setOnline((o) => o && { ...o, connected: open }))
+  }
 
   function start(names: string[], countries: CountryId[]) {
     const r = newGame({ names, seed: (Math.random() * 2 ** 32) >>> 0, countries })
@@ -138,6 +176,7 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return
       if (busy) { if (e.key === ' ' || e.key === 'Escape') { e.preventDefault(); skip() } return }
+      if (online && state.decision?.player !== online.seat) return
       const k = e.key.toLowerCase()
       const hit = legalIntents(state).find((i) =>
         (k === ' ' && (i.type === 'roll' || i.type === 'ack')) ||
@@ -152,16 +191,25 @@ export function App() {
 
   const tableClass = `table t-${prefs.table}`
 
+  if (online && (!state || !view)) return (
+    <div className={tableClass}>
+      <Lobby room={online.room} players={online.players} you={online.seat} host={online.host} error={online.error}
+        onStart={() => net.current?.send({ t: 'start' })} onLeave={quit} />
+    </div>
+  )
+
   if (!state || !view) return (
     <div className={tableClass}>
       {draft ? <Draft names={draft.names} auto={draft.auto} onDone={(c) => start(draft.names, c)} />
-        : <Setup onStart={(names) => setDraft({ names, auto: false })} onDemo={() => { setDemo(true); setDraft({ names: DEMO_NAMES, auto: true }) }} />}
+        : <Setup onStart={(names) => setDraft({ names, auto: false })} onDemo={() => { setDemo(true); setDraft({ names: DEMO_NAMES, auto: true }) }} onOnline={goOnline} />}
     </div>
   )
 
   const s = state
-  const rollNow = !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'roll') : undefined
-  const ackNow = !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'ack') : undefined
+  // Online, each phone acts only on its own decisions; same-screen, everyone shares the device.
+  const mine = !online || s.decision?.player === online.seat
+  const rollNow = mine && !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'roll') : undefined
+  const ackNow = mine && !busy && s.phase === 'playing' ? legalIntents(s).find((i) => i.type === 'ack') : undefined
   // Squares the current roll could reach glow before the die is thrown.
   const reach = (() => {
     if (!rollNow || demo) return []
@@ -178,6 +226,8 @@ export function App() {
         <img src="./logo.png" alt="Deal or Default" className="toplogo" />
         <span className="turn"><em>Round {Math.ceil(s.turn / s.players.length)}</em>Turn {s.turn}</span>
         {demo && <span className="demo-chip">Demo <button className="quiet" onClick={() => setDemo(false)}>Take over</button></span>}
+        {online && <span className={`demo-chip room-chip ${online.connected ? '' : 'down'}`}>Room {online.room}{online.connected ? '' : ' · reconnecting…'}</span>}
+        {online?.error && <span className="room-error" role="status">{online.error}</span>}
         <details className="settings">
           <summary aria-label="Settings">Table &amp; sound</summary>
           <div className="menu">
@@ -201,7 +251,7 @@ export function App() {
             </div>
             {document.fullscreenEnabled && <button onClick={fullscreen}>Full screen</button>}
             <button onClick={() => { if (demo || arming) quit(); else setArming(true) }} onBlur={() => setArming(false)}>
-              {demo ? 'Stop demo' : arming ? 'Tap again to abandon this game' : 'New game'}
+              {demo ? 'Stop demo' : online ? (arming ? 'Tap again to leave' : 'Leave room') : arming ? 'Tap again to abandon this game' : 'New game'}
             </button>
           </div>
         </details>
@@ -222,7 +272,9 @@ export function App() {
             <div className="dockwrap">
               {busy ? (
                 <div className="playing"><span>Playing…</span><button className="quiet" onClick={skip}>Skip</button></div>
-              ) : s.phase === 'playing' ? <Dock s={s} onIntent={send} /> : null}
+              ) : s.phase !== 'playing' ? null : mine ? <Dock s={s} onIntent={send} /> : (
+                <div className="playing"><span>Waiting for {s.players[s.decision?.player ?? s.current]!.name}…</span></div>
+              )}
             </div>
           </div>
           <Ledger s={s} shown={view.players} active={view.active} />
@@ -233,7 +285,7 @@ export function App() {
         </aside>
       </main>
 
-      {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} onRematch={() => { const names = s.players.map((p) => p.name); quit(); setDemo(demo); setDraft({ names, auto: demo }) }} />}
+      {s.phase === 'finished' && !busy && <Final s={s} onNew={quit} online={!!online} onRematch={() => { const names = s.players.map((p) => p.name); quit(); setDemo(demo); setDraft({ names, auto: demo }) }} />}
       {!portraitOk && (
         <div className="rotate">
           <div className="phone" aria-hidden="true" />
@@ -272,9 +324,14 @@ function applyEvent(v: View, e: GameEvent, s: GameState): View {
   return { ...v, players, log }
 }
 
-function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo: () => void }) {
+function Setup({ onStart, onDemo, onOnline }: { onStart: (names: string[]) => void; onDemo: () => void; onOnline: (room: string, name: string) => void }) {
   const [names, setNames] = useState(['', '', '', ''])
   const [rules, setRules] = useState(false)
+  const invited = /^#[A-Z]{4}$/i.test(location.hash) ? location.hash.slice(1).toUpperCase() : ''
+  const [mode, setMode] = useState<'here' | 'online'>(invited ? 'online' : 'here')
+  const [code, setCode] = useState(invited)
+  const [myName, setMyName] = useState(() => read<string>('dod-name') ?? '')
+  const go = (room: string) => { write('dod-name', myName.trim()); onOnline(room, myName.trim() || 'Player') }
   const clean = names.map((n, i) => n.trim() || `Player ${i + 1}`)
   const setCount = (n: number) => setNames(Array.from({ length: n }, (_, i) => names[i] ?? ''))
   return (
@@ -282,6 +339,22 @@ function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo
       <div className="rays" aria-hidden="true" />
       <img src="./logo.png" alt="Deal or Default" className="title-logo" />
       <p className="tagline">Climb the ladders. Hedge the crashes. Finish richest.</p>
+      <div className="seg mode" role="group" aria-label="How to play">
+        <button type="button" aria-pressed={mode === 'here'} onClick={() => setMode('here')}>On this device</button>
+        <button type="button" aria-pressed={mode === 'online'} onClick={() => setMode('online')}>Online, own phones</button>
+      </div>
+      {mode === 'online' ? (
+        <div className="title-panel">
+          <h2>Play online</h2>
+          <label className="namerow"><span className="token" style={{ '--pc': PAWN_COLORS[0] } as React.CSSProperties}>★</span>
+            <input aria-label="Your name" placeholder="Your name" value={myName} maxLength={16} onChange={(e) => setMyName(e.target.value)} /></label>
+          {!invited && <button className="primary big" onClick={() => go(roomCode())}>Create a room</button>}
+          <div className="join-row">
+            <input aria-label="Room code" placeholder="CODE" value={code} maxLength={4} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+            <button className={invited ? 'primary' : ''} disabled={code.length !== 4} onClick={() => go(code)}>Join room</button>
+          </div>
+        </div>
+      ) : (
       <form className="title-panel" onSubmit={(e) => { e.preventDefault(); onStart(clean) }}>
         <h2>Who is at the table?</h2>
         <div className="seg count" role="group" aria-label="Number of players">
@@ -298,6 +371,7 @@ function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo
         </div>
         <button className="primary big" type="submit">Deal the countries</button>
       </form>
+      )}
       <div className="title-actions">
         <button className="ghost" onClick={onDemo}>Watch a demo game</button>
         <button className="ghost" onClick={() => setRules(true)}>How to play</button>
@@ -309,7 +383,7 @@ function Setup({ onStart, onDemo }: { onStart: (names: string[]) => void; onDemo
 
 const CONFETTI = Array.from({ length: 70 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 14) * 0.18, dur: 2.6 + (i % 5) * 0.4, hue: i % 3 }))
 
-function Final({ s, onNew, onRematch }: { s: GameState; onNew: () => void; onRematch: () => void }) {
+function Final({ s, onNew, onRematch, online }: { s: GameState; onNew: () => void; onRematch: () => void; online: boolean }) {
   const r = s.result!
   const [go, setGo] = useState(false)
   useEffect(() => { const t = setTimeout(() => setGo(true), 300); return () => clearTimeout(t) }, [])
@@ -342,8 +416,10 @@ function Final({ s, onNew, onRematch }: { s: GameState; onNew: () => void; onRem
           </tbody>
         </table>
         <div className="final-actions">
-          <button className="primary" onClick={onRematch}>Rematch</button>
-          <button onClick={onNew}>New players</button>
+          {online ? <button className="primary" onClick={onNew}>Leave room</button> : <>
+            <button className="primary" onClick={onRematch}>Rematch</button>
+            <button onClick={onNew}>New players</button>
+          </>}
         </div>
       </section>
       <div className="confetti" aria-hidden="true">

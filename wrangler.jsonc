@@ -1,0 +1,10 @@
+{
+  "name": "deal-or-default",
+  "main": "server/index.ts",
+  "compatibility_date": "2026-09-01",
+  // the built game is served from the same Worker, so the rooms are same-origin
+  "assets": { "directory": "./dist", "not_found_handling": "single-page-application", "binding": "ASSETS", "run_worker_first": ["/parties/*"] },
+  "durable_objects": { "bindings": [{ "name": "Room", "class_name": "Room" }] },
+  // free plan needs SQLite-backed Durable Objects
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

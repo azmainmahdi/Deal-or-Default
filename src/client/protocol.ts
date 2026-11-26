@@ -1,13 +1,15 @@
 // Messages between a phone and its room. Shared by client and server.
-import type { GameEvent, GameState, Intent } from '../rules/types'
+import type { CountryId, GameEvent, GameState, Intent } from '../rules/types'
 
-export interface LobbyPlayer { name: string; seat: number; online: boolean }
+export interface LobbyPlayer { name: string; seat: number; online: boolean; bot?: boolean; country?: CountryId }
 
 export type ClientMsg =
   | { t: 'join'; name?: string; token?: string }
   | { t: 'start' }
   | { t: 'intent'; intent: Intent }
   | { t: 'sync' }
+  | { t: 'pick'; country: CountryId | null }   // your card in the lobby; null = random
+  | { t: 'bot'; add: boolean }                // host only, before the start
 
 export type ServerMsg =
   | { t: 'welcome'; seat: number; token: string; room: string }

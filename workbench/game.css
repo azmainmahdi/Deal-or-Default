@@ -165,3 +165,23 @@ body[data-table=world]::before{background:linear-gradient(180deg,#0003 0%,#0007 
 /* live board (1 Nov): the painting a touch darker, and no dark vignette round the edge; one soft light from the top left */
 .tilt.live{background:linear-gradient(#060a1252,#060a1252),#0e1529 url(/art/board-bg.jpg) 0 0/100% 100% no-repeat}
 .tilt.live .ao{background:linear-gradient(135deg,#ffffff0c,transparent 45%,#0000001a);box-shadow:inset 0 0 0 1px #0006}
+/* overlays built from .fin (countries, final ledger): their buttons show at once; the delayed fade is for the card reveal only (26 Nov) */
+.ov .fin .go{opacity:1;transform:none;transition:none}
+/* top bar (26 Nov): New game, Countries, Options; the settings fold into the Options menu */
+.top .menu{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:18px;background:#0d0c0af2;box-shadow:0 0 0 1px #d8b05a55,0 24px 40px -12px #000;min-width:200px}
+.top .menu button{text-align:left}
+.top button#opt.on{background:#d8b05a33}
+.top .menu button#god.on{background:#d8b05a;color:#1a1408}
+/* online (26 Nov) */
+.joinr{display:flex;gap:8px}.joinr input{height:44px;border:0;border-radius:10px;background:#ffffff10;color:var(--ink);box-shadow:inset 0 0 0 1px #ffffff1f;flex:1;min-width:0;text-transform:uppercase;letter-spacing:.3em;text-align:center;font:400 20px Federo}
+.rerr{margin:0;text-align:center;font:800 12px Nunito;color:#ff9a8a}
+.lnk{border:0;background:none;padding:0;color:var(--gold2);font:inherit;text-decoration:underline;cursor:pointer}
+.lob{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:4px 0 14px}
+.lp{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff1f}
+.lp .sc{width:26px;height:36px;border-radius:4px;background:#ffffff14 center/cover;display:grid;place-items:center;font:400 14px Federo;color:var(--mute)}
+.lp b{font:800 13px Nunito;color:var(--ink)}.lp small{font:700 10px Nunito;color:var(--mute)}.lp.off{opacity:.5}
+.sbox .cards:not(.big){grid-template-columns:repeat(6,72px);justify-content:center;margin-bottom:14px}
+.go .wait{align-self:center;font:700 12px Nunito;color:var(--mute)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+/* the top bar sits over the setup screen too, so Options and Countries work before a game (26 Nov) */
+.top{z-index:81}

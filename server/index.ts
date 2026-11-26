@@ -1,16 +1,21 @@
 // Online rooms: one Durable Object per room code. The rules engine runs here, so every phone
 // sees the same game; clients only send intents and animate the events they get back.
+// Bots (added by the host) also run here, so a room plays the same whoever is connected.
 import { Server, routePartykitRequest, type Connection } from 'partyserver'
 import { legalIntents, newGame, step } from '../src/rules/engine'
-import type { GameEvent, GameState, Intent } from '../src/rules/types'
+import { botIntent } from '../src/rules/sim'
+import { COUNTRY_IDS } from '../src/rules/countries'
+import type { CountryId, GameEvent, GameState, Intent } from '../src/rules/types'
 import type { ClientMsg, LobbyPlayer, ServerMsg } from '../src/client/protocol'
 
 interface Env { Room: DurableObjectNamespace<Room>; ASSETS: Fetcher }
-interface Seat { name: string; token: string }
+interface Seat { name: string; token: string; bot?: boolean; country?: CountryId }
 interface Saved { seats: Seat[]; host: string; game: GameState | null; seq: number }
-interface ConnState { seat: number }
+// a connection is tied to its seat token, not an index: removing a bot can shift seat numbers
+interface ConnState { token: string }
 
 const OFFLINE_GRACE_MS = 60_000
+const BOT_NAMES = ['Ana', 'Bo', 'Kenji', 'Lena', 'Rafi', 'Mira']
 
 /** What happens for a player who has been offline too long: the cautious choice. */
 function safeIntent(legal: Intent[]): Intent | undefined {
@@ -33,17 +38,26 @@ export class Room extends Server<Env> {
   private send(c: Connection, m: ServerMsg) { c.send(JSON.stringify(m)) }
   private all(m: ServerMsg) { this.broadcast(JSON.stringify(m)) }
   private seatOf(token: string | undefined) { return token ? this.data.seats.findIndex((s) => s.token === token) : -1 }
+  private connSeat(c: Connection<ConnState>) { return this.seatOf(c.state?.token) }
 
   private online(): Set<number> {
     const out = new Set<number>()
-    for (const c of this.getConnections<ConnState>()) if (c.state && c.state.seat >= 0) out.add(c.state.seat)
+    for (const c of this.getConnections<ConnState>()) { const s = this.connSeat(c); if (s >= 0) out.add(s) }
     return out
   }
 
   private lobby(): ServerMsg {
     const on = this.online()
-    const players: LobbyPlayer[] = this.data.seats.map((s, i) => ({ name: s.name, seat: i, online: on.has(i) }))
+    const players: LobbyPlayer[] = this.data.seats.map((s, i) => ({ name: s.name, seat: i, online: s.bot || on.has(i), bot: !!s.bot, country: s.country }))
     return { t: 'lobby', players, host: this.seatOf(this.data.host), started: !!this.data.game }
+  }
+
+  /** Every connection's seat number, sent again after the seats change shape. */
+  private greetAll() {
+    for (const c of this.getConnections<ConnState>()) {
+      const seat = this.connSeat(c)
+      if (seat >= 0) this.send(c, { t: 'welcome', seat, token: c.state!.token, room: this.name })
+    }
   }
 
   /** Deck order and RNG would let a client predict cards and rolls. */
@@ -55,13 +69,30 @@ export class Room extends Server<Env> {
     return { t: 'update', seq: this.data.seq, events, state: this.redact(this.data.game!) }
   }
 
-  private async advance(intent: Intent): Promise<string | undefined> {
+  private async apply(intent: Intent): Promise<string | undefined> {
     const r = step(this.data.game!, intent)
     if (r.error) return r.error
     this.data.game = r.state
     this.data.seq++
-    await this.save()
     this.all(this.update(r.events))
+  }
+
+  /** A human move, then every bot move it hands over to, then the offline timer. */
+  private async advance(intent: Intent): Promise<string | undefined> {
+    const err = await this.apply(intent)
+    if (err) return err
+    await this.runBots()
+  }
+
+  private async runBots() {
+    // ponytail: a bot game with no humans left would loop here; the guard caps one call at 400 moves
+    for (let guard = 0; guard < 400; guard++) {
+      const g = this.data.game
+      if (!g || g.phase !== 'playing' || !g.decision || !this.data.seats[g.decision.player]?.bot) break
+      const i = botIntent(g) ?? safeIntent(legalIntents(g))
+      if (!i || (await this.apply(i))) break
+    }
+    await this.save()
     await this.armTimeout()
   }
 
@@ -88,36 +119,70 @@ export class Room extends Server<Env> {
     if (m.t === 'join') {
       let seat = this.seatOf(m.token)
       let token = m.token ?? ''
-      if (seat < 0) {
+      if (seat < 0 || this.data.seats[seat]!.bot) {
         if (this.data.game) return reject('This game has already started.')
         if (this.data.seats.length >= 6) return reject('This room is full (6 players).')
         token = crypto.randomUUID()
-        const name = (m.name ?? '').trim().slice(0, 16) || `Player ${this.data.seats.length + 1}`
+        const name = (m.name ?? '').replace(/[<>&"'`]/g, '').trim().slice(0, 16) || `Player ${this.data.seats.length + 1}`
         this.data.seats.push({ name, token })
         if (!this.data.host) this.data.host = token
         seat = this.data.seats.length - 1
         await this.save()
       }
-      conn.setState({ seat })
+      conn.setState({ token })
       this.send(conn, { t: 'welcome', seat, token, room: this.name })
       this.all(this.lobby())
       if (this.data.game) this.send(conn, this.update([]))
       return
     }
 
-    const seat = conn.state?.seat ?? -1
+    const seat = this.connSeat(conn)
     if (seat < 0) return reject('Join the room first.')
+    const isHost = this.data.seats[seat]?.token === this.data.host
 
-    if (m.t === 'start') {
-      if (this.data.seats[seat]?.token !== this.data.host) return reject('Only the host can start.')
+    if (m.t === 'pick') {
       if (this.data.game) return
-      if (this.data.seats.length < 2) return reject('Need at least 2 players.')
-      const r = newGame({ names: this.data.seats.map((s) => s.name), seed: crypto.getRandomValues(new Uint32Array(1))[0]! })
-      this.data.game = r.state
-      this.data.seq = 1
+      const c = m.country
+      if (c !== null && !COUNTRY_IDS.includes(c)) return
+      if (c && this.data.seats.some((s, i) => i !== seat && s.country === c)) return reject('Someone else has that card.')
+      this.data.seats[seat]!.country = c ?? undefined
       await this.save()
       this.all(this.lobby())
+      return
+    }
+
+    if (m.t === 'bot') {
+      if (!isHost) return reject('Only the host can add bots.')
+      if (this.data.game) return
+      if (m.add) {
+        if (this.data.seats.length >= 6) return reject('This room is full (6 players).')
+        const used = new Set(this.data.seats.map((s) => s.name))
+        this.data.seats.push({ name: BOT_NAMES.find((n) => !used.has(n)) ?? 'Bot', token: 'bot-' + crypto.randomUUID(), bot: true })
+      } else {
+        const last = this.data.seats.map((s) => !!s.bot).lastIndexOf(true)
+        if (last < 0) return
+        this.data.seats.splice(last, 1)
+        this.greetAll()
+      }
+      await this.save()
+      this.all(this.lobby())
+      return
+    }
+
+    if (m.t === 'start') {
+      if (!isHost) return reject('Only the host can start.')
+      if (this.data.game) return
+      if (this.data.seats.length < 2) return reject('Need at least 2 players.')
+      // picked cards stay; everyone on random is dealt from what is left
+      const left = COUNTRY_IDS.filter((c) => !this.data.seats.some((s) => s.country === c))
+      for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j]!, left[i]!] }
+      const countries = this.data.seats.map((s) => s.country ?? left.pop()!)
+      const r = newGame({ names: this.data.seats.map((s) => s.name), seed: crypto.getRandomValues(new Uint32Array(1))[0]!, countries })
+      this.data.game = r.state
+      this.data.seq = 1
+      this.all(this.lobby())
       this.all(this.update(r.events))
+      await this.runBots()
       return
     }
 

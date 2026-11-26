@@ -9,7 +9,9 @@ import {repayCost} from '../src/rules/ops.ts'
 import {renderTokens,PC} from './tokens.js'
 import {LADDERS,SNAKES} from '../src/rules/board.ts'
 import {roll as rngRoll} from '../src/rules/rng.ts'
-import {liveStatic,liveRoutes,travelD,routePulse} from './live.js'   // (kit.js has the same maps as L and S; S here is the game state)
+import {liveStatic,liveRoutes,travelD,routePulse} from './live.js'
+import {connect} from '../src/client/online.ts'
+import {roomCode} from '../src/client/protocol.ts'   // (kit.js has the same maps as L and S; S here is the game state)
 
 const $=id=>document.getElementById(id)
 let S=null,V=null,SEATS=[],CUR=0,TOK=[],tableLook=store('dod-table')||'wood',routeLook=store('dod-routes')||'printed',dieLook=store('dod-die')||'brass',fontLook=store('dod-font')||'almendra',busy=false,botT=0,inv=2,bankSel=3,lastCard=null,cardOpen=null,dealWait=null,dd=null
@@ -21,7 +23,9 @@ const setSpeed=()=>{window.SPEED=S&&fast&&!human(S.current)?.3:1}
 // ---------- view: what the screen shows (follows the events while they play, then snaps to the engine state) ----------
 const view=s=>s.players.map((p,i)=>({name:p.name,c:p.country,cap:p.capital,debt:p.debt,waiver:p.waivers,sq:p.square,
  proj:p.projects.map(x=>({id:x.id,profit:x.profit,ttm:x.ttm})),bot:SEATS[i]?.bot}))
-const human=i=>!SEATS[i]?.bot
+const human=i=>NET?i===MY:!SEATS[i]?.bot
+// online play (26 Nov): the room on the server runs the engine and the bots; this page sends intents and plays the updates
+let NET=null,MY=-1,LOBBY=null,ROOM_ERR='',SEQ=0,QSEQ=0,QUEUE=[],draining=false
 // printed card faces, rendered from the .ai files (31 Oct); Devaluation and Rate Hike were never printed
 const ART=Object.fromEntries('commodityBoom lendLease debtRestructure fastTrack tariffTruce exportSubsidy productivitySurge surplusBudget strategicReserve alliedAid warBond tradeCorridor bankingPanic cyberAttack embargo strike sovereignDefault portBlockade insuranceFraud corruptionProbe debtSpiral sanctionThreat commodityCrash capitalControls'.split(' ').map(id=>[id,`/art/events/${id}.jpg`]))
 const cardView=id=>{const d=DEF[id];return{name:d.name,kind:d.kind==='beneficial'?'good':'bad',art:ART[id]||'/world-bg.jpg',titled:!!ART[id],quote:FLAVOUR[id]?.[0]||'',rule:d.text}}
@@ -317,8 +321,11 @@ function renderPile(){const el=$('pile'),bd=document.querySelector('.board');con
  el.querySelector('.draw').onclick=e=>{if(!e.target.closest('.top')&&dealWait)dealWait()}}
 // draw: wait for the human (tap or drag) or a beat for a bot, fly the card to the board, show the picture, turn it over
 async function drawCard(p,id){
- if(human(p)){await new Promise(r=>{dealWait=r;renderPile()});dealWait=null}else{dealWait=()=>{};renderPile();await wait(700);dealWait=null}
- const top=document.querySelector('#pile .draw .top'),from=top.getBoundingClientRect(),to=document.querySelector('.board').getBoundingClientRect()
+ // the pile is hidden on screens under 1430px wide (kit.css): there the card comes up by itself, or a human would wait forever
+ const shown=$('pile').offsetParent!==null
+ if(human(p)&&shown){await new Promise(r=>{dealWait=r;renderPile()});dealWait=null}else{dealWait=()=>{};renderPile();await wait(700);dealWait=null}
+ const top=document.querySelector('#pile .draw .top'),bd=document.querySelector('.board').getBoundingClientRect()
+ const from=shown?top.getBoundingClientRect():{left:bd.left+bd.width/2-40,top:bd.bottom-60,width:80,height:54}
  const f=document.createElement('div');f.className='flycard';f.innerHTML=cardFront(cardView(id));Object.assign(f.style,{left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px'});document.body.appendChild(f)
  renderPile()
  // the card flies to exactly where the open card will sit, then hands over to it: no fade, no gap
@@ -462,13 +469,14 @@ async function duelFx(e){const ov=$('ov'),A=V[e.challenger],B=V[e.defender]
  $(w?'dA':'dB').classList.add('win');$(w?'dB':'dA').classList.add('lose');msg(`${Math.max(a,b)} beats ${Math.min(a,b)}. ${V[e.winner].name} wins`)
  await wait(1500);ov.classList.remove('on');ov.innerHTML='';d2.dispose()}
 // every country's perk, and who is playing it
-function countriesInfo(){const ov=$('ov');if(ov.classList.contains('on')&&!ov.querySelector('.ctys'))return
- ov.innerHTML=`<div class="fin ctys"><h2>Countries</h2>${COUNTRY_IDS.map(c=>{const who=S?S.players.map((p,i)=>p.country===c?i:-1).filter(i=>i>=0):[];return`<div class="fr"><span></span><span class="mini" style="--art:url(/art/countries/${c}.jpg)${who.length?`;box-shadow:0 0 0 2.5px ${PC[who[0]]}`:''}"></span><div>${COUNTRIES[c].name}${who.length?` · ${S.players[who[0]].name}`:''}<small>${COUNTRIES[c].perk}</small></div><span></span></div>`}).join('')}<div class="go"><button class="btn primary" id="ctyx">Close</button></div></div>`
- ov.classList.add('on');$('ctyx').onclick=()=>{ov.classList.remove('on');ov.innerHTML=''}}
+const ctyClose=()=>{const ov=$('ov');if(!ov.querySelector('.ctys'))return;ov.classList.remove('on');ov.innerHTML='';ov.onclick=null}
+function countriesInfo(){const ov=$('ov');if(ov.querySelector('.ctys'))return ctyClose();if(ov.classList.contains('on'))return
+ ov.innerHTML=`<div class="fin ctys"><h2>Countries</h2>${COUNTRY_IDS.map(c=>{const who=S?S.players.map((p,i)=>p.country===c?i:-1).filter(i=>i>=0):[];return`<div class="fr"><span></span><span class="mini" style="--art:url(/art/countries/${c}.jpg)${who.length?`;box-shadow:0 0 0 2.5px ${PC[who[0]]}`:''}"></span><div>${COUNTRIES[c].name}${who.length?` · ${V[who[0]].name}`:''}<small>${COUNTRIES[c].perk}</small></div><span></span></div>`}).join('')}<div class="go"><button class="btn primary" id="ctyx">Close</button></div></div>`
+ ov.classList.add('on');$('ctyx').onclick=ctyClose;ov.onclick=e=>{if(e.target===ov)ctyClose()}}
 function ledger(){const r=S.result,ov=$('ov'),w=V[r.rows.find(x=>x.rank===1).player]
  ov.innerHTML=`<div class="fin"><h2>Final ledger</h2><div class="wcard" style="background-image:url(${cardImg(w.c)})"></div><div class="wname">${w.name}</div>${r.rows.map(x=>`<div class="fr ${x.rank===1?'win':''}"><b>${x.rank}</b>${mini(V[x.player])}<div>${V[x.player].name}<small>${x.capital} capital${x.bonus?` (incl. +${x.bonus} for 100)`:''}${x.debtCost?` · −${x.debtCost} open loans`:''}</small></div><span class="nw">${x.netWorth}</span></div>`).join('')}
-  <div class="go"><button class="btn primary" id="again">Play again</button></div></div>`
- ov.classList.add('on');$('again').onclick=()=>{ov.classList.remove('on');ov.innerHTML='';setup()}}
+  <div class="go"><button class="btn primary" id="again">${NET?'Leave room':'Play again'}</button></div></div>`
+ ov.classList.add('on');$('again').onclick=()=>{ov.classList.remove('on');ov.innerHTML='';leaveRoom();setup()}}
 
 // ---------- the move log (1 Nov): the last seven things that happened, newest on top, older ones fading ----------
 let MOVES=[],lastRoll=[]
@@ -509,7 +517,7 @@ async function play(events){
  for(const e of events){const p=e.player;dod.count[e.type]=(dod.count[e.type]||0)+1
   {const k=p!=null&&perkOf(e,p);if(k)peek(p,k)}
   switch(e.type){
-   case 'turnStarted':CUR=p;if(human(p))SFX.play('turn');setSpeed();say(V[p].name==='You'?'Your turn':`${V[p].name}'s turn`);drawBoard();renderRows();rollCard();bankBadge();await wait(250);break
+   case 'turnStarted':CUR=p;if(human(p))SFX.play('turn');setSpeed();say((NET?p===MY:V[p].name==='You')?'Your turn':`${V[p].name}'s turn`);drawBoard();renderRows();rollCard();bankBadge();await wait(250);break
    case 'turnSkipped':note(p,ic('event.svg'),'skips a turn');say(`${V[p].name} is under embargo and skips a turn`);await wait(700);break
    case 'diceRolled':{const rn=$('rn');rn?.classList.remove('on');lastRoll[p]=e.value;SFX.play('dice');if((window.SPEED??1)>=.1)await dd?.roll(e.raw);if(rn){rn.textContent=e.value;rn.classList.add('on')}
     say(`${V[p].name} rolled ${e.raw}${e.crunched?', halved by the crunch':''}${e.bonus?`, +${e.bonus}`:''}`);await wait(350);break}
@@ -540,18 +548,21 @@ async function play(events){
  rollPushes=0}
 
 // ---------- act: one intent through the engine ----------
-async function act(intent){if(busy||!intent)return;if(intent.type==='roll'&&GOD.roll){S=forceRoll(S,GOD.roll);if(!GOD.lock)GOD.roll=0;godRender()}const r=step(S,intent);if(r.error){console.warn(r.error);return}
+async function act(intent){if(busy||!intent)return
+ if(NET){busy=true;clearTimeout(botT);hov=null;hovN=0;renderRows();rollCard();NET.send({t:'intent',intent});return}
+ if(intent.type==='roll'&&GOD.roll){S=forceRoll(S,GOD.roll);if(!GOD.lock)GOD.roll=0;godRender()}const r=step(S,intent);if(r.error){console.warn(r.error);return}
  busy=true;clearTimeout(botT);hov=null;hovN=0;renderRows();rollCard()
  if(intent.type==='invest'&&!intent.chips){nopeFx(intent.player);await wait(560)}
  if(intent.type==='takeDebt'||intent.type==='repay'){}else bankClose()
  try{await play(r.events)}catch(err){console.error(err)}
- S=r.state;V=view(S);busy=false
- // the card stays on screen while its OK or choice is pending
+ settle(r.state)}
+// after a batch has played: snap the view to the engine state; the card stays on screen while its OK or choice is pending
+function settle(state){S=state;V=view(S);busy=false
  if(cardOpen&&!(S.decision&&(S.decision.kind==='ackCard'||S.decision.kind==='cardChoice')))closeCard()
  render()}
 
 // ---------- save: the engine state is plain JSON, so the last game is one localStorage key ----------
-const save=()=>{if(!S)return;if(S.phase==='finished'){store('dod-save','');return}store('dod-save',JSON.stringify({S,SEATS,lastCard,at:Date.now()}))}
+const save=()=>{if(!S||NET)return;if(S.phase==='finished'){store('dod-save','');return}store('dod-save',JSON.stringify({S,SEATS,lastCard,at:Date.now()}))}
 const saved=()=>{try{const v=JSON.parse(store('dod-save')||'null');return v?.S?.players?v:null}catch(e){return null}}
 function resume(){const v=saved();if(!v)return;S=v.S;SEATS=v.SEATS;lastCard=v.lastCard||null;CUR=S.current;V=view(S);TOK=[];busy=false;cardOpen=null
  renderTokens(S.players.map((p,i)=>[p.country,PC[i]])).then(t=>{TOK=t;if(!busy)drawBoard()}).catch(e=>console.warn('tokens',e))
@@ -559,7 +570,7 @@ function resume(){const v=saved();if(!v)return;S=v.S;SEATS=v.SEATS;lastCard=v.la
 function render(){save();if(GOD.on)setTimeout(godRender);drawBoard();renderRows();rollCard();bankBadge();renderPile();cardButtons()
  if(S.phase==='finished'){ledger();return}
  const d=S.decision
- if(d&&!human(d.player)&&!GOD.pause){clearTimeout(botT);const cur=S;botT=setTimeout(()=>{if(S===cur&&!busy)act(botIntent(S))},T(d.kind==='debtWindow'||d.kind==='roll'?600:900))}}
+ if(d&&!NET&&!human(d.player)&&!GOD.pause){clearTimeout(botT);const cur=S;botT=setTimeout(()=>{if(S===cur&&!busy)act(botIntent(S))},T(d.kind==='debtWindow'||d.kind==='roll'?600:900))}}
 
 // ---------- setup: seats, names, human or bot, countries ----------
 const NAMES=['You','Ana','Bo','Kenji','Lena','Rafi']
@@ -576,16 +587,19 @@ const CQUOTE={usa:'Wall Street’s ocean of capital lets investors pour funds de
  bangladesh:'Agile garment lines fast-track smaller projects, maturing modest climbs one turn sooner.',
  uk:'London’s financial arteries convert fresh debt into instant capital on the global stage.'}
 function setup(){const el=$('setup');el.classList.add('on');const seats=SEAT.slice(0,N),nm=i=>SEAT[i].name.trim()||NAMES[i]
+ if(STEP==='online')return onlineEntry(el)
+ if(STEP==='lobby')return lobbyScreen(el)
  const resumeBtn=(()=>{const v=saved();if(!v)return'';const ago=Math.round((Date.now()-v.at)/60000),lead=Math.max(...v.S.players.map(p=>p.square))
   return`<button class="btn" id="resume">Resume last game<small>${v.S.players.length} players, leader on ${lead}, ${ago<1?'just now':ago<60?ago+' min ago':ago<1440?Math.round(ago/60)+' h ago':Math.round(ago/1440)+' d ago'}</small></button>`})()
  if(STEP===1){el.innerHTML=`<div class="sbox"><h1>Deal or Default</h1><div class="sub">Players and bots</div>
   <div class="scount">${[2,3,4,5,6].map(n=>`<button class="${n===N?'on':''}" data-pc="${n}">${n}</button>`).join('')}</div>
   ${seats.map((s,i)=>`<div class="seat"><span class="snum">${i+1}</span><input value="${s.name}" data-nm="${i}" aria-label="Name"><div class="who2"><button class="${s.bot?'':'on'}" data-hb="${i}:0">Human</button><button class="${s.bot?'on':''}" data-hb="${i}:1">Bot</button></div></div>`).join('')}
-  <div class="go">${resumeBtn}<button class="btn primary" id="next">Choose cards</button></div></div>`
+  <div class="go">${resumeBtn}<button class="btn primary" id="next">Choose cards</button><button class="btn" id="online">Play online</button></div></div>`
   el.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>{N=+b.dataset.pc;PICK=Math.min(PICK,N-1);setup()})
   el.querySelectorAll('[data-nm]').forEach(b=>b.oninput=()=>SEAT[+b.dataset.nm].name=b.value)
   el.querySelectorAll('[data-hb]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.hb.split(':');SEAT[+i].bot=v==='1';setup()})
   $('next').onclick=()=>{STEP=2;PICK=Math.max(0,seats.findIndex(s=>s.c==='random'));setup()}
+  $('online').onclick=()=>{STEP='online';ROOM_ERR='';setup()}
   if($('resume'))$('resume').onclick=resume;return}
  const pc=SEAT[PICK].c
  el.innerHTML=`<div class="sbox wide"><h1>Choose your cards</h1>
@@ -614,6 +628,64 @@ function start(){const seats=SEAT.slice(0,N),picked=seats.map(s=>s.c).filter(c=>
 STEP=1;$('setup').classList.remove('on');$('ov').classList.remove('on');$('ov').innerHTML=''
  busy=true;render();renderMoves();say(`${V[CUR].name} starts`);setTimeout(()=>dealIn().then(()=>{busy=false;render()}),350)}
 
+// ---------- online rooms (26 Nov): create or join by a 4-letter code, pick your card, the host adds bots and starts ----------
+const LAST_ROOM='dod-last-room'
+const hashRoom=()=>(/^#([A-Za-z]{4})$/.exec(location.hash)||[])[1]?.toUpperCase()||''
+function onlineEntry(el){const nm0=store('dod-name')||''
+ el.innerHTML=`<div class="sbox"><h1>Play online</h1><div class="sub">Everyone on their own phone or computer</div>
+  <div class="seat"><span class="snum"></span><input id="onm" maxlength="16" placeholder="Your name" aria-label="Your name"></div>
+  <div class="go"><button class="btn primary" id="mk">Create a room</button>
+  <div class="joinr"><input id="ocode" maxlength="4" placeholder="Code" aria-label="Room code" autocapitalize="characters"><button class="btn" id="jn">Join room</button></div>
+  ${ROOM_ERR?`<p class="rerr">${ROOM_ERR}</p>`:''}<button class="btn" id="back">Back</button></div></div>`
+ $('onm').value=nm0;$('ocode').value=hashRoom()
+ const name=()=>$('onm').value.trim()||'Player'
+ $('mk').onclick=()=>goOnline(roomCode(),name())
+ $('jn').onclick=()=>{const c=$('ocode').value.trim().toUpperCase();if(!/^[A-Z]{4}$/.test(c)){ROOM_ERR='A room code is 4 letters.';setup();return}goOnline(c,name())}
+ $('ocode').onkeydown=e=>{if(e.key==='Enter')$('jn').click()}
+ $('back').onclick=()=>{STEP=1;ROOM_ERR='';setup()}}
+function lobbyScreen(el){const L=LOBBY,me=L?.players[MY],host=!!L&&MY===L.host,taken=c=>L.players.find(p=>p.country===c&&p.seat!==MY)
+ el.innerHTML=`<div class="sbox wide"><h1>Room ${NET.room}</h1><div class="sub">${NET.open?'Friends open this page and enter the code':'Connecting…'} · <button class="lnk" id="copy">Copy invite link</button></div>
+  ${L?`<div class="lob">${L.players.map(p=>`<div class="lp ${p.online?'':'off'}"><span class="sc" style="${p.country?`background-image:url(/art/countries/cards/${p.country}.jpg)`:''};box-shadow:0 0 0 2px ${PC[p.seat]}">${p.country?'':'?'}</span><b>${p.name}</b><small>${[p.seat===L.host&&'host',p.seat===MY&&'you',p.bot&&'bot',!p.online&&'offline'].filter(Boolean).join(' · ')}</small></div>`).join('')}</div>
+  <div class="cph">Your card${me?.country?'':' (random if you skip)'}</div>
+  <div class="cards">${COUNTRY_IDS.map(c=>`<button class="pc ${me?.country===c?'mine':taken(c)?'taken':''}" data-oc="${c}" title="${COUNTRIES[c].perk}" aria-label="${COUNTRIES[c].name}"><div class="pci"><div class="pf" style="background-image:url(/art/countries/cards/${c}.jpg)"></div></div>${taken(c)?`<em>${taken(c).name}</em>`:''}</button>`).join('')}</div>`:''}
+  ${ROOM_ERR?`<p class="rerr">${ROOM_ERR}</p>`:''}
+  <div class="go row">${host?`<button class="btn" id="addb" ${L.players.length>=6?'disabled':''}>Add bot</button><button class="btn" id="rmb" ${L.players.some(p=>p.bot)?'':'disabled'}>Remove bot</button><button class="btn primary" id="ostart" ${L.players.length<2?'disabled':''}>Start game</button>`:L?'<span class="wait">Waiting for the host to start</span>':''}<button class="btn" id="leave">Leave</button></div></div>`
+ const on=(id,f)=>{const b=$(id);if(b)b.onclick=f}
+ on('copy',()=>{navigator.clipboard?.writeText(`${location.origin}/#${NET.room}`).then(()=>{$('copy').textContent='Link copied'},()=>{})})
+ on('addb',()=>NET.send({t:'bot',add:true}));on('rmb',()=>NET.send({t:'bot',add:false}));on('ostart',()=>NET.send({t:'start'}))
+ on('leave',()=>{leaveRoom();setup();topbar()})
+ el.querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{const c=b.dataset.oc;if(taken(c))return;ROOM_ERR='';SFX.play('flip');NET.send({t:'pick',country:me?.country===c?null:c})})}
+function goOnline(room,name){leaveRoom();store('dod-name',name);store(LAST_ROOM,JSON.stringify({room,name}))
+ S=null;V=null;SEQ=QSEQ=0;QUEUE=[];LOBBY=null;ROOM_ERR='';MY=-1;GOD.on=false;godRender();clearTimeout(botT)
+ history.replaceState(null,'','#'+room)
+ const net=connect(room,name,m=>{if(NET===net)onServer(m)},open=>{if(NET!==net)return;net.open=open;if(!S)setup();else say(open?'Reconnected':'Connection lost, reconnecting…')})
+ NET=net;net.open=false;STEP='lobby';setup();topbar()}
+function leaveRoom(){if(!NET)return;NET.close();NET=null;LOBBY=null;MY=-1;S=null;V=null;busy=false;QUEUE=[];draining=false;STEP=1;cardOpen=null
+ store(LAST_ROOM,'');history.replaceState(null,'',location.pathname);$('ov').classList.remove('on');$('ov').innerHTML=''}
+function onServer(m){
+ if(m.t==='welcome'){MY=m.seat;return}
+ if(m.t==='lobby'){LOBBY=m;SEATS=m.players.map(p=>({bot:!!p.bot}));if(!S)setup();else{V=view(S);renderRows()}return}
+ if(m.t==='reject'){ROOM_ERR=m.reason;if(!S)setup();else{say(m.reason);if(!draining){busy=false;render()}}return}
+ if(m.t!=='update')return
+ if(!S)return enterRoomGame(m)
+ // a snapshot (no events) replaces whatever is still waiting; a gap asks the room for one
+ if(!m.events.length){if(m.seq>=QSEQ){QSEQ=m.seq;QUEUE=[m];drain()}return}
+ if(m.seq<=QSEQ)return
+ if(m.seq!==QSEQ+1){NET.send({t:'sync'});return}
+ QSEQ=m.seq;QUEUE.push(m);drain()}
+// updates play strictly one after another, each batch animated like a local move
+async function drain(){if(draining)return;draining=true
+ while(QUEUE.length&&NET){const u=QUEUE.shift();busy=true;clearTimeout(botT);renderRows();rollCard()
+  if(u.events.length){if(!u.events.some(e=>e.type==='debt'))bankClose();try{await play(u.events)}catch(e){console.error(e)}}
+  if(!NET)break;SEQ=u.seq;settle(u.state)}
+ draining=false}
+function enterRoomGame(m){S=m.state;SEQ=QSEQ=m.seq;CUR=S.current;V=view(S);lastCard=null;TOK=[];MOVES=[];lastRoll=[];busy=false;cardOpen=null;QUEUE=[]
+ renderTokens(S.players.map((p,i)=>[p.country,PC[i]])).then(t=>{TOK=t;if(!busy)drawBoard()}).catch(e=>console.warn('tokens',e))
+ STEP=1;$('setup').classList.remove('on');$('ov').classList.remove('on');$('ov').innerHTML='';topbar();renderMoves()
+ if(!m.events.length){const d=S.decision;if(d&&(d.kind==='ackCard'||d.kind==='cardChoice'))showCard(d.card);render();say(`Room ${NET.room}: ${human(CUR)?'your':V[CUR].name+"'s"} turn`);return}
+ // a fresh game: the cards are dealt first; moves that arrive meanwhile wait in the queue
+ busy=true;draining=true;render();say(`${V[CUR].name} starts`)
+ setTimeout(()=>dealIn().then(()=>{draining=false;busy=false;render();drain()}),350)}
 
 // ---------- test mode (his "god mode"): edit the live state, fix the next roll or card, pause bots ----------
 // edits go straight into the engine state between steps, so everything after them plays by the real rules
@@ -664,7 +736,11 @@ function godRender(){let el=$('godp');if(!GOD.on){el?.remove();return}
  el.querySelector('[data-g=pause]').onclick=()=>{GOD.pause=!GOD.pause;clearTimeout(botT);if(!GOD.pause&&S)render();godRender()}
  const sb=el.querySelector('[data-g=stepbot]');if(sb)sb.onclick=()=>{const d=S.decision;if(d&&!human(d.player)&&!busy)act(botIntent(S)).then(godRender)}
  q('[data-gs]').forEach(b=>b.onclick=()=>SFX.play(b.dataset.gs))}
-addEventListener('keydown',e=>{if(e.key==='`'&&!e.target.closest('input,select')){GOD.on=!GOD.on;godRender();topbar()}})
+// test mode asks for the password once per browser tab (a lock against curious players, not real security), and is off online
+function godToggle(){if(!GOD.on){if(NET){say('Test mode is off in online games');return}
+  if(sessionStorage.getItem('dod-god')!=='1'){if(prompt('Test mode password')!=='AzM')return;sessionStorage.setItem('dod-god','1')}}
+ GOD.on=!GOD.on;godRender();topbar()}
+addEventListener('keydown',e=>{if(e.key==='`'&&!e.target.closest('input,select'))godToggle()})
 
 // ---------- boot ----------
 window.dod={count:{},peek:(p,t)=>peek(p,t),get state(){return S},get busy(){return busy},gutter:()=>{const t=performance.now(),g=(GUTTER=null,gutterRoutes());return{ms:Math.round(performance.now()-t),bridges:g.bridges.map(b=>b.over.f+'>'+b.over.t+' over '+b.under.f+'>'+b.under.t),hair:g.lines.filter(l=>l.cost>=5000).map(l=>l.f+'>'+l.t),r:Object.fromEntries(g.lines.map(l=>[l.f+'>'+l.t,Math.round(l.cost)])),p:Object.fromEntries(g.lines.map(l=>[l.f+'>'+l.t,l.p.map(q=>[Math.round(q.x??q[0]),Math.round(q.y??q[1])])]))}}}   // for checking from the console
@@ -680,8 +756,24 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b
 // the font switch: [label, title font, rules font]; federo = the old look with no swap
 const FONTS={almendra:['Almendra',"'Almendra'","'Almendra'"],inknut:['Inknut Antiqua',"'Inknut Antiqua'","'Inknut Antiqua'"],grenze:['Grenze',"'Grenze'","'Grenze'"],texturina:['Texturina',"'Texturina'","'Texturina'"],obra:['Obra Letra (local)',"'KC Obra Letra'","'KC Obra Letra'"],federo:['Federo']}
 const fontApply=()=>{if(!FONTS[fontLook])fontLook='almendra';const f=FONTS[fontLook],r=document.documentElement;r.classList.toggle('fx',!!f[1]);r.style.setProperty('--disp',f[1]||'Federo');r.style.setProperty('--rule',f[2]||'Federo');lbLook=null}
-const topbar=()=>{fontApply();$('top').innerHTML=`<button id="newg">New game</button><button id="spd">Bot turns: ${fast?'fast':'normal'}</button><button id="rts">Routes: ${ROUTE_NAMES[routeLook]}</button><button id="dce">Die: ${DIE[dieLook]}</button><button id="tbl">Table: ${TABLES[tableLook]}</button><button id="snd">Sound: ${SFX.muted?'off':'on'}</button><button id="fnt">Font: ${FONTS[fontLook][0]}</button><button id="cty">Countries</button><button id="god" class="${GOD.on?'on':''}">Test mode</button>`;$('god').onclick=()=>{GOD.on=!GOD.on;godRender();topbar()};$('snd').onclick=()=>{SFX.toggle();topbar()};$('fnt').onclick=()=>{const k=Object.keys(FONTS);fontLook=k[(k.indexOf(fontLook)+1)%k.length];store('dod-font',fontLook);fontApply();topbar();if(S)drawBoard()};$('cty').onclick=countriesInfo;$('tbl').onclick=()=>{const k=Object.keys(TABLES);tableLook=k[(k.indexOf(tableLook)+1)%k.length];store('dod-table',tableLook);table();topbar()};$('newg').onclick=setup;$('dce').onclick=()=>{const k=Object.keys(DIE);dieLook=k[(k.indexOf(dieLook)+1)%k.length];store('dod-die',dieLook);topbar()
-  const el=$('rollov');if(el){dd?.dispose();const c=el.querySelector('canvas'),n=c.cloneNode();c.replaceWith(n);n.onclick=c.onclick;dd=window.duelDice(n,1,dieLook)}};$('rts').onclick=()=>{const k=Object.keys(ROUTE_NAMES);routeLook=k[(k.indexOf(routeLook)+1)%k.length];store('dod-routes',routeLook);topbar();if(S)drawBoard()};$('spd').onclick=()=>{fast=!fast;store('dod-fast',fast?'1':'0');topbar();setSpeed()}}
+let MENU=false
+const cycle=(o,k)=>{const a=Object.keys(o);return a[(a.indexOf(k)+1)%a.length]}
+const topbar=()=>{fontApply();$('top').innerHTML=`<button id="newg">${NET?'Leave room':'New game'}</button><button id="cty">Countries</button><button id="opt" class="${MENU?'on':''}" aria-expanded="${MENU}">Options</button>
+ ${MENU?`<div class="menu" role="menu">${NET?'':`<button id="spd">Bot turns: ${fast?'fast':'normal'}</button>`}<button id="rts">Routes: ${ROUTE_NAMES[routeLook]}</button><button id="dce">Die: ${DIE[dieLook]}</button><button id="tbl">Table: ${TABLES[tableLook]}</button><button id="snd">Sound: ${SFX.muted?'off':'on'}</button><button id="fnt">Font: ${FONTS[fontLook][0]}</button>${NET?'':`<button id="god" class="${GOD.on?'on':''}">Test mode</button>`}</div>`:''}`
+ const on=(id,f)=>{const b=$(id);if(b)b.onclick=f}
+ on('newg',()=>{MENU=false;leaveRoom();setup();topbar()});on('cty',()=>{MENU=false;topbar();countriesInfo()});on('opt',()=>{MENU=!MENU;topbar()})
+ on('god',godToggle);on('snd',()=>{SFX.toggle();topbar()})
+ on('fnt',()=>{fontLook=cycle(FONTS,fontLook);store('dod-font',fontLook);fontApply();topbar();if(S)drawBoard()})
+ on('tbl',()=>{tableLook=cycle(TABLES,tableLook);store('dod-table',tableLook);table();topbar()})
+ on('dce',()=>{dieLook=cycle(DIE,dieLook);store('dod-die',dieLook);topbar()
+  const el=$('rollov');if(el){dd?.dispose();const c=el.querySelector('canvas'),n=c.cloneNode();c.replaceWith(n);n.onclick=c.onclick;dd=window.duelDice(n,1,dieLook)}})
+ on('rts',()=>{routeLook=cycle(ROUTE_NAMES,routeLook);store('dod-routes',routeLook);topbar();if(S)drawBoard()})
+ on('spd',()=>{fast=!fast;store('dod-fast',fast?'1':'0');topbar();setSpeed()})}
+// a click anywhere outside the top bar folds the Options menu away
+// (the path is fixed when the click starts, so a button the top bar has just redrawn still counts as inside it)
+document.addEventListener('click',e=>{if(MENU&&!e.composedPath().some(n=>n.id==='top')){MENU=false;topbar()}})
 topbar();table()
 // the left-side money preview uses #mycash; kit's toBank/fromBank fly coins between it and the bank
-const boot=()=>{if(!window.COIN_SRC)return setTimeout(boot,50);setup()};boot()
+const boot=()=>{if(!window.COIN_SRC)return setTimeout(boot,50);const h=hashRoom()
+ if(h){let last=null;try{last=JSON.parse(store(LAST_ROOM)||'null')}catch(e){}if(last?.room===h)return goOnline(h,last.name);STEP='online'}
+ setup()};boot()

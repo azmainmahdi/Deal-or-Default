@@ -14,6 +14,7 @@ import {connect} from '../src/client/online.ts'
 import {roomCode} from '../src/client/protocol.ts'   // (kit.js has the same maps as L and S; S here is the game state)
 
 const $=id=>document.getElementById(id)
+const X_I='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
 let S=null,V=null,SEATS=[],CUR=0,TOK=[],tableLook=store('dod-table')||'wood',routeLook=store('dod-routes')||'printed',dieLook=store('dod-die')||'brass',fontLook=store('dod-font')||'almendra',busy=false,botT=0,inv=2,bankSel=3,lastCard=null,cardOpen=null,dealWait=null,dd=null
 const T=ms=>document.hidden?1:Math.max(1,ms*(window.SPEED??1))
 // speed: bot turns can run fast; human turns always play at normal speed
@@ -29,7 +30,7 @@ let NET=null,MY=-1,LOBBY=null,ROOM_ERR='',SEQ=0,QSEQ=0,QUEUE=[],draining=false
 // printed card faces, rendered from the .ai files (31 Oct); Devaluation and Rate Hike were never printed
 const ART=Object.fromEntries('commodityBoom lendLease debtRestructure fastTrack tariffTruce exportSubsidy productivitySurge surplusBudget strategicReserve alliedAid warBond tradeCorridor bankingPanic cyberAttack embargo strike sovereignDefault portBlockade insuranceFraud corruptionProbe debtSpiral sanctionThreat commodityCrash capitalControls'.split(' ').map(id=>[id,`/art/events/${id}.jpg`]))
 const cardView=id=>{const d=DEF[id];return{name:d.name,kind:d.kind==='beneficial'?'good':'bad',art:ART[id]||'/world-bg.jpg',titled:!!ART[id],quote:FLAVOUR[id]?.[0]||'',rule:d.text}}
-const say=t=>{$('log').textContent=t.replace(/^You's /,'Your ').replace(/^You is /,'You are ').replace(/^You (rolled|draws|uses|loses|hedged|reaches|challenges|would|doesn't|goes|is)/,(m,v)=>'You '+({draws:'draw',uses:'use',loses:'lose',reaches:'reach',challenges:'challenge',goes:'go',is:'are',"doesn't":"don't"}[v]||v))}
+const say=t=>{$('log').textContent=t.replace(/^You's /,'Your ').replace(/^You is /,'You are ').replace(/^You (rolled|draws|uses|loses|hedged|reaches|challenges|would|doesn't|goes|is|starts|skips)/,(m,v)=>'You '+({starts:'start',skips:'skip',draws:'draw',uses:'use',loses:'lose',reaches:'reach',challenges:'challenge',goes:'go',is:'are',"doesn't":"don't"}[v]||v))}
 const nm=i=>V[i].name
 
 // ---------- board ----------
@@ -471,12 +472,12 @@ async function duelFx(e){const ov=$('ov'),A=V[e.challenger],B=V[e.defender]
 // every country's perk, and who is playing it
 const ctyClose=()=>{const ov=$('ov');if(!ov.querySelector('.ctys'))return;ov.classList.remove('on');ov.innerHTML='';ov.onclick=null}
 function countriesInfo(){const ov=$('ov');if(ov.querySelector('.ctys'))return ctyClose();if(ov.classList.contains('on'))return
- ov.innerHTML=`<div class="fin ctys"><h2>Countries</h2>${COUNTRY_IDS.map(c=>{const who=S?S.players.map((p,i)=>p.country===c?i:-1).filter(i=>i>=0):[];return`<div class="fr"><span></span><span class="mini" style="--art:url(/art/countries/${c}.jpg)${who.length?`;box-shadow:0 0 0 2.5px ${PC[who[0]]}`:''}"></span><div>${COUNTRIES[c].name}${who.length?` · ${V[who[0]].name}`:''}<small>${COUNTRIES[c].perk}</small></div><span></span></div>`}).join('')}<div class="go"><button class="btn primary" id="ctyx">Close</button></div></div>`
+ ov.innerHTML=`<div class="fin ctys"><h2>Countries</h2>${COUNTRY_IDS.map(c=>{const who=S?S.players.map((p,i)=>p.country===c?i:-1).filter(i=>i>=0):[];return`<div class="fr"><span></span><span class="mini" style="--art:url(/art/countries/${c}.jpg)${who.length?`;box-shadow:0 0 0 2.5px ${PC[who[0]]}`:''}"></span><div>${COUNTRIES[c].name}${who.length?` · ${V[who[0]].name}`:''}<small>${COUNTRIES[c].perk}</small></div><span></span></div>`}).join('')}<button class="xclose" id="ctyx" aria-label="Close">${X_I}</button></div>`
  ov.classList.add('on');$('ctyx').onclick=ctyClose;ov.onclick=e=>{if(e.target===ov)ctyClose()}}
 function ledger(){const r=S.result,ov=$('ov'),w=V[r.rows.find(x=>x.rank===1).player]
  ov.innerHTML=`<div class="fin"><h2>Final ledger</h2><div class="wcard" style="background-image:url(${cardImg(w.c)})"></div><div class="wname">${w.name}</div>${r.rows.map(x=>`<div class="fr ${x.rank===1?'win':''}"><b>${x.rank}</b>${mini(V[x.player])}<div>${V[x.player].name}<small>${x.capital} capital${x.bonus?` (incl. +${x.bonus} for 100)`:''}${x.debtCost?` · −${x.debtCost} open loans`:''}</small></div><span class="nw">${x.netWorth}</span></div>`).join('')}
   <div class="go"><button class="btn primary" id="again">${NET?'Leave room':'Play again'}</button></div></div>`
- ov.classList.add('on');$('again').onclick=()=>{ov.classList.remove('on');ov.innerHTML='';leaveRoom();setup()}}
+ ov.classList.add('on');$('again').onclick=()=>{ov.classList.remove('on');ov.innerHTML='';if(NET){leaveRoom();STEP='mode'}else STEP=1;setup()}}
 
 // ---------- the move log (1 Nov): the last seven things that happened, newest on top, older ones fading ----------
 let MOVES=[],lastRoll=[]
@@ -576,7 +577,7 @@ function render(){save();if(GOD.on)setTimeout(godRender);drawBoard();renderRows(
 const NAMES=['You','Ana','Bo','Kenji','Lena','Rafi']
 let N=4,SEAT=[...Array(6)].map((_,i)=>({name:NAMES[i],bot:i>0,c:'random'})),PICK=0   // PICK: the seat the card row is choosing for
 // two screens: 1 players (count, names, human or bot), 2 cards (each seat takes a printed card, or Random)
-let STEP=1,JUST=null
+let STEP='splash',JUST=null   // splash -> mode (this device or online) -> 1 players -> 2 cards; or online -> lobby
 const FLIPPED=new Set()
 // the printed character backs (6 Country Cards.ai): title and quote as printed; the perk is the game's rule
 const PRINT_NAME={usa:'United States',china:'China',japan:'Japan',germany:'Germany',bangladesh:'Bangladesh',uk:'United Kingdom'}
@@ -587,20 +588,26 @@ const CQUOTE={usa:'Wall Street’s ocean of capital lets investors pour funds de
  bangladesh:'Agile garment lines fast-track smaller projects, maturing modest climbs one turn sooner.',
  uk:'London’s financial arteries convert fresh debt into instant capital on the global stage.'}
 function setup(){const el=$('setup');el.classList.add('on');const seats=SEAT.slice(0,N),nm=i=>SEAT[i].name.trim()||NAMES[i]
- if(STEP==='online')return onlineEntry(el)
- if(STEP==='lobby')return lobbyScreen(el)
  const resumeBtn=(()=>{const v=saved();if(!v)return'';const ago=Math.round((Date.now()-v.at)/60000),lead=Math.max(...v.S.players.map(p=>p.square))
   return`<button class="btn" id="resume">Resume last game<small>${v.S.players.length} players, leader on ${lead}, ${ago<1?'just now':ago<60?ago+' min ago':ago<1440?Math.round(ago/60)+' h ago':Math.round(ago/1440)+' d ago'}</small></button>`})()
- if(STEP===1){el.innerHTML=`<div class="sbox"><h1>Deal or Default</h1><div class="sub">Players and bots</div>
+ if(STEP==='splash'){el.innerHTML=`<div class="splash"><img class="slogo" src="/logo.png" alt="Deal or Default"><div class="sgo"><button class="btn primary" id="play">Play</button>${resumeBtn}</div></div>`
+  $('play').onclick=()=>{STEP='mode';setup()};if($('resume'))$('resume').onclick=resume;return}
+ if(STEP==='mode'){el.innerHTML=`<div class="sbox"><h1>How are you playing?</h1>
+  <div class="modes"><button class="mode" id="local">${MODE_I.local}<div><b>This device</b><span>Pass the screen, or play bots</span></div></button>
+  <button class="mode" id="online">${MODE_I.online}<div><b>Online</b><span>Everyone on their own phone</span></div></button></div>
+  <div class="go row"><button class="btn ghost" id="back">Back</button></div></div>`
+  $('local').onclick=()=>{STEP=1;setup()};$('online').onclick=()=>{STEP='online';ROOM_ERR='';setup()};$('back').onclick=()=>{STEP='splash';setup()};return}
+ if(STEP==='online')return onlineEntry(el)
+ if(STEP==='lobby')return lobbyScreen(el)
+ if(STEP===1){el.innerHTML=`<div class="sbox"><h1>Players</h1>
   <div class="scount">${[2,3,4,5,6].map(n=>`<button class="${n===N?'on':''}" data-pc="${n}">${n}</button>`).join('')}</div>
   ${seats.map((s,i)=>`<div class="seat"><span class="snum">${i+1}</span><input value="${s.name}" data-nm="${i}" aria-label="Name"><div class="who2"><button class="${s.bot?'':'on'}" data-hb="${i}:0">Human</button><button class="${s.bot?'on':''}" data-hb="${i}:1">Bot</button></div></div>`).join('')}
-  <div class="go">${resumeBtn}<button class="btn primary" id="next">Choose cards</button><button class="btn" id="online">Play online</button></div></div>`
+  <div class="go row"><button class="btn ghost" id="back">Back</button><button class="btn primary" id="next">Choose cards</button></div></div>`
   el.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>{N=+b.dataset.pc;PICK=Math.min(PICK,N-1);setup()})
   el.querySelectorAll('[data-nm]').forEach(b=>b.oninput=()=>SEAT[+b.dataset.nm].name=b.value)
   el.querySelectorAll('[data-hb]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.hb.split(':');SEAT[+i].bot=v==='1';setup()})
   $('next').onclick=()=>{STEP=2;PICK=Math.max(0,seats.findIndex(s=>s.c==='random'));setup()}
-  $('online').onclick=()=>{STEP='online';ROOM_ERR='';setup()}
-  if($('resume'))$('resume').onclick=resume;return}
+  $('back').onclick=()=>{STEP='mode';setup()};return}
  const pc=SEAT[PICK].c
  el.innerHTML=`<div class="sbox wide"><h1>Choose your cards</h1>
   <div class="who3">${seats.map((s,i)=>`<button class="${i===PICK?'on':''}" data-ps="${i}"><span class="sc" style="${s.c==='random'?'':`background-image:url(/art/countries/cards/${s.c}.jpg)`}">${s.c==='random'?'?':''}</span>${nm(i)}${s.bot?'<small>bot</small>':''}</button>`).join('')}</div>
@@ -608,7 +615,7 @@ function setup(){const el=$('setup');el.classList.add('on');const seats=SEAT.sli
   <div class="cards big">${COUNTRY_IDS.map(c=>{const who=seats.findIndex(s=>s.c===c),C=COUNTRIES[c];return`<button class="pc ${who===PICK?'mine':who>=0?'taken':''} ${FLIPPED.has(c)&&c!==JUST?'flip':''}" data-cc="${c}" aria-label="${C.name}"><div class="pci">
    <div class="pf" style="background-image:url(/art/countries/cards/${c}.jpg)"></div>
    <div class="pb"><b>${PRINT_NAME[c]}</b><p>${C.perk}</p><i>“${CQUOTE[c]}”</i></div></div>${who>=0&&who!==PICK?`<em>${nm(who)}</em>`:''}</button>`}).join('')}</div>
-  <div class="go row"><button class="btn" id="back">Back</button><button class="btn ${pc==='random'?'on':''}" data-cc="random">Random for ${nm(PICK)}</button><button class="btn primary" id="start">Start game</button></div></div>`
+  <div class="go row"><button class="btn ghost" id="back">Back</button><button class="btn ${pc==='random'?'on':''}" data-cc="random">Random for ${nm(PICK)}</button><button class="btn primary" id="start">Start game</button></div></div>`
  if(JUST){const j=JUST;JUST=null;requestAnimationFrame(()=>requestAnimationFrame(()=>el.querySelector(`.pc[data-cc="${j}"]`)?.classList.toggle('flip',FLIPPED.has(j))))}
  el.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{PICK=+b.dataset.ps;setup()})
  // a card goes to the seat being picked for and turns over to show its perk; clicking it again turns it back.
@@ -630,30 +637,35 @@ STEP=1;$('setup').classList.remove('on');$('ov').classList.remove('on');$('ov').
 
 // ---------- online rooms (26 Nov): create or join by a 4-letter code, pick your card, the host adds bots and starts ----------
 const LAST_ROOM='dod-last-room'
+const MODE_I={local:'<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+ online:'<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>'}
 const hashRoom=()=>(/^#([A-Za-z]{4})$/.exec(location.hash)||[])[1]?.toUpperCase()||''
 function onlineEntry(el){const nm0=store('dod-name')||''
- el.innerHTML=`<div class="sbox"><h1>Play online</h1><div class="sub">Everyone on their own phone or computer</div>
-  <div class="seat"><span class="snum"></span><input id="onm" maxlength="16" placeholder="Your name" aria-label="Your name"></div>
+ el.innerHTML=`<div class="sbox"><h1>Play online</h1>
+  <label class="fl">Your name<input class="field" id="onm" maxlength="16" placeholder="Your name"></label>
   <div class="go"><button class="btn primary" id="mk">Create a room</button>
-  <div class="joinr"><input id="ocode" maxlength="4" placeholder="Code" aria-label="Room code" autocapitalize="characters"><button class="btn" id="jn">Join room</button></div>
-  ${ROOM_ERR?`<p class="rerr">${ROOM_ERR}</p>`:''}<button class="btn" id="back">Back</button></div></div>`
+  <div class="cph">or join a friend's room</div>
+  <div class="joinr"><input id="ocode" maxlength="4" placeholder="CODE" aria-label="Room code" autocapitalize="characters"><button class="btn" id="jn">Join</button></div>
+  ${ROOM_ERR?`<p class="rerr">${ROOM_ERR}</p>`:''}</div>
+  <div class="go row"><button class="btn ghost" id="back">Back</button></div></div>`
  $('onm').value=nm0;$('ocode').value=hashRoom()
  const name=()=>$('onm').value.trim()||'Player'
  $('mk').onclick=()=>goOnline(roomCode(),name())
  $('jn').onclick=()=>{const c=$('ocode').value.trim().toUpperCase();if(!/^[A-Z]{4}$/.test(c)){ROOM_ERR='A room code is 4 letters.';setup();return}goOnline(c,name())}
  $('ocode').onkeydown=e=>{if(e.key==='Enter')$('jn').click()}
- $('back').onclick=()=>{STEP=1;ROOM_ERR='';setup()}}
+ $('back').onclick=()=>{STEP='mode';ROOM_ERR='';setup()}}
 function lobbyScreen(el){const L=LOBBY,me=L?.players[MY],host=!!L&&MY===L.host,taken=c=>L.players.find(p=>p.country===c&&p.seat!==MY)
- el.innerHTML=`<div class="sbox wide"><h1>Room ${NET.room}</h1><div class="sub">${NET.open?'Friends open this page and enter the code':'Connecting…'} · <button class="lnk" id="copy">Copy invite link</button></div>
+ el.innerHTML=`<div class="sbox wide"><h1>Room ${NET.room}</h1><div class="sub">${NET.open?'<button class="lnk" id="copy">Copy invite link</button>':'Connecting…'}</div>
   ${L?`<div class="lob">${L.players.map(p=>`<div class="lp ${p.online?'':'off'}"><span class="sc" style="${p.country?`background-image:url(/art/countries/cards/${p.country}.jpg)`:''};box-shadow:0 0 0 2px ${PC[p.seat]}">${p.country?'':'?'}</span><b>${p.name}</b><small>${[p.seat===L.host&&'host',p.seat===MY&&'you',p.bot&&'bot',!p.online&&'offline'].filter(Boolean).join(' · ')}</small></div>`).join('')}</div>
   <div class="cph">Your card${me?.country?'':' (random if you skip)'}</div>
   <div class="cards">${COUNTRY_IDS.map(c=>`<button class="pc ${me?.country===c?'mine':taken(c)?'taken':''}" data-oc="${c}" title="${COUNTRIES[c].perk}" aria-label="${COUNTRIES[c].name}"><div class="pci"><div class="pf" style="background-image:url(/art/countries/cards/${c}.jpg)"></div></div>${taken(c)?`<em>${taken(c).name}</em>`:''}</button>`).join('')}</div>`:''}
   ${ROOM_ERR?`<p class="rerr">${ROOM_ERR}</p>`:''}
-  <div class="go row">${host?`<button class="btn" id="addb" ${L.players.length>=6?'disabled':''}>Add bot</button><button class="btn" id="rmb" ${L.players.some(p=>p.bot)?'':'disabled'}>Remove bot</button><button class="btn primary" id="ostart" ${L.players.length<2?'disabled':''}>Start game</button>`:L?'<span class="wait">Waiting for the host to start</span>':''}<button class="btn" id="leave">Leave</button></div></div>`
+  <div class="go row">${host?`<button class="btn" id="addb" ${L.players.length>=6?'disabled':''}>Add bot</button><button class="btn" id="rmb" ${L.players.some(p=>p.bot)?'':'disabled'}>Remove bot</button><button class="btn primary" id="ostart" ${L.players.length<2?'disabled':''}>Start game</button>`:L?'<span class="wait">Waiting for the host to start</span>':''}</div>
+  <div class="go row"><button class="btn ghost" id="leave">Leave room</button></div></div>`
  const on=(id,f)=>{const b=$(id);if(b)b.onclick=f}
  on('copy',()=>{navigator.clipboard?.writeText(`${location.origin}/#${NET.room}`).then(()=>{$('copy').textContent='Link copied'},()=>{})})
  on('addb',()=>NET.send({t:'bot',add:true}));on('rmb',()=>NET.send({t:'bot',add:false}));on('ostart',()=>NET.send({t:'start'}))
- on('leave',()=>{leaveRoom();setup();topbar()})
+ on('leave',()=>{leaveRoom();STEP='mode';setup();topbar()})
  el.querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{const c=b.dataset.oc;if(taken(c))return;ROOM_ERR='';SFX.play('flip');NET.send({t:'pick',country:me?.country===c?null:c})})}
 function goOnline(room,name){leaveRoom();store('dod-name',name);store(LAST_ROOM,JSON.stringify({room,name}))
  S=null;V=null;SEQ=QSEQ=0;QUEUE=[];LOBBY=null;ROOM_ERR='';MY=-1;GOD.on=false;godRender();clearTimeout(botT)
@@ -740,7 +752,7 @@ function godRender(){let el=$('godp');if(!GOD.on){el?.remove();return}
 function godToggle(){if(!GOD.on){if(NET){say('Test mode is off in online games');return}
   if(sessionStorage.getItem('dod-god')!=='1'){if(prompt('Test mode password')!=='AzM')return;sessionStorage.setItem('dod-god','1')}}
  GOD.on=!GOD.on;godRender();topbar()}
-addEventListener('keydown',e=>{if(e.key==='`'&&!e.target.closest('input,select'))godToggle()})
+addEventListener('keydown',e=>{if(e.key==='`'&&!e.target.closest?.('input,select'))godToggle()})
 
 // ---------- boot ----------
 window.dod={count:{},peek:(p,t)=>peek(p,t),get state(){return S},get busy(){return busy},gutter:()=>{const t=performance.now(),g=(GUTTER=null,gutterRoutes());return{ms:Math.round(performance.now()-t),bridges:g.bridges.map(b=>b.over.f+'>'+b.over.t+' over '+b.under.f+'>'+b.under.t),hair:g.lines.filter(l=>l.cost>=5000).map(l=>l.f+'>'+l.t),r:Object.fromEntries(g.lines.map(l=>[l.f+'>'+l.t,Math.round(l.cost)])),p:Object.fromEntries(g.lines.map(l=>[l.f+'>'+l.t,l.p.map(q=>[Math.round(q.x??q[0]),Math.round(q.y??q[1])])]))}}}   // for checking from the console
@@ -759,9 +771,9 @@ const fontApply=()=>{if(!FONTS[fontLook])fontLook='almendra';const f=FONTS[fontL
 let MENU=false
 const cycle=(o,k)=>{const a=Object.keys(o);return a[(a.indexOf(k)+1)%a.length]}
 const topbar=()=>{fontApply();$('top').innerHTML=`<button id="newg">${NET?'Leave room':'New game'}</button><button id="cty">Countries</button><button id="opt" class="${MENU?'on':''}" aria-expanded="${MENU}">Options</button>
- ${MENU?`<div class="menu" role="menu">${NET?'':`<button id="spd">Bot turns: ${fast?'fast':'normal'}</button>`}<button id="rts">Routes: ${ROUTE_NAMES[routeLook]}</button><button id="dce">Die: ${DIE[dieLook]}</button><button id="tbl">Table: ${TABLES[tableLook]}</button><button id="snd">Sound: ${SFX.muted?'off':'on'}</button><button id="fnt">Font: ${FONTS[fontLook][0]}</button>${NET?'':`<button id="god" class="${GOD.on?'on':''}">Test mode</button>`}</div>`:''}`
+ ${MENU?`<div class="menu" role="menu">${NET?'':`<button id="spd"><span>Bot turns</span><b>${fast?'fast':'normal'}</b></button>`}<button id="rts"><span>Routes</span><b>${ROUTE_NAMES[routeLook]}</b></button><button id="dce"><span>Die</span><b>${DIE[dieLook]}</b></button><button id="tbl"><span>Table</span><b>${TABLES[tableLook]}</b></button><button id="snd"><span>Sound</span><b>${SFX.muted?'off':'on'}</b></button><button id="fnt"><span>Font</span><b>${FONTS[fontLook][0]}</b></button>${NET?'':`<button id="god" class="${GOD.on?'on':''}"><span>Test mode</span><b>${GOD.on?'on':'off'}</b></button>`}</div>`:''}`
  const on=(id,f)=>{const b=$(id);if(b)b.onclick=f}
- on('newg',()=>{MENU=false;leaveRoom();setup();topbar()});on('cty',()=>{MENU=false;topbar();countriesInfo()});on('opt',()=>{MENU=!MENU;topbar()})
+ on('newg',()=>{MENU=false;leaveRoom();STEP='mode';setup();topbar()});on('cty',()=>{MENU=false;topbar();countriesInfo()});on('opt',()=>{MENU=!MENU;topbar()})
  on('god',godToggle);on('snd',()=>{SFX.toggle();topbar()})
  on('fnt',()=>{fontLook=cycle(FONTS,fontLook);store('dod-font',fontLook);fontApply();topbar();if(S)drawBoard()})
  on('tbl',()=>{tableLook=cycle(TABLES,tableLook);store('dod-table',tableLook);table();topbar()})

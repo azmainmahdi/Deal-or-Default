@@ -168,10 +168,10 @@ body[data-table=world]::before{background:linear-gradient(180deg,#0003 0%,#0007 
 /* overlays built from .fin (countries, final ledger): their buttons show at once; the delayed fade is for the card reveal only (26 Nov) */
 .ov .fin .go{opacity:1;transform:none;transition:none}
 /* top bar (26 Nov): New game, Countries, Options; the settings fold into the Options menu */
-.top .menu{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:18px;background:#0d0c0af2;box-shadow:0 0 0 1px #d8b05a55,0 24px 40px -12px #000;min-width:200px}
-.top .menu button{text-align:left}
+.top .menu{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:18px;background:#0d0c0af2;box-shadow:0 0 0 1px #d8b05a55,0 24px 40px -12px #000;min-width:200px}
+.top .menu button{display:flex;justify-content:space-between;gap:18px;border:0;background:none;border-radius:10px;padding:9px 12px;color:var(--ink);font:700 13px Nunito}.top .menu button b{font:800 13px Nunito;color:var(--gold2)}.top .menu button:hover{background:#ffffff0f}
 .top button#opt.on{background:#d8b05a33}
-.top .menu button#god.on{background:#d8b05a;color:#1a1408}
+.top .menu button#god.on b{color:#7fe0b0}
 /* online (26 Nov) */
 .joinr{display:flex;gap:8px}.joinr input{height:44px;border:0;border-radius:10px;background:#ffffff10;color:var(--ink);box-shadow:inset 0 0 0 1px #ffffff1f;flex:1;min-width:0;text-transform:uppercase;letter-spacing:.3em;text-align:center;font:400 20px Federo}
 .rerr{margin:0;text-align:center;font:800 12px Nunito;color:#ff9a8a}
@@ -180,8 +180,39 @@ body[data-table=world]::before{background:linear-gradient(180deg,#0003 0%,#0007 
 .lp{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff1f}
 .lp .sc{width:26px;height:36px;border-radius:4px;background:#ffffff14 center/cover;display:grid;place-items:center;font:400 14px Federo;color:var(--mute)}
 .lp b{font:800 13px Nunito;color:var(--ink)}.lp small{font:700 10px Nunito;color:var(--mute)}.lp.off{opacity:.5}
-.sbox .cards:not(.big){grid-template-columns:repeat(6,72px);justify-content:center;margin-bottom:14px}
+.sbox .cards:not(.big){grid-template-columns:repeat(6,minmax(0,1fr));max-width:480px;margin-inline:auto;margin-bottom:14px}
 .go .wait{align-self:center;font:700 12px Nunito;color:var(--mute)}
 .btn[disabled]{opacity:.4;pointer-events:none}
-/* the top bar sits over the setup screen too, so Options and Countries work before a game (26 Nov) */
-.top{z-index:81}
+/* start flow (26 Nov, after his review): splash -> this device or online -> players. The top bar only shows in a game */
+body:has(.setup.on) .top{visibility:hidden}
+.splash{display:flex;flex-direction:column;align-items:center;gap:clamp(24px,5vh,48px);width:min(560px,90vw)}
+.slogo{width:100%;max-height:52vh;object-fit:contain;filter:drop-shadow(0 30px 40px #000c);animation:slogo .9s cubic-bezier(.2,1.2,.4,1)}
+@keyframes slogo{from{opacity:0;transform:translateY(16px) scale(.94)}}
+.sgo{display:flex;flex-direction:column;gap:10px;width:min(320px,80vw)}
+.sgo .btn{flex:none;height:56px;font-size:18px}.sgo #resume{height:auto;min-height:52px;font-size:15px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 4px}
+.mode{display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px 14px 18px;border:0;border-radius:18px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff1f;color:var(--gold2);cursor:pointer;transition:transform .15s,background .15s,box-shadow .15s}
+.mode:hover{transform:translateY(-3px);background:#d8b05a1a;box-shadow:inset 0 0 0 1.5px #f5dc94}
+.mode b{font:800 17px Nunito;color:var(--ink)}.mode span{font:700 12px Nunito;color:var(--mute);text-align:center}
+.mode div{display:flex;flex-direction:column;align-items:center;gap:4px}
+@media (max-width:520px){.modes{grid-template-columns:1fr}.mode{flex-direction:row;gap:14px;padding:16px 18px}.mode div{align-items:flex-start}.mode span{text-align:left}}
+/* three button weights on the setup screens: primary gold, secondary dark outline, ghost text */
+.btn.ghost{background:none!important;border-color:transparent!important;box-shadow:none!important;color:#cbbf9f;flex:none;padding:0 16px}
+.btn.ghost::after{display:none}.btn.ghost:hover{color:var(--gold2);transform:none}
+.go.row .btn.ghost{flex:none}.go.row:has(.ghost) .btn.ghost:first-child{margin-right:auto}
+.go.row .btn.primary{flex:0 1 auto;min-width:180px;padding:0 24px}
+/* countries pane: a small cross in the corner (the backdrop closes it too) */
+.fin{position:relative}
+.xclose{position:absolute;top:12px;right:12px;width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:999px;background:#ffffff0d;color:var(--mute);cursor:pointer}
+.xclose:hover{background:#ffffff1a;color:var(--gold2)}
+body:has(.setup.on) .stage,body:has(.setup.on) .mark{visibility:hidden}
+.setup{background:radial-gradient(ellipse at 50% 40%,#1a140c99,#050403e6)}
+.sbox h1{margin-bottom:16px}
+.fl{display:flex;flex-direction:column;gap:6px;margin-bottom:4px;font:700 12px Nunito;color:var(--mute)}
+.field{height:44px;padding:0 14px;border:0;border-radius:12px;background:#ffffff10;color:var(--ink);font:700 15px Nunito;box-shadow:inset 0 0 0 1px #ffffff1f}
+.joinr .btn{flex:none;min-width:110px}
+@media (max-width:420px){.sbox h1{font-size:25px;letter-spacing:.06em}}
+/* phone: footer buttons wrap, the main action gets its own full-width line */
+@media (max-width:520px){.go.row{flex-wrap:wrap}#setup .go.row .btn.primary{flex:1 1 100%;order:-1;min-width:0}#setup .go.row .btn:not(.ghost):not(.primary){flex:1;min-width:0}}
+/* the top bar (and its menu) sits above the bank and the board overlays; the setup screens hide it */
+.top{z-index:70}

@@ -13,7 +13,7 @@
     "sim": "tsx scripts/simulate.ts",
     "report": "tsx scripts/report.ts",
     "rooms:dev": "vite build && wrangler dev --port 8787",
-    "deploy": "tsc && vite build --base /classic/ --outDir dist/classic --emptyOutDir && vite build --config workbench/vite.build.config.js && wrangler deploy",
+    "deploy": "rm -rf dist && tsc && vite build --base /classic/ --outDir dist/classic && vite build --config workbench/vite.build.config.js && wrangler deploy",
     "rooms:smoke": "node scripts/room-smoke.mjs",
     "rooms:bots": "tsx scripts/room-bots-smoke.ts"
   },

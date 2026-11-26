@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "game": "vite --config workbench/vite.game.config.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc",
@@ -12,7 +13,7 @@
     "sim": "tsx scripts/simulate.ts",
     "report": "tsx scripts/report.ts",
     "rooms:dev": "vite build && wrangler dev --port 8787",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "tsc && vite build --base /classic/ --outDir dist/classic --emptyOutDir && vite build --config workbench/vite.build.config.js && wrangler deploy",
     "rooms:smoke": "node scripts/room-smoke.mjs"
   },
   "dependencies": {

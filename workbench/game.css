@@ -1,0 +1,167 @@
+/* Playable game extras on top of kit.css: setup screen, log line, floaters, final ledger. */
+.top{display:flex;justify-content:center;gap:8px;padding:12px 16px 0;position:relative;z-index:3}
+.top button{font:800 12px Nunito;padding:6px 12px;border-radius:999px;border:1px solid #d8b05a44;background:#0d0c0aaa;color:var(--gold2);cursor:pointer}
+.log{min-height:20px;padding:0 6px;font:700 12px Nunito;color:var(--mute);text-align:center}
+.row .bot{margin-left:6px;padding:1px 6px;border-radius:999px;background:#ffffff14;color:var(--mute);font:800 9px Nunito;letter-spacing:.12em;text-transform:uppercase;vertical-align:middle}
+.floater{position:fixed;z-index:60;pointer-events:none;font:900 16px Nunito;text-shadow:0 2px 6px #000}
+.floater.up{color:var(--green)}.floater.dn{color:var(--red)}
+/* setup */
+.setup{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:radial-gradient(ellipse at 50% 40%,#1a140cdd,#050403f2)}
+.setup.on{display:grid}
+.sbox{width:min(560px,94vw);padding:22px 22px 18px;border-radius:24px;background:linear-gradient(165deg,#2b261d,#0d0c0a 72%);box-shadow:0 0 0 1px #d8b05a88,0 40px 80px -16px #000}
+.sbox h1{margin:0 0 4px;text-align:center;font:400 30px Federo;letter-spacing:.2em;color:var(--gold2)}.sbox .sub{text-align:center;color:var(--mute);font:700 13px Nunito;margin-bottom:16px}
+.scount{display:flex;justify-content:center;gap:6px;margin-bottom:14px}.scount button{width:42px;height:38px;border-radius:12px;border:0;background:#ffffff0c;box-shadow:inset 0 0 0 1px #ffffff1f;color:var(--ink);font:400 18px Federo;cursor:pointer}.scount button.on{box-shadow:inset 0 0 0 1.5px var(--gold2);color:var(--gold2)}
+.seat{display:grid;grid-template-columns:40px 1fr 128px 110px;gap:8px;align-items:center;margin-bottom:8px}
+.seat .mini{width:36px;height:36px}
+.seat input,.seat select{height:36px;padding:0 10px;border-radius:10px;border:0;background:#ffffff10;color:var(--ink);font:700 14px Nunito;box-shadow:inset 0 0 0 1px #ffffff1f;min-width:0}
+.seat select option{background:#1c1a15}
+.who2{display:flex;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff1f}.who2 button{flex:1;height:36px;border:0;background:none;color:var(--mute);font:800 12px Nunito;cursor:pointer}.who2 button.on{background:#d8b05a2a;color:var(--gold2)}
+.sbox .go{margin-top:14px}
+/* final ledger */
+.fin{width:min(520px,94%);padding:18px;border-radius:24px;background:linear-gradient(165deg,#2b261d,#0d0c0a 72%);box-shadow:0 0 0 1px #d8b05a88,0 40px 80px -16px #000}
+.fin h2{margin:0 0 12px;text-align:center;font:400 24px Federo;letter-spacing:.2em;color:var(--gold2)}
+.fin .fr{display:grid;grid-template-columns:24px 36px 1fr auto;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #ffffff10}
+.fin .fr b{font:400 18px Federo;color:var(--gold2)}.fin .fr small{display:block;font:700 11px Nunito;color:var(--mute)}.fin .fr .nw{font:400 22px Federo;color:var(--ink)}
+.fin .fr.win .nw{color:var(--gold2)}
+
+/* the approved table (step 1): the board rests on the wood, seen at a slight angle, with its own thickness and a soft
+   shadow; the faint board art and logo sit under the tiles. Overlays (#ov) stay flat above it. */
+.board{border:0;background:none;box-shadow:none;overflow:visible;border-radius:0;perspective:1800px}
+.board::before,.board::after{display:none}
+/* frame (21 Oct, his ask): black with thin gold lines, Art Deco: three gold hairlines (outer edge, middle, inner edge)
+   and stepped corner brackets; the black slab edge and shadow sit it on the table */
+.tilt{position:absolute;inset:0;border-radius:6px;transform:rotateX(14deg);transform-origin:50% 60%;background:#101830;border:16px solid #0c0b09;
+ outline:1px solid #c9a24acc;outline-offset:-9px;
+ box-shadow:0 0 0 1px #c9a24a,inset 0 0 0 1px #c9a24aaa,0 3px 0 #050403,0 7px 0 #000,0 18px 30px -8px #000c,0 40px 70px -24px #000a}
+.tilt .fc{position:absolute;width:30px;height:30px;z-index:2;pointer-events:none;border-color:#e2b552;border-style:solid;border-width:0}
+.tilt .fc::after{content:"";position:absolute;width:6px;height:6px;background:#e2b552;transform:rotate(45deg)}
+.tilt .fc.tl{left:-12px;top:-12px;border-left-width:1.5px;border-top-width:1.5px}.tilt .fc.tl::after{left:5px;top:5px}
+.tilt .fc.tr{right:-12px;top:-12px;border-right-width:1.5px;border-top-width:1.5px}.tilt .fc.tr::after{right:5px;top:5px}
+.tilt .fc.bl{left:-12px;bottom:-12px;border-left-width:1.5px;border-bottom-width:1.5px}.tilt .fc.bl::after{left:5px;bottom:5px}
+.tilt .fc.br{right:-12px;bottom:-12px;border-right-width:1.5px;border-bottom-width:1.5px}.tilt .fc.br::after{right:5px;bottom:5px}
+.tilt::before{content:"";position:absolute;inset:0;border-radius:6px;background:url(board-bg.jpg) center/cover;opacity:.12;filter:saturate(.5)}
+.tilt::after{content:"";position:absolute;left:50%;top:50%;width:42%;aspect-ratio:1.47;transform:translate(-50%,-50%);background:url(logo.png) center/contain no-repeat;opacity:.08}
+.tilt svg{position:absolute;inset:0;width:100%;height:100%;z-index:1;overflow:visible}
+@media (max-width:600px){.tilt{transform:rotateX(8deg);border-width:4px}}
+/* board contents (step 2): dashed outlines where ladders and snakes land, the climb on each ladder square, Start */
+.dest{fill:none;stroke-width:1.6;stroke-dasharray:5 5;opacity:.75}.dest.snake{stroke:#ff5a6a}.dest.ladder{stroke:#2ee6b0}
+.delta{fill:#fff;font:400 15px Federo;paint-order:stroke;stroke:#0008;stroke-width:3px}
+.startl{fill:#f5dc94;font:400 21px Federo;letter-spacing:.06em}
+.chev{animation:chev 1.6s ease-in-out infinite}@keyframes chev{0%,100%{opacity:.45}50%{opacity:1}}
+/* route shadows (routes.html's .shadow): a soft blurred line, never a filled shape */
+#b .shadow{fill:none;stroke:#000;stroke-width:5;opacity:.35;filter:blur(3px)}
+@media (prefers-reduced-motion:reduce){.chev{animation:none}}
+/* gold tokens (step 3): the figure stands on its square; whose turn it is lifts and bobs over a glow in their colour */
+/* 21 Oct: tokens stand on the board (he saw them hover): no lift; whose turn it is gets a ring of light on the board */
+.tok .halo{opacity:0;transition:opacity .3s}.tok.on .halo{opacity:.45;animation:halo 2.2s ease-in-out infinite}@keyframes halo{50%{opacity:.22}}
+/* money column: coins, then debt and waivers on one line */
+.money .msub{display:flex;align-items:center;gap:6px;justify-content:flex-end}.money .msub .debtA{display:inline-flex;align-items:center;gap:3px;font:400 14px Federo;color:#d6dbe2}
+/* tables: his wood photo (default) and the three from the earlier game */
+body[data-table=felt]{background:radial-gradient(ellipse at 45% 45%,#1f6b45 0%,#124a30 55%,#07261a 100%) fixed}
+body[data-table=marble]{background:linear-gradient(115deg,#0000 40%,#b8955a1c 41%,#0000 42%),linear-gradient(35deg,#0000 60%,#ffffff0a 61%,#0000 63%),radial-gradient(ellipse at 50% 40%,#23262b,#0d0e10 80%) fixed}
+body[data-table=world]{background:#0c0d0f url(/world-bg.jpg) center/cover fixed}
+body[data-table=world]::before{background:linear-gradient(180deg,#0003 0%,#0007 60%,#000c 100%)}
+/* 22 Oct: each player's colour is the outline of their portrait (the gem dot is gone) */
+.row .por{box-shadow:0 0 0 2.5px var(--pcol),0 0 0 4.5px var(--bg)}
+[data-active=A] .row.on .por{box-shadow:0 0 0 3px var(--pcol),0 0 0 5px var(--bg),0 0 18px 2px color-mix(in srgb,var(--tc) 45%,transparent)}
+/* waivers: an icon and a number, like debt (no pill) */
+.money .msub .tw{background:none;padding:0;font:400 14px Federo}.money .msub .tw svg{width:17px}
+/* a loan getting dearer draws the eye: amber when the cheap repay ends this turn, red once late */
+.money .debtA.due{color:#ffb27a;animation:owe 1.6s ease-in-out infinite}.money .debtA.late{color:var(--red);animation:owe 1s ease-in-out infinite}
+@keyframes owe{50%{filter:drop-shadow(0 0 6px currentColor);transform:scale(1.12)}}
+/* debt in the last 20 squares: those squares hold a slow red pulse */
+.crunch rect{fill:#ff2a3d;opacity:.12;animation:crunch 2.2s ease-in-out infinite}@keyframes crunch{50%{opacity:.26}}
+.ctys .fr{grid-template-columns:0 36px 1fr 0}
+.seat .sperk{grid-column:2/-1;margin-top:-4px;font:700 11.5px Nunito;color:var(--mute)}
+/* 22 Oct: the bank sits in a card like the roll card and the players panel */
+.bankm{padding:10px 9px 8px;border-radius:24px;background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 0 0 1px #d8b05a55,0 30px 60px -20px #000,inset 0 1px 0 #ffffff12}
+.bankm::before{content:"";position:absolute;inset:6px;border-radius:18px;border:1px solid #d8b05a26;pointer-events:none}
+.bankm .bt{width:96px;height:87px;filter:drop-shadow(0 8px 8px #000a)}
+/* our logo, small and quiet in the screen's bottom-right corner */
+.mark{position:fixed;right:18px;bottom:14px;width:74px;opacity:.28;pointer-events:none;z-index:1;filter:grayscale(.3)}
+/* 22 Oct: less lit, more like a real board (then eased back: he found the first pass too dark). Darker gutters, each tile sits in its own contact shadow, the icons lose
+   their glare, and the frame shades the board's edges (one dim key light from the top left) */
+.tilt{background:#0e1529}
+.tilt .tile{fill:#16203c;stroke:#c9a24a80;filter:drop-shadow(0 2px 2px #0008)}
+.tilt .art{filter:brightness(.95) saturate(.95) drop-shadow(0 2px 2px #0008)}
+.tilt .ao{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:2px;
+ background:radial-gradient(ellipse 95% 85% at 40% 32%,#ffffff0c 0%,#0000 55%,#0003 88%,#0006 100%);
+ box-shadow:inset 0 0 18px 3px #0009,inset 0 8px 12px -6px #000a}
+.tilt.printed{background:#0e1529 url(/art/board.jpg) 0 0/100% 100% no-repeat}.tilt.printed::before,.tilt.printed::after{display:none}
+#setup .go{display:flex;flex-direction:column;gap:8px}#resume{display:flex;flex-direction:column;align-items:center;gap:2px}#resume small{font:700 11px Nunito;opacity:.7}
+#godp{position:fixed;right:16px;bottom:16px;z-index:60;width:min(440px,calc(100vw - 32px));max-height:70vh;overflow:auto;padding:12px 14px;border-radius:14px;background:#0d0c0af2;box-shadow:0 0 0 1px #d8b05a55,0 18px 40px #000c;color:var(--ink);font:700 12px Nunito}
+#godp .gh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#godp .gh b{font:400 18px Federo;color:var(--gold2);letter-spacing:.08em}
+#godp label,#godp .gr{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px 0;border-top:1px solid #ffffff10}
+#godp button{font:800 11px Nunito;padding:4px 9px;border-radius:999px;border:1px solid #d8b05a44;background:#ffffff08;color:var(--gold2);cursor:pointer}#godp button.on{background:#d8b05a;color:#1a1408}
+#godp input,#godp select{font:700 12px Nunito;background:#ffffff10;color:var(--ink);border:1px solid #ffffff22;border-radius:8px;padding:3px 6px}#godp input{width:56px}#godp label b{min-width:22px;color:#fff}
+.top button#god.on{background:#d8b05a;color:#1a1408}
+#godp{left:16px;right:auto}#godp .gh{cursor:grab;user-select:none}#godp .gk{margin-left:auto;margin-right:8px;font:700 10px Nunito;color:var(--mute)}
+/* live board */
+.tilt.live{background:#0e1529 url(/art/board-bg.jpg) 0 0/100% 100% no-repeat}.tilt.live::before,.tilt.live::after{display:none}
+#lb .lnum{font:700 21px var(--disp,Federo),Federo}#lb .ldelta{font:700 13px Nunito;fill:#10180f}#lb .lshield{font:800 12px Nunito}
+.lr-edge{fill:none;stroke:#0b141a;stroke-width:10.5;stroke-linejoin:round;stroke-linecap:round}
+.lr-core{fill:none;stroke-width:7;stroke-linejoin:round;stroke-linecap:round}
+.lr-flow{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:3 17;opacity:.75;animation:lflow 1.4s linear infinite}
+.lroute.ladder .lr-flow{stroke:#c9ffe6}.lroute.snake .lr-flow{stroke:#ffd0d6;animation-duration:2.2s;animation-direction:normal}
+@keyframes lflow{to{stroke-dashoffset:-20}}
+.lroute.hot .lr-core{stroke-width:9}.lroute.hot .lr-flow{opacity:1;stroke-width:3;stroke-dasharray:6 14}.lroute.hot .lhead{animation:lhead .8s ease-in-out infinite;transform-box:fill-box}
+@keyframes lhead{50%{opacity:.55}}
+.lr-pulse{fill:none;stroke-width:9;stroke-linecap:round}.lr-pulse.ladder{stroke:#d9fff0}.lr-pulse.snake{stroke:#ffe1e5}
+@media (prefers-reduced-motion:reduce){.lr-flow,.lroute.hot .lhead{animation:none}}
+.sbox{width:min(600px,94vw)}.seat{grid-template-columns:40px 1fr 128px}
+.scard{width:40px;height:56px;padding:0;border-radius:6px;border:0;background:#ffffff10 center/cover;box-shadow:inset 0 0 0 1px #ffffff26;color:var(--mute);font:400 20px Federo;cursor:pointer}
+.seat.pick .scard{box-shadow:0 0 0 2px #f5dc94,0 0 14px #f5dc9455}
+.cpick{margin-top:6px;padding-top:12px;border-top:1px solid #ffffff12}.cph{text-align:center;font:700 12px Nunito;color:var(--mute);margin-bottom:10px}.cph b{color:var(--gold2)}
+.cards{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.pc{position:relative;aspect-ratio:180/252;padding:0;border:0;border-radius:7px;background:#ffffff0c center/cover;box-shadow:0 6px 14px -6px #000,inset 0 0 0 1px #d8b05a44;cursor:pointer;transition:transform .15s,filter .15s}
+.pc:hover{transform:translateY(-4px)}.pc.taken{filter:grayscale(.9) brightness(.5)}.pc.mine{box-shadow:0 0 0 2px #f5dc94,0 0 16px #f5dc9466}
+.pc span{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);padding:1px 7px;border-radius:999px;background:#f5dc94;color:#1a1408;font:900 10px Nunito;white-space:nowrap;filter:none}
+.pc.rnd{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gold2);font:400 26px Federo}.pc.rnd small{font:800 10px Nunito;color:var(--mute)}
+.cperk{min-height:34px;margin-top:12px;text-align:center;font:700 12px Nunito;color:#d9cfb8}.cperk b{color:var(--gold2)}
+@media (max-width:520px){.cards{grid-template-columns:repeat(4,1fr)}}
+#setup .go .btn{min-height:44px;flex:none}
+/* setup, two screens (31 Oct) */
+.seat{grid-template-columns:28px 1fr 128px}.snum{font:400 18px Federo;color:var(--mute);text-align:center}
+.sbox.wide{width:auto;max-width:96vw}
+.who3{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:4px 0 14px}
+.who3 button{display:flex;align-items:center;gap:7px;padding:4px 12px 4px 4px;border-radius:999px;border:0;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff1f;color:var(--ink);font:800 13px Nunito;cursor:pointer}
+.who3 button.on{background:#d8b05a26;box-shadow:inset 0 0 0 1.5px #f5dc94}.who3 small{font:700 10px Nunito;color:var(--mute)}
+.who3 .sc{width:24px;height:34px;border-radius:4px;background:#ffffff14 center/cover;display:grid;place-items:center;font:400 14px Federo;color:var(--mute)}
+.cards.big{grid-template-columns:repeat(6,min(14.5vw,calc((100vh - 290px)*.714),280px));gap:clamp(10px,1.4vw,20px);justify-content:center;perspective:1600px}
+/* a setup card turns over on click to its printed back with the perk (1 Nov) */
+.cards.big .pc{background:none;box-shadow:none;container-type:inline-size;overflow:visible}
+.cards.big .pc:hover{transform:translateY(-6px)}
+.pci{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.4,.1,.2,1)}.pc.flip .pci{transform:rotateY(180deg)}
+.pf,.pb{position:absolute;inset:0;border-radius:7px;backface-visibility:hidden;background:center/cover;box-shadow:0 10px 22px -8px #000,inset 0 0 0 1px #d8b05a44}
+.pb{transform:rotateY(180deg);background:#0e131a url(/art/backs/char.jpg) center/100% 100%;display:flex;flex-direction:column;align-items:center;padding:17cqw 14cqw 0;text-align:center}
+.pb b{font:700 9.5cqw/1.1 var(--disp,Almendra),Almendra;color:#d9b35a}
+.pb p{margin:12cqw 0 0;min-height:34cqw;display:flex;align-items:center;font:700 8.2cqw/1.2 var(--disp,Almendra),Almendra;color:#f6c96b}
+.pb i{margin-top:10cqw;font:300 italic 6cqw/1.35 'Josefin Sans';letter-spacing:.03em;color:#c9ccd0}
+.cards.big .pc.taken{filter:none}.pc.taken .pf,.pc.taken .pb{filter:grayscale(.85) brightness(.5)}
+.pc.mine .pf,.pc.mine .pb{box-shadow:0 0 0 2px #f5dc94,0 10px 22px -8px #000}
+
+.pc em{position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) translateZ(1px);padding:2px 9px;border-radius:999px;background:#f5dc94;color:#1a1408;font:900 11px Nunito;font-style:normal;white-space:nowrap}
+.cperk{font-size:14px;min-height:40px;margin-top:16px}.cperk b{display:block;font:700 20px var(--disp,Federo),Federo;color:var(--gold2)}
+.go.row{flex-direction:row!important;justify-content:center}.go.row .btn{flex:1}.go.row .btn.on{box-shadow:inset 0 0 0 1.5px #f5dc94}
+@media (max-width:640px){.cards.big{grid-template-columns:repeat(3,28vw)}}
+
+/* move log (1 Nov): newest on top, older lines fade */
+.moves{display:flex;flex-direction:column;gap:4px;margin-top:-6px}
+.mv{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:999px;background:#ffffff08;font:700 12.5px Nunito;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv .av{flex:none;width:22px;height:22px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 2px var(--pcol)}
+.mv .mi{flex:none;display:grid;place-items:center;width:20px}.mv .mi img,.mv .mi svg{display:block}
+.mv.new{animation:mvin .35s ease-out}@keyframes mvin{from{transform:translateY(-8px);opacity:0}}
+/* character cards in play (1 Nov): dealt at the start, a peek when a perk works, the winner's card on the ledger */
+.dealc{position:fixed;z-index:60;pointer-events:none;perspective:900px}
+.dealc .di{position:absolute;inset:0;transform-style:preserve-3d}
+.dealc .dbk,.dealc .dfr{position:absolute;inset:0;border-radius:8px;backface-visibility:hidden;background:#0e131a url(/art/backs/char.jpg) center/cover;box-shadow:0 18px 30px -10px #000}
+.dealc .dfr{transform:rotateY(180deg);background-size:cover;background-position:center}
+.peek{position:fixed;z-index:45;width:118px;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.peek .pk{width:100px;aspect-ratio:180/252;border-radius:7px;background:center/cover;box-shadow:0 14px 26px -8px #000,0 0 0 1px #d8b05a66}
+.peek span{max-width:150px;padding:3px 10px;border-radius:999px;background:#14110ce6;box-shadow:inset 0 0 0 1px #d8b05a66;font:800 11.5px Nunito;color:var(--gold2);text-align:center}
+.fin .wcard{width:120px;aspect-ratio:180/252;margin:2px auto 6px;border-radius:8px;background:center/cover;box-shadow:0 20px 34px -12px #000,0 0 0 1px #d8b05a77;animation:wcin .9s cubic-bezier(.3,.7,.3,1)}
+@keyframes wcin{from{transform:perspective(700px) rotateY(-180deg) scale(.7);opacity:0}}
+.fin .wname{text-align:center;font:700 18px var(--disp,Federo),Federo;color:var(--gold2);margin-bottom:10px}
+/* live board (1 Nov): the painting a touch darker, and no dark vignette round the edge; one soft light from the top left */
+.tilt.live{background:linear-gradient(#060a1252,#060a1252),#0e1529 url(/art/board-bg.jpg) 0 0/100% 100% no-repeat}
+.tilt.live .ao{background:linear-gradient(135deg,#ffffff0c,transparent 45%,#0000001a);box-shadow:inset 0 0 0 1px #0006}

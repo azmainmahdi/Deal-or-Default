@@ -29,7 +29,9 @@ export function eventTextHtml(id: CardId): string {
 }
 
 /** Cards whose painting is in public/art/events/<id>.jpg (title baked into the art). */
-const EVENT_ART = new Set<CardId>(['corruptionProbe', 'cyberAttack'])
+const EVENT_ART = new Set<CardId>([
+  'commodityBoom', 'lendLease', 'debtRestructure', 'fastTrack', 'tariffTruce', 'exportSubsidy', 'productivitySurge', 'surplusBudget', 'strategicReserve', 'alliedAid', 'warBond', 'tradeCorridor', 'bankingPanic', 'cyberAttack', 'embargo', 'strike', 'sovereignDefault', 'portBlockade', 'insuranceFraud', 'corruptionProbe', 'debtSpiral', 'sanctionThreat', 'commodityCrash', 'capitalControls',
+])
 
 export function eventArtHtml(id: CardId): string {
   const c = CARDS[id]

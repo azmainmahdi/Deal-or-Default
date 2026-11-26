@@ -1,6 +1,7 @@
 // The scoreboard. Built around money: coins now, and FDI projects paying in soon.
 // Debt and Net Worth only show when they differ from plain coins (debt is rare).
 import { COUNTRIES } from '../rules/countries'
+import { debtCost } from '../rules/ops'
 import type { GameState } from '../rules/types'
 import { PAWN_COLORS } from './Board'
 import { Flag } from './Flag'
@@ -21,7 +22,7 @@ export function Ledger({ s, shown, active, you }: { s: GameState; shown: Shown[]
         const projects = [...pl.projects].sort((a, b) => a.ttm - b.ttm)
         const nextTurn = projects.filter((x) => x.ttm <= 1).reduce((a, x) => a + x.profit, 0)
         const pipeline = projects.reduce((a, x) => a + x.profit, 0)
-        const nw = v.capital - s.config.debtWeight * v.debt
+        const nw = v.capital - debtCost(s, p)
         return (
           <article key={p} role="row" data-ledger={p} className={`score-row ${p === active ? 'active' : ''}`} style={{ '--pc': PAWN_COLORS[p] } as React.CSSProperties}>
             <div className="sr-who">

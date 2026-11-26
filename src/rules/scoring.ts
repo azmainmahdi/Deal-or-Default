@@ -1,7 +1,7 @@
-import { netWorth } from './ops'
+import { debtCost, netWorth } from './ops'
 import type { FinalLedger, GameState, Seat } from './types'
 
-/** Net Worth = Capital - 1.5 × Debt. Pending projects count 0. Ties: furthest pawn, then shared. */
+/** Net Worth = Capital - open loans (each + the late rate). Pending projects count 0. Ties: furthest pawn, then shared. */
 export function finalLedger(s: GameState, finisher: Seat, bonus: number): FinalLedger {
   const rows = s.players.map((pl, p) => ({
     player: p,
@@ -9,7 +9,7 @@ export function finalLedger(s: GameState, finisher: Seat, bonus: number): FinalL
     bonus: p === finisher ? bonus : 0,
     matured: pl.matured,
     debt: pl.debt,
-    debtCost: s.config.debtWeight * pl.debt,
+    debtCost: debtCost(s, p),
     pendingLost: pl.projects.reduce((a, x) => a + x.profit, 0),
     netWorth: netWorth(s, p),
     square: pl.square,

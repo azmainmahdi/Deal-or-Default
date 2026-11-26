@@ -1,0 +1,113 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 4: Die</title>
+<style>
+/* Step 4: the die in three.js. Four styles (the game setting), thrown onto the wood together. */
+html,body{margin:0;height:100%;background:#120a05;overflow:hidden;font:14px system-ui;color:#efe6d2}
+canvas{display:block}
+.ui{position:fixed;bottom:22px;left:0;right:0;display:flex;justify-content:center;gap:10px;z-index:2}
+.ui button{font:700 16px Georgia,serif;letter-spacing:.04em;padding:12px 30px;border-radius:999px;border:1px solid #e3bd6a;background:linear-gradient(#2a2f3d,#0b0e15);color:#f5d67b;cursor:pointer;box-shadow:0 4px 14px #0008}
+.ui button:disabled{opacity:.5}
+.lab{position:fixed;transform:translate(-50%,0);text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
+.lab b{display:block;font:700 14px Georgia,serif;color:#f5d67b}.lab span{font:700 22px Georgia,serif;color:#fff;display:block;min-height:26px}
+.hint{position:fixed;top:14px;left:0;right:0;text-align:center;font-size:12px;color:#bdb39f;text-shadow:0 1px 3px #000}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head><body>
+<div class="hint">Three die styles, one will be a setting. Press Roll (or Space). Drag to orbit.</div>
+<div id="labs"></div>
+<div class="ui"><button id="roll">Roll</button></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js'
+import {RoomEnvironment} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'
+import {RoundedBoxGeometry} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/RoundedBoxGeometry.js'
+
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2))
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap
+document.body.appendChild(renderer.domElement)
+const scene=new THREE.Scene();scene.background=new THREE.Color('#120a05');scene.fog=new THREE.Fog('#120a05',10,20)
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),.04).texture
+const camera=new THREE.PerspectiveCamera(32,1,.1,100),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=1.4
+const wood=new THREE.TextureLoader().load('wood.jpg');wood.colorSpace=THREE.SRGBColorSpace
+const table=new THREE.Mesh(new THREE.PlaneGeometry(22,13),new THREE.MeshStandardMaterial({map:wood,roughness:.85}));table.rotation.x=-Math.PI/2;table.receiveShadow=true;scene.add(table)
+const key=new THREE.DirectionalLight('#fff1dc',2.3);key.position.set(-4,7,5);key.castShadow=true;key.shadow.mapSize.set(2048,2048)
+Object.assign(key.shadow.camera,{left:-7,right:7,top:5,bottom:-5});key.shadow.radius=5;scene.add(key)
+scene.add(new THREE.HemisphereLight('#ffe9c8','#2a1608',.5))
+
+// ---- faces drawn on canvases: colour, bump (pips and the deco border are recessed), metalness ----
+// Face order follows BoxGeometry: +x,-x,+y,-y,+z,-z. Opposite faces add to 7.
+const FACE_VALUE=[2,5,1,6,3,4]
+const A=.28,Z=.72
+const PIPS={1:[[.5,.5]],2:[[A,A],[Z,Z]],3:[[A,A],[.5,.5],[Z,Z]],4:[[A,A],[Z,A],[A,Z],[Z,Z]],
+ 5:[[A,A],[Z,A],[.5,.5],[A,Z],[Z,Z]],6:[[A,.26],[Z,.26],[A,.5],[Z,.5],[A,.74],[Z,.74]]}
+const STYLES={
+ ivory:{label:'Ivory',face:'#efe4cb',pip:(n,c)=>c&&n%2?'#b8243a':'#1b2440',edge:'#c9962f',shape:'diamond',r:.092,border:'#c9962f',faceMetal:0,pipMetal:0,rough:.38,clear:.6},
+ lacquer:{label:'Black lacquer',face:'#0f1117',pip:()=>'#ffe3a0',shape:'round',r:.1,border:'#e7c06a',faceMetal:0,pipMetal:.35,shade:.22,rough:.12,clear:1},
+ brass:{label:'Brass',face:'#e9b85a',pip:()=>'#1b2440',shape:'round',r:.1,border:'#fff0b8',faceMetal:1,pipMetal:0,rough:.28,clear:0},
+}
+// Art Deco frame: a rectangle with stepped corners, inset from the edge
+function decoFrame(x,S,i){const a=S*i,w=S*(1-2*i);x.beginPath();x.roundRect(a,a,w,w,S*.16);x.stroke()}
+function pipPath(x,S,cx,cy,r,shape){x.beginPath();if(shape==='diamond'){x.moveTo(cx,cy-r*1.25);x.lineTo(cx+r*1.25,cy);x.lineTo(cx,cy+r*1.25);x.lineTo(cx-r*1.25,cy);x.closePath()}else x.arc(cx,cy,r,0,7)}
+function faceMaps(st,n){const S=512,mk=()=>{const c=document.createElement('canvas');c.width=c.height=S;return c},col=mk(),bump=mk(),met=mk()
+ const C=col.getContext('2d'),B=bump.getContext('2d'),M=met.getContext('2d')
+ C.fillStyle=st.face;C.fillRect(0,0,S,S);B.fillStyle='#fff';B.fillRect(0,0,S,S);M.fillStyle=st.faceMetal?'#fff':'#000';M.fillRect(0,0,S,S)
+ if(st.border){[C,B,M].forEach((x,k)=>{x.lineWidth=S*.012;x.strokeStyle=k===0?st.border:k===1?'#777':(st.border==='#fff0b8'?'#fff':st.faceMetal?'#fff':'#fff');decoFrame(x,S,.11)})}
+ PIPS[n].forEach(([u,v],k)=>{const cx=u*S,cy=v*S,r=st.r*S*(n===1?1.4:1),centre=u===.5&&v===.5
+  pipPath(C,S,cx,cy,r,st.shape);C.fillStyle=st.pip(n,centre);C.fill()
+  C.save();pipPath(C,S,cx,cy,r,st.shape);C.clip();const sh=C.createRadialGradient(cx+r*.25,cy+r*.35,r*.1,cx,cy,r*1.15)
+  sh.addColorStop(0,'rgba(255,255,255,.10)');sh.addColorStop(.6,'rgba(0,0,0,0)');sh.addColorStop(1,`rgba(0,0,0,${st.shade??.55})`);C.fillStyle=sh;C.fillRect(cx-r*1.5,cy-r*1.5,r*3,r*3);C.restore()
+  if(st.edge){C.lineWidth=S*.012;C.strokeStyle=st.edge;C.stroke()}
+  const g=B.createRadialGradient(cx,cy,0,cx,cy,r);g.addColorStop(0,'#000');g.addColorStop(.55,'#000');g.addColorStop(.9,'#555');g.addColorStop(1,'#fff');pipPath(B,S,cx,cy,r,st.shape);B.fillStyle=g;B.fill()
+  pipPath(M,S,cx,cy,r,st.shape);{const q=Math.round((st.pipMetal||0)*255);M.fillStyle=`rgb(${q},${q},${q})`};M.fill()})
+ const t=c=>{const x=new THREE.CanvasTexture(c);x.anisotropy=8;return x},map=t(col);map.colorSpace=THREE.SRGBColorSpace
+ return new THREE.MeshPhysicalMaterial({map,bumpMap:t(bump),bumpScale:7,metalness:1,metalnessMap:t(met),roughness:st.rough,clearcoat:st.clear,clearcoatRoughness:.08})}
+
+const SIZE=.62
+// Die body: how real dice are made, a cube trimmed by a sphere. The sphere cuts each corner deep,
+// so every face reads as a very rounded square, while the edges between faces stay crisp
+// (a p-norm of 10 rounds them only slightly). A soft minimum blends the two so there is no seam.
+function dieGeometry(S){const g=new THREE.BoxGeometry(S,S,S,48,48,48),p=g.attributes.position,h=S/2,Rs=h*1.56,k=h*.025,v=new THREE.Vector3()
+ for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);const n=10;v.multiplyScalar(h/Math.pow(Math.abs(v.x)**n+Math.abs(v.y)**n+Math.abs(v.z)**n,1/n))
+  const r=v.length(),soft=-k*Math.log(Math.exp(-r/k)+Math.exp(-Rs/k));v.multiplyScalar(soft/r);p.setXYZ(i,v.x,v.y,v.z)}
+ g.computeVertexNormals();return g}
+function makeDie(key){const st=STYLES[key],mesh=new THREE.Mesh(dieGeometry(SIZE),FACE_VALUE.map(n=>faceMaps(st,n)));mesh.castShadow=mesh.receiveShadow=true;return mesh}
+
+// orientation that puts face value n on top, with a random spin about the vertical
+const UPS={1:[0,0,0],6:[Math.PI,0,0],2:[0,0,Math.PI/2],5:[0,0,-Math.PI/2],3:[-Math.PI/2,0,0],4:[Math.PI/2,0,0]}
+const restQ=n=>new THREE.Quaternion().setFromEuler(new THREE.Euler(...UPS[n])).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),(Math.random()-.5)*1.2))
+
+const dice=Object.keys(STYLES).map((k,i)=>{const d=makeDie(k),home=new THREE.Vector3((i-1)*1.8,SIZE/2,0);d.position.copy(home);d.quaternion.copy(restQ(6-i));scene.add(d);return{k,d,home,anim:null,val:null}})
+document.getElementById('labs').innerHTML=dice.map((d,i)=>`<div class="lab" id="lb${i}"><span id="v${i}"></span><b>${STYLES[d.k].label}</b></div>`).join('')
+
+// ---- sound: soft low wooden knocks, one per bounce, quieter each time ----
+let ac=null
+function knock(at,vol,freq){try{ac??=new AudioContext();if(ac.state==='suspended')ac.resume()}catch{return}
+ const t=ac.currentTime+at,o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(freq*1.6,t);o.frequency.exponentialRampToValueAtTime(freq,t+.05)
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+.09);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+.12)
+ const len=Math.ceil(ac.sampleRate*.03),buf=ac.createBuffer(1,len,ac.sampleRate),dd=buf.getChannelData(0);for(let i=0;i<len;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)
+ const s=ac.createBufferSource(),f=ac.createBiquadFilter(),ng=ac.createGain();s.buffer=buf;f.type='lowpass';f.frequency.value=1400;ng.gain.value=vol*.6;s.connect(f).connect(ng).connect(ac.destination);s.start(t)}
+
+// ---- the throw: in from the near side, three shrinking bounces, tumbling, settling on the result ----
+const BOUNCES=[0,.34,.58,.74,.84],DUR=1.25
+function bounceY(t){for(let i=0;i<BOUNCES.length-1;i++){const a=BOUNCES[i],b=BOUNCES[i+1];if(t<b){const k=(t-a)/(b-a),h=.9*Math.pow(.42,i);return Math.sin(Math.PI*k)*h}}return 0}
+function roll(){if(dice.some(d=>d.anim))return;document.getElementById('roll').disabled=true
+ dice.forEach((d,i)=>{const n=1+Math.floor(Math.random()*6),delay=i*.07
+  const axis=new THREE.Vector3(Math.random()-.5,.3*(Math.random()-.5),1).normalize(),turns=2+Math.random()*1.5
+  const from=d.home.clone().add(new THREE.Vector3((Math.random()-.5)*.6,0,2.6)),to=d.home.clone().add(new THREE.Vector3((Math.random()-.5)*.3,0,(Math.random()-.5)*.3))
+  d.anim={t0:performance.now()/1000+delay,n,axis,turns,from,to,end:restQ(n)};d.val=null;document.getElementById('v'+i).textContent=''
+  BOUNCES.slice(1).forEach((b,j)=>knock(delay+b*DUR,.26*Math.pow(.62,j)*(i?.55:1),140+Math.random()*50))})}
+document.getElementById('roll').onclick=roll;addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();roll()}})
+
+function step(){const now=performance.now()/1000
+ dice.forEach((d,i)=>{const a=d.anim;if(!a)return;let t=(now-a.t0)/DUR;if(t<0)return;t=Math.min(1,t)
+  const e=1-Math.pow(1-t,3);d.d.position.lerpVectors(a.from,a.to,e);d.d.position.y=SIZE/2+bounceY(t)
+  const spin=new THREE.Quaternion().setFromAxisAngle(a.axis,-(1-e)*a.turns*Math.PI*2);d.d.quaternion.copy(a.end).premultiply(spin)
+  if(t>=1){d.anim=null;d.val=a.n;d.home.copy(a.to);document.getElementById('v'+i).textContent=a.n;if(dice.every(x=>!x.anim))document.getElementById('roll').disabled=false}})}
+
+function fit(){const w=innerWidth,h=innerHeight,narrow=w<700;renderer.setSize(w,h);camera.aspect=w/h;camera.fov=narrow?52:32
+ camera.position.set(0,narrow?6.5:4.4,narrow?8.5:6.4);controls.target.set(0,.2,.2);camera.updateProjectionMatrix()}
+fit();addEventListener('resize',fit)
+const v=new THREE.Vector3()
+renderer.setAnimationLoop(()=>{step();controls.update();renderer.render(scene,camera)
+ dice.forEach((d,i)=>{v.copy(d.home);v.z+=.75;v.y=0;v.project(camera);const el=document.getElementById('lb'+i);el.style.left=(v.x*.5+.5)*innerWidth+'px';el.style.top=(-v.y*.5+.5)*innerHeight+'px'})})
+</script></body></html>

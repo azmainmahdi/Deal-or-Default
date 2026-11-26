@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deal or Default</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&family=Nunito:wght@700;800;900&family=Federo&family=Almendra:wght@400;700&family=Inknut+Antiqua:wght@400;700&family=Grenze:wght@400;700&family=Texturina:opsz,wght@12..72,400;12..72,700&family=Josefin+Sans:ital,wght@0,600;1,300&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<link rel="stylesheet" href="kit.css">
+<link rel="stylesheet" href="game.css">
+</head><body data-active="A">
+<!-- The playable game: the approved step 6 look (kit.css, kit.js) driven by the real rules engine (src/rules). -->
+<div class="top" id="top"></div>
+<div class="stage"><div class="bankm" id="bankm"><span id="bankart"></span></div><div class="pile" id="pile"></div>
+ <div class="board"><div class="tilt"><span class="fc tl"></span><span class="fc tr"></span><span class="fc bl"></span><span class="fc br"></span><svg viewBox="0 0 1000 1000" id="lb"></svg><svg viewBox="0 0 1000 1000" id="b"></svg><svg viewBox="0 0 1000 1000" id="tk"></svg><span class="ao"></span></div><div class="ov" id="ov"></div></div>
+ <div class="rcol"><section class="panel"><div class="ph"><i></i>Players<i></i></div><div id="rows"></div></section><div class="log" id="log"></div><div class="moves" id="moves"></div></div></div>
+<div class="setup" id="setup"></div>
+<img class="mark" src="logo.png" alt="">
+<script type="module">
+import {renderCoin,renderSpin,renderGavel} from './coin.js'
+import {duelDice} from './dice.js'
+window.duelDice=duelDice
+const T=[-.22,.18,0],dpr=Math.min(2,devicePixelRatio||1)
+const COIN=renderCoin(Math.round(64*dpr),T,'gold',1.35),COPPER=renderCoin(Math.round(64*dpr),T,'copper',1.35)
+document.documentElement.style.setProperty('--sp',`url(${renderSpin(Math.round(40*dpr))})`)
+window.COIN_SRC=COIN
+window.GAVEL_SRC=renderGavel(Math.round(220*dpr))
+window.coinImg=(s,kind)=>`<img class="coin" src="${kind==='copper'?COPPER:COIN}" width="${s}" height="${s}" alt="" draggable="false">`
+window.dispatchEvent(new Event('coins'))
+</script>
+<script src="kit.js"></script>
+<script src="sfx.js"></script>
+<script type="module" src="game.js"></script>
+</body></html>

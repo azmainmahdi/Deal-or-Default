@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { legalIntents, newGame, step } from '../engine'
+import { DEFAULT_CONFIG } from '../config'
+import { legalIntents, newGame, projectTerms, step } from '../engine'
+import { debtCost, repayCost } from '../ops'
 import { finalLedger } from '../scoring'
 import { edit, game, play, rollAs, setPlayer } from './helpers'
 
@@ -9,7 +11,7 @@ describe('setup', () => {
     expect(new Set(s.players.map((p) => p.country)).size).toBe(6)
     for (const p of s.players) expect([p.capital, p.debt, p.waivers, p.square]).toEqual([5, 0, 1, 1])
     expect(s.decision).toMatchObject({ kind: 'debtWindow', player: 0 })
-    expect(s.deck).toHaveLength(24)
+    expect(s.deck).toHaveLength(27) // every printed card we know of (assumption: the print says 24)
   })
   it('uses drafted countries when given, and rejects duplicates', () => {
     const { state } = newGame({ names: ['A', 'B'], seed: 3, countries: ['uk', 'china'] })
@@ -23,26 +25,25 @@ describe('setup', () => {
 })
 
 describe('debt window', () => {
-  it('take 1–3 Debt for equal Capital, then only Roll is allowed', () => {
+  it('borrow one of the 1/2/3 loans for equal Capital; then no more borrowing this turn, but repaying is allowed', () => {
     const { state } = play(game(), { player: 0, type: 'takeDebt', n: 3 })
-    expect(state.players[0]).toMatchObject({ capital: 8, debt: 3 })
-    expect(legalIntents(state)).toEqual([{ player: 0, type: 'roll' }])
+    expect(state.players[0]).toMatchObject({ capital: 8, debt: 3, loans: [{ n: 3 }] })
+    expect(state.decision).toEqual({ kind: 'debtWindow', player: 0, take: [], repay: [3] })
+  })
+  it('each loan size is held once; the window offers only free sizes within the cap', () => {
+    const s = setPlayer(game(), 1, { debt: 2, loans: [{ n: 2, turn: 0 }], capital: 9 })
+    expect(rollAs(s, 3).state.decision).toMatchObject({ kind: 'debtWindow', player: 1, take: [1, 3], repay: [2] })
   })
   it('UK gets 2 Capital per Debt chip', () => {
     const { state } = play(game(2, {}, ['uk']), { player: 0, type: 'takeDebt', n: 2 })
     expect(state.players[0]).toMatchObject({ capital: 9, debt: 2 })
   })
-  it('respects the debt cap and limits repayment to min(Debt, Capital)', () => {
-    const s = setPlayer(game(), 0, { debt: 5, capital: 2 })
-    const w = edit(s, (x) => (x.decision = { kind: 'debtWindow', player: 0, maxTake: 1, maxRepay: 2 }))
-    expect(step(w, { player: 0, type: 'takeDebt', n: 2 }).error).toBeDefined()
-    expect(step(w, { player: 0, type: 'repay', n: 3 }).error).toBeDefined()
-    expect(play(w, { player: 0, type: 'repay', n: 2 }).state.players[0]).toMatchObject({ capital: 0, debt: 3 })
-  })
-  it('computes the window from the cap and capital at turn start', () => {
-    const s = setPlayer(game(), 1, { debt: 5, capital: 2 })
-    const { state } = rollAs(s, 3)
-    expect(state.decision).toEqual({ kind: 'debtWindow', player: 1, maxTake: 1, maxRepay: 2 })
+  it('repaying a whole loan needs its cost in Capital; unaffordable loans are not offered', () => {
+    const s = setPlayer(game(), 1, { debt: 4, loans: [{ n: 1, turn: 1 }, { n: 3, turn: 1 }], capital: 2 })
+    const w = rollAs(s, 3).state
+    expect(w.decision).toEqual({ kind: 'debtWindow', player: 1, take: [2], repay: [1] })
+    expect(step(w, { player: 1, type: 'repay', n: 3 }).error).toBeDefined()
+    expect(play(w, { player: 1, type: 'repay', n: 1 }).state.players[1]).toMatchObject({ capital: 0, debt: 3 })
   })
   it('v1 soft-lock: debt actions and other players are rejected while a decision is pending', () => {
     const s = setPlayer(game(), 0, { square: 5 })
@@ -105,6 +106,11 @@ describe('ladder', () => {
   it('Germany: exactly 2 chips gives +1 profit', () => {
     const { state } = play(atBase(), { player: 0, type: 'invest', chips: 2 })
     expect(state.players[0]!.projects[0]!.profit).toBe(7)
+  })
+  it('Made in Germany (default): projects of 2+ chips pay +2', () => {
+    expect(projectTerms('germany', 2, 3, DEFAULT_CONFIG).profit).toBe(8)
+    expect(projectTerms('germany', 1, 3, DEFAULT_CONFIG).profit).toBe(3)
+    expect(projectTerms('usa', 2, 3, DEFAULT_CONFIG).profit).toBe(6)
   })
   it('Bangladesh: Δ ≤ 14 matures a turn sooner, minimum 1', () => {
     const s = atBase({}, ['bangladesh'])
@@ -170,12 +176,10 @@ describe('tariff', () => {
     const declined = play(s, { player: 1, type: 'waiver', use: false }).state
     expect(declined.players[1]).toMatchObject({ square: 37, waivers: 1 })
   })
-  it('chains: a push onto a ladder base gives the pushed player the invest decision', () => {
+  it('a tariff push-back onto a ladder base does nothing (his ruling 21 Oct: squares you are sent back onto never act)', () => {
     const s = hit({ square: 13, waivers: 0 }) // 13 - 3 = 10, ladder base
-    expect(s.decision).toMatchObject({ kind: 'invest', player: 1, from: 10 })
-    const { state } = play(s, { player: 1, type: 'invest', chips: 1 })
-    expect(state.players[1]!.square).toBe(13)
-    expect(state.decision).toMatchObject({ kind: 'debtWindow', player: 1 }) // p0's turn ended normally
+    expect(s.players[1]!.square).toBe(10)
+    expect(s.decision).toMatchObject({ kind: 'debtWindow', player: 1 }) // no invest offer; p0's turn ended normally
   })
 })
 
@@ -242,18 +246,20 @@ describe('events', () => {
     expect(s.players.map((p) => p.capital)).toEqual([2, 2])
     expect(s.players.every((p) => p.statuses.length === 0)).toBe(true)
   })
-  it('Trade Corridor: +1 to the next 3 rolls', () => {
+  it('Trade Corridor (printed): the next tariff landed on by anyone is cancelled', () => {
     let s = edit(setPlayer(game(), 0, { square: 4 }), (x) => (x.deck = ['tradeCorridor']))
     s = rollAs(s, 3).state // on 7, draws it
-    s = rollAs(s, 1).state // p1
-    const r = rollAs(s, 2)
-    expect(r.events.find((e) => e.type === 'diceRolled')).toMatchObject({ raw: 2, bonus: 1, value: 3 })
+    s = setPlayer(s, 1, { square: 20 })
+    const r = rollAs(s, 3) // p1 lands on 23, a tariff
+    expect(r.events.some((e) => e.type === 'tariffCancelled')).toBe(true)
+    expect(r.events.some((e) => e.type === 'tariffHit')).toBe(false)
+    expect(r.state.corridor).toBe(0)
   })
   it('Debt Spiral blocks repayment next turn', () => {
     let s = edit(setPlayer(game(), 0, { square: 4, capital: 9 }), (x) => (x.deck = ['debtSpiral']))
     s = rollAs(s, 3).state
     s = rollAs(s, 1).state
-    expect(s.decision).toMatchObject({ kind: 'debtWindow', player: 0, maxRepay: 0 })
+    expect(s.decision).toMatchObject({ kind: 'debtWindow', player: 0, repay: [] })
     expect(s.players[0]!.debt).toBe(1)
   })
   it('Strategic Reserve asks only when there is debt to repay', () => {
@@ -283,14 +289,31 @@ describe('hostile takeover', () => {
     { id: 5, chips: 2, delta: 5, ttm: 2, profit: 10 },
     { id: 6, chips: 1, delta: 3, ttm: 1, profit: 3 },
   ]
-  it('after your own move onto a rival with projects, pay 3 to take the smallest', () => {
+  it('on a shared square: pay 3, both roll (ties again), the higher roll takes the other\'s best project', () => {
     const s = setPlayer(setPlayer(game(), 0, { square: 2 }), 1, { square: 5, projects: victimProjects })
     const at = rollAs(s, 3).state
-    expect(at.decision).toEqual({ kind: 'takeover', player: 0, victims: [1] })
-    const { state } = play(at, { player: 0, type: 'takeover', victim: 1 })
-    expect(state.players[0]!.capital).toBe(2)
-    expect(state.players[1]!.projects.map((p) => p.id)).toEqual([5])
-    expect(state.players[0]!.projects.map((p) => p.id)).toEqual([6])
+    expect(at.decision).toEqual({ kind: 'takeover', player: 0, victims: [1], rest: [1] })
+    const { state, events } = play(at, { player: 0, type: 'takeover', victim: 1 })
+    const duel = events.find((e) => e.type === 'duel')!
+    expect(duel).toBeDefined()
+    if (duel.type !== 'duel') return
+    const [a, b] = duel.rolls[duel.rolls.length - 1]!
+    expect(a).not.toBe(b)
+    expect(state.players[0]!.capital).toBe(2) // the fee is paid either way
+    if (a > b) {
+      expect(duel.winner).toBe(0)
+      expect(state.players[0]!.projects.map((p) => p.id)).toEqual([5])
+    } else {
+      expect(duel.winner).toBe(1)
+      expect(state.players[0]!.projects).toEqual([]) // p0 had nothing to lose
+      expect(state.players[1]!.projects.map((p) => p.id)).toContain(5)
+    }
+  })
+  it('if the lander passes, the other player on the square gets the choice', () => {
+    const s = setPlayer(setPlayer(game(), 0, { square: 2, projects: [{ id: 9, chips: 1, delta: 4, ttm: 2, profit: 4 }] }), 1, { square: 5, projects: victimProjects })
+    const at = rollAs(s, 3).state
+    const { state } = play(at, { player: 0, type: 'takeover', victim: null })
+    expect(state.decision).toEqual({ kind: 'takeover', player: 1, victims: [0], rest: [] })
   })
   it('not offered without 3 Capital', () => {
     const s = setPlayer(setPlayer(game(), 0, { square: 2, capital: 2 }), 1, { square: 5, projects: victimProjects })
@@ -311,7 +334,7 @@ describe('finish and scoring', () => {
   it('pending projects count 0; ties go to the furthest pawn, then shared', () => {
     let s = game(3)
     s = setPlayer(s, 0, { capital: 10, square: 50, projects: [{ id: 1, chips: 3, delta: 15, ttm: 3, profit: 45 }] })
-    s = setPlayer(s, 1, { capital: 13, debt: 2, square: 60 })
+    s = setPlayer(s, 1, { capital: 14, debt: 2, square: 60 }) // 2 open = 2 + 2 late interest
     s = setPlayer(s, 2, { capital: 10, square: 40 })
     const r = finalLedger(s, 1, 0)
     expect(r.winners).toEqual([1])
@@ -319,5 +342,28 @@ describe('finish and scoring', () => {
     expect(r.rows.find((x) => x.player === 0)!.pendingLost).toBe(45)
     const tie = finalLedger(setPlayer(s, 2, { square: 60 }), 1, 0)
     expect(tie.winners).toEqual([1, 2])
+  })
+})
+
+describe('debt interest (rule C) and China export surplus', () => {
+  const owing = (turn: number) => edit(setPlayer(game(), 0, { debt: 2, loans: [{ n: 2, turn: 1 }], capital: 9 }), (x) => (x.turn = turn))
+  it('clearing a loan within 3 of your turns costs it + 1, later + 2', () => {
+    expect(repayCost(owing(1 + 2 * 3), 0, 2)).toBe(3)
+    expect(repayCost(owing(1 + 2 * 4), 0, 2)).toBe(4)
+    expect(repayCost(owing(1), 0, 1)).toBe(Infinity) // not held
+  })
+  it('repaying a loan takes its cost from Capital', () => {
+    const s = edit(setPlayer(game(), 0, { debt: 3, loans: [{ n: 1, turn: 1 }, { n: 2, turn: 5 }], capital: 9 }), (x) => (x.turn = 7))
+    const w = edit(s, (x) => (x.decision = { kind: 'debtWindow', player: 0, take: [3], repay: [1, 2] }))
+    const p0 = play(w, { player: 0, type: 'repay', n: 1 }).state.players[0]!
+    expect(p0).toMatchObject({ capital: 7, debt: 2, loans: [{ n: 2, turn: 5 }] })
+  })
+  it('an open loan counts as it + 2 at the end', () => {
+    expect(debtCost(owing(1), 0)).toBe(4)
+  })
+  it('China gains 1 when another player lands on a tariff square', () => {
+    const s = setPlayer(game(2, {}, ['germany', 'china']), 0, { square: 20 })
+    const { state } = rollAs(s, 3) // 20 + 3 = 23, a tariff square
+    expect(state.players[1]!.capital).toBe(6)
   })
 })

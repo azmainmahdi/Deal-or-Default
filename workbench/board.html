@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 2: Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
+<style>
+/* Step 2: board contents on the approved step-1 table. */
+html,body{margin:0;height:100%}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 40%,#0007 100%),#0000000f;pointer-events:none}
+.view{perspective:1800px;width:min(88vw,calc(100vh - 60px),780px)}
+.board{position:relative;width:100%;aspect-ratio:1;border-radius:10px;transform:rotateX(14deg);transform-origin:50% 60%;background:#101830;border:5px solid #b8892e;
+ box-shadow:0 3px 0 #6e5018,0 6px 0 #3a2a0c,0 18px 30px -8px #000c,0 40px 70px -24px #000a}
+.board::before{content:"";position:absolute;inset:0;border-radius:6px;background:url(board-bg.jpg) center/cover;opacity:.12;filter:saturate(.5)}
+.board::after{content:"";position:absolute;left:50%;top:50%;width:42%;aspect-ratio:1.47;transform:translate(-50%,-50%);background:url(logo.png) center/contain no-repeat;opacity:.08}
+svg{position:absolute;inset:2.4%;width:95.2%;height:95.2%;z-index:1;overflow:visible}
+.tile{fill:#16203cdd;stroke:#c9a24a8c;stroke-width:1.4}
+.num{fill:#efe6d2;font:700 15px Fraunces,Georgia,serif}
+.num.art{fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3.5px}
+.start{fill:#efe6d2;font:700 19px Fraunces,Georgia,serif}
+.delta{fill:#fff;font:700 13px Fraunces,Georgia,serif;paint-order:stroke;stroke:#0008;stroke-width:3px}
+.dest{fill:none;stroke-width:1.6;stroke-dasharray:5 5;opacity:.75}
+.dest.snake{stroke:#ff5a6a}.dest.ladder{stroke:#2ee6b0}
+.casing{fill:none;stroke:#0a0f1c;stroke-width:6.5;stroke-linejoin:round;stroke-linecap:round}
+.line{fill:none;stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
+.snake .line{stroke:#ff5a6a}.ladder .line{stroke:#2ee6b0}
+.head.snake{fill:#ff5a6a}.head.ladder{fill:#2ee6b0}
+@media (max-width:600px){
+ body{padding:12px 6px;align-content:start}
+ .view{width:calc(100vw - 12px);perspective:1400px}
+ .board{transform:rotateX(8deg);border-width:4px}
+ .num{font-size:23px}.num.art{stroke-width:4px}.start{font-size:24px}.delta{font-size:19px}
+ .line{stroke-width:4.5}.casing{stroke-width:8.5}
+}
+</style></head><body>
+<div class="view"><div class="board"><svg viewBox="0 0 1000 1000" id="b"></svg></div></div>
+<script>
+const L={10:13,22:26,29:32,37:42,50:55,59:64,67:75,71:86}, S={17:5,28:9,31:14,48:26,58:39,65:46,88:73,99:63}
+const E=[7,25,43,54,61,69,76,87,96], T=[23,34,62,72,83], X=[18,45,68,79,91]
+const type=q=>q===1?'start':q===100?'goal':L[q]?'ladder':S[q]?'snake':E.includes(q)?'event':T.includes(q)?'tariff':X.includes(q)?'sanction':''
+const cell=q=>{const i=q-1,r=Math.floor(i/10),c=r%2===0?i%10:9-i%10;return{x:c*100,y:(9-r)*100}}
+const IN=7, W=100-2*IN
+let h=''
+for(let q=1;q<=100;q++){const{x,y}=cell(q),t=type(q),art=t&&t!=='start'
+ h+=`<rect class="tile" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}" rx="3"/>`
+ if(art)h+=`<image href="/icons/${t}.svg" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}"/>`
+ const d=Object.values(L).includes(q)?'ladder':Object.values(S).includes(q)?'snake':''
+ if(d)h+=`<rect class="dest ${d}" x="${x+IN+5}" y="${y+IN+5}" width="${W-10}" height="${W-10}" rx="2"/>`
+ if(t==='start')h+=`<text class="start" x="${x+18}" y="${y+56}">Start</text>`
+ else if(t!=='goal')h+=`<text class="num ${art?'art':''}" x="${x+100-IN-4}" y="${y+IN+16}" text-anchor="end">${q}</text>`
+ if(t==='ladder')h+=`<text class="delta" x="${x+100-IN-4}" y="${y+100-IN-5}" text-anchor="end">Δ${L[q]-q}</text>`}
+// routes: out of the source tile diagonally at a corner, along the gutters, into the destination diagonally.
+// Every candidate (3 corners each end, any gutter for the middle leg, 3 lanes) is scored; greedy pick per route.
+// Rules: no turn sharper than 90deg (the diagonals must flow with the gutter leg), few crossings, never share a lane.
+const CORNERS=[[0,0],[0,100],[100,100]] // top-right holds the number
+const dot=(a,b,c,d)=>(b.x-a.x)*(d.x-c.x)+(b.y-a.y)*(d.y-c.y)
+const legs=p=>p.slice(1,-1).map((q,i,a)=>i<a.length-1?[q,a[i+1]]:null).filter(g=>g&&(g[0].x!==g[1].x||g[0].y!==g[1].y))
+function candidates(f,t){const s=cell(f),d=cell(t),out=[]
+ for(const[sx,sy]of CORNERS.filter(c=>!(t>f&&c[0]&&c[1])))for(const[dx,dy]of CORNERS)for(const lane of[0,-1,1]){const o=lane*4
+  const A={x:s.x+sx+o,y:s.y+sy+o},B={x:d.x+dx+o,y:d.y+dy+o}
+  const inS={x:s.x+sx+(sx?-22:22),y:s.y+sy+(sy?-22:22)},inD={x:d.x+dx+(dx?-15:15),y:d.y+dy+(dy?-15:15)}
+  const mids=[]
+  for(let g=Math.min(A.y,B.y)-o;g<=Math.max(A.y,B.y)-o;g+=100)mids.push([{x:A.x,y:g+o},{x:B.x,y:g+o}])
+  for(let g=Math.min(A.x,B.x)-o;g<=Math.max(A.x,B.x)-o;g+=100)mids.push([{x:g+o,y:A.y},{x:g+o,y:B.y}])
+  for(const m of mids){const p=[inS,A,...m,B,inD].filter((q,i,a)=>!i||q.x!==a[i-1].x||q.y!==a[i-1].y)
+   const L=legs(p)
+   if(!L.length){if(A.x===B.x&&A.y===B.y&&dot(inS,A,B,inD)>=0)out.push({p,L,cost:8*Math.abs(lane),f,t});continue}
+   // no hairpins: leaving and entering diagonals must point the same way as the gutter leg they join
+   const hair=(dot(inS,A,L[0][0],L[0][1])<=0)+(dot(L.at(-1)[0],L.at(-1)[1],B,inD)<=0)
+   const len=L.reduce((n,[u,v])=>n+Math.abs(u.x-v.x)+Math.abs(u.y-v.y),0)
+   out.push({p,L,cost:len+25*(L.length-1)+8*Math.abs(lane)+5000*hair,f,t})}}
+ return out}
+const span=(u,v,k)=>[Math.min(u[k],v[k]),Math.max(u[k],v[k])]
+function clash(L,M){let c=0
+ for(const[a,b]of L)for(const[e,f]of M){const ah=a.y===b.y,eh=e.y===f.y
+  if(ah===eh){const k=ah?'y':'x',r=ah?'x':'y';if(Math.abs(a[k]-e[k])<3){const[p,q]=span(a,b,r),[m,n]=span(e,f,r);if(Math.min(q,n)-Math.max(p,m)>2)c+=1000}}
+  else{const[h,v]=ah?[[a,b],[e,f]]:[[e,f],[a,b]],[x0,x1]=span(...h,'x'),[y0,y1]=span(...v,'y')
+   if(v[0].x>x0&&v[0].x<x1&&h[0].y>y0&&h[0].y<y1)c+=90}}
+ return c}
+const all=[...Object.entries(L).map(([f,t])=>[+f,t,'ladder']),...Object.entries(S).map(([f,t])=>[+f,t,'snake'])]
+ .sort((a,b)=>Math.abs(b[1]-b[0])-Math.abs(a[1]-a[0])) // long routes first, short ones fit around them
+const placed=[]
+for(const[f,t,k]of all){let best=null
+ for(const c of candidates(f,t)){const cost=c.cost+placed.reduce((n,q)=>n+clash(c.L,q.L),0);if(!best||cost<best.cost2)best={...c,cost2:cost}}
+ placed.push({...best,k})}
+// rounded joins so every bend is a soft curve, never a sharp corner
+function smooth(p,r=12){let d=`M${p[0].x},${p[0].y}`
+ for(let i=1;i<p.length-1;i++){const a=p[i-1],b=p[i],c=p[i+1],l1=Math.hypot(b.x-a.x,b.y-a.y),l2=Math.hypot(c.x-b.x,c.y-b.y),k=Math.min(r,l1/2,l2/2)
+  d+=` L${b.x+(a.x-b.x)*k/l1},${b.y+(a.y-b.y)*k/l1} Q${b.x},${b.y} ${b.x+(c.x-b.x)*k/l2},${b.y+(c.y-b.y)*k/l2}`}
+ return d+` L${p.at(-1).x},${p.at(-1).y}`}
+for(const{p,k}of placed){const d=smooth(p),a=p.at(-2),b=p.at(-1),ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI
+ h+=`<g class="${k}"><path class="casing" d="${d}"/><path class="line" d="${d}"/><path class="head ${k}" d="M0,-6 L11,0 L0,6 Z" transform="translate(${b.x},${b.y}) rotate(${ang})"/></g>`}
+document.getElementById('b').innerHTML=h
+</script></body></html>

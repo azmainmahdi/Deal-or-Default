@@ -27,6 +27,8 @@ export function describe(e: GameEvent, s: GameState): string | null {
       return `${n(e.player)} is moved to ${to}.`
     }
     case 'capital': return `${n(e.player)} ${money(e.delta)} Capital (${e.reason}).`
+    case 'duel': return `${n(e.challenger)} challenges ${n(e.defender)}: ${e.rolls.map(([a, b]) => `${a}-${b}`).join(', then ')}. ${n(e.winner)} wins.`
+    case 'tariffCancelled': return `Trade Corridor: ${n(e.player)}'s tariff is cancelled.`
     case 'debt': return `${n(e.player)} ${money(e.delta)} Debt (${e.reason}).`
     case 'waiver': return `${n(e.player)} ${money(e.delta)} Waiver (${e.reason}).`
     case 'projectCreated': return `${n(e.player)} starts a project: ${e.project.profit} profit in ${e.project.ttm} turns.`

@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Font options</title>
+<link href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Inknut+Antiqua:wght@400;700;800&family=Grenze:wght@400;700;800&family=Kurale&family=Texturina:opsz,wght@12..72,400;12..72,700;12..72,800&family=Eagle+Lake&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#141210;color:#e9e1cf;font:14px/1.4 Nunito}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font:800 20px Nunito;color:#f5dc94;margin:0 0 14px}
+.ref{display:flex;gap:16px;align-items:center;margin-bottom:22px;flex-wrap:wrap}.ref img{max-width:100%;border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.f{padding:16px 18px;border-radius:14px;background:#0d0c0a;box-shadow:0 0 0 1px #d8b05a33}
+.f .n{font:800 11px Nunito;letter-spacing:.12em;text-transform:uppercase;color:#a39a86;margin-bottom:8px}
+.t{font-size:40px;line-height:1.05;color:#f5d67b;text-shadow:0 3px 0 #000}.r{font-size:19px;margin-top:10px;color:#eda54a}.r em{font-style:normal;color:#e9e1cf}
+.d{margin-top:10px;font-size:26px;color:#f5d67b}
+</style></head><body><div class="wrap">
+<h1>Free fonts close to KC Obra Letra (all Google Fonts, open licence)</h1>
+<div class="ref"><img src="print-sample.jpg" alt="Lettering on the printed card"><div>The printed card: title (Bold) and rules text (Regular).</div></div>
+<div class="grid" id="g"></div></div>
+<script>
+const F=[['KC Obra Letra (the print, personal use only)',"'KC Obra Letra'",700,400],['Inknut Antiqua',"'Inknut Antiqua'",800,400],['Almendra',"'Almendra'",700,400],['Grenze',"'Grenze'",800,400],['Texturina',"'Texturina'",800,400],['Kurale',"'Kurale'",400,400],['Eagle Lake',"'Eagle Lake'",400,400]]
+document.getElementById('g').innerHTML=F.map(([n,f,tw,rw])=>`<div class="f"><div class="n">${n}</div><div class="t" style="font-family:${f};font-weight:${tw}">Banking Panic</div><div class="t" style="font-family:${f};font-weight:${tw};font-size:30px">Sovereign Default</div><div class="r" style="font-family:${f};font-weight:${rw}">Pay 2 Capital <em>or</em> gain 1 Debt chip (your choice).</div><div class="d" style="font-family:${f};font-weight:${tw}">96 87 72 61 43 25 7</div></div>`).join('')
+</script></body></html>

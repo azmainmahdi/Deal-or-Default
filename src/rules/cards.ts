@@ -1,6 +1,6 @@
 // Event cards: data plus one apply function each. apply returns follow-up effects (moves that chain).
 import {
-  addCapital, addDebt, addStatus, addWaivers, changeProfit, matureProject, othersInOrder, tickProjects, topBy, type Ctx,
+  addCapital, addDebt, addStatus, freeLoans, addWaivers, changeProfit, matureProject, othersInOrder, tickProjects, topBy, type Ctx,
 } from './ops'
 import type { CardId, Effect, Seat } from './types'
 
@@ -91,8 +91,8 @@ export const CARDS: Record<CardId, CardDef> = {
     apply: (c, p) => (addCapital(c, p, 2, 'War-Bond Rally'), none),
   },
   tradeCorridor: {
-    name: 'Trade Corridor Opened', kind: 'beneficial', text: '+1 to your rolls for your next 3 turns.',
-    apply: (c, p) => (addStatus(c, p, 'tradeCorridor', 3), none),
+    name: 'Trade Corridor Opened', kind: 'beneficial', text: 'Cancels the next Tariff square landed on by any player.',
+    apply: (c) => ((c.s.corridor = (c.s.corridor ?? 0) + 1), none),
   },
 
   // Adverse
@@ -102,7 +102,7 @@ export const CARDS: Record<CardId, CardDef> = {
   },
   bankingPanic: {
     name: 'Banking Panic', kind: 'adverse', text: 'Pay 2 Capital, or take 1 Debt with no Capital gained.',
-    options: (c, p) => (c.s.players[p]!.debt < c.s.config.debtCap ? ['pay', 'debt'] : ['pay']),
+    options: (c, p) => (freeLoans(c.s, p).length ? ['pay', 'debt'] : ['pay']),
     apply(c, p, choice) {
       if (choice === 'debt') addDebt(c, p, 1, 'Banking Panic')
       else addCapital(c, p, -2, 'Banking Panic')
@@ -110,10 +110,10 @@ export const CARDS: Record<CardId, CardDef> = {
     },
   },
   cyberAttack: {
-    name: 'Cyber Attack', kind: 'adverse', text: 'Your most profitable project loses 5 profit.',
+    name: 'Cyber Attack', kind: 'adverse', text: 'Your most profitable project loses 10 profit (never below 0).',
     apply(c, p) {
       const projects = c.s.players[p]!.projects
-      if (projects.length) changeProfit(c, p, projects.reduce((a, x) => (x.profit > a.profit ? x : a)).id, -5, 'Cyber Attack')
+      if (projects.length) changeProfit(c, p, projects.reduce((a, x) => (x.profit > a.profit ? x : a)).id, -10, 'Cyber Attack')
       return none
     },
   },
@@ -171,9 +171,9 @@ export const CARDS: Record<CardId, CardDef> = {
     },
   },
   commodityCrash: {
-    name: 'Commodity Crash', kind: 'adverse', text: "Every player's pending projects lose 3 profit.",
+    name: 'Commodity Crash', kind: 'adverse', text: "Every player's pending projects lose 5 profit.",
     apply(c) {
-      c.s.players.forEach((pl, q) => pl.projects.forEach((x) => changeProfit(c, q, x.id, -3, 'Commodity Crash')))
+      c.s.players.forEach((pl, q) => pl.projects.forEach((x) => changeProfit(c, q, x.id, -5, 'Commodity Crash')))
       return none
     },
   },

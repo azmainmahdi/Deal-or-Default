@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Die and bank</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Nunito:wght@700;800;900&family=Federo&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<style>
+/* Where the die and the bank live at the start of a turn. In every option the player row stays as it is (money line
+   first); borrowing opens a small bank window with three plain loan cards. */
+:root{--gold:#d8b05a;--gold2:#f5dc94;--ink:#f3ecdc;--mute:#a39a86;--green:#4fdcaa;--red:#ff6b78}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui;padding:26px 16px}
+h1{font:800 22px Fraunces;text-align:center;margin:0 0 4px}.sub{text-align:center;color:var(--mute);margin:0 0 20px;font-size:13px}
+h2{font:800 17px Fraunces;margin:0 0 3px}.opt>p{margin:0 0 10px;color:var(--mute);font-size:13px}
+.opt{max-width:1100px;margin:0 auto 26px;padding:16px;border-radius:20px;background:#0d0c0a99;box-shadow:0 0 0 1px #d8b05a33}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:900px){.pair{grid-template-columns:1fr}}
+.pair small{display:block;font:800 11px Nunito;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+/* a small table: board, panel, bank, die */
+.tbl{position:relative;height:300px;border-radius:14px;background:#0000003a;overflow:hidden}
+.brd{position:absolute;left:96px;top:16px;width:250px;height:250px;border:4px solid #b8892e;border-radius:8px;background:#101830;
+ background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:25px 25px}
+.brd .tok{position:absolute;width:20px;height:20px;border-radius:50%;background:url(/art/countries/usa.jpg) center/150%;box-shadow:0 0 0 2px var(--gold2)}
+.pnl{position:absolute;left:362px;top:16px;right:12px;bottom:16px;border-radius:14px;background:linear-gradient(160deg,#1c1a15,#0d0c0a);box-shadow:0 0 0 1px #d8b05a44;padding:8px}
+.row{display:grid;grid-template-columns:26px 1fr auto;gap:7px;align-items:center;padding:6px;border-radius:10px}.row.on{box-shadow:inset 0 0 0 1px #d8b05a88;background:#d8b05a10}
+.por{width:26px;height:26px;border-radius:50%;background:center 30%/150%;box-shadow:0 0 0 1.2px var(--gold)}
+.nm{font:800 12px Fraunces}.ml{display:flex;align-items:center;gap:0;margin-top:3px}.ml i{flex:1;height:1px;background:#d8b05a44}.ml b{width:6px;height:6px;transform:rotate(45deg);border:1px solid #d8b05a99;background:#0d0c0a}
+.ml .pl{padding:0 5px;border-radius:9px;background:linear-gradient(#b8ffe2,#4fdcaa);color:#0b3324;font:900 9px Nunito}
+.cash{font:400 15px Federo;color:var(--gold2);display:flex;align-items:center;gap:3px;justify-content:flex-end}.dbt{font:400 11px Federo;color:#d6dbe2;display:flex;gap:2px;align-items:center;justify-content:flex-end}
+.bk{position:absolute;width:84px;filter:drop-shadow(0 8px 8px #000b)}
+.die{position:absolute;width:44px;height:44px;border-radius:11px;background:linear-gradient(145deg,#f6dc8e,#b98a2e 60%,#8a6420);box-shadow:inset 0 2px 0 #fff6,inset 0 -3px 0 #0004,0 8px 14px -4px #000;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:7px}
+.die i{width:7px;height:7px;border-radius:50%;background:#3a2606;place-self:center;box-shadow:inset 0 1px 1px #000}
+.cap{position:absolute;font:800 10.5px Nunito;color:var(--gold2);text-align:center}
+.hint{position:absolute;border:1.5px dashed #f5dc94aa;border-radius:12px}
+.badge{position:absolute;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#d6dbe2;color:#1d2026;font:900 11px Nunito;display:grid;place-items:center}
+/* the bank window (the same in all options) */
+.bw{position:absolute;width:270px;padding:10px;border-radius:14px;background:linear-gradient(160deg,#23262d,#0f1115);box-shadow:0 0 0 1px #d6dbe266,0 16px 30px -8px #000}
+.bw h3{margin:0 0 7px;font:800 13px Fraunces;display:flex;align-items:center;gap:6px}.bw h3 span{margin-left:auto;font:700 10.5px Nunito;color:var(--mute)}
+.lc{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.card{padding:7px 6px;border-radius:10px;background:#ffffff0c;box-shadow:inset 0 0 0 1px #ffffff1f;text-align:center;cursor:pointer}
+.card .n{font:400 22px Federo;color:#eef1f5;line-height:1}.card .g{font:900 11px Nunito;color:var(--green);margin-top:3px}.card .r{font:800 10px Nunito;color:var(--mute);margin-top:2px;line-height:1.25}.card .r b{color:var(--ink)}
+.card.held{opacity:.5}.card.held .g{color:#d6dbe2}
+.owe{display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 8px;border-radius:10px;background:#d6dbe214;font:800 11px Nunito}.owe .b{margin-left:auto;padding:4px 9px;border-radius:8px;background:linear-gradient(180deg,#2b2720,#14120e);box-shadow:inset 0 0 0 1px #d8b05a55;font:900 11px Nunito;color:var(--ink)}
+.rule{font:700 10.5px Nunito;color:var(--mute);margin-top:7px;line-height:1.3}
+</style></head><body>
+<h1>Start of a turn: the die and the bank</h1>
+<p class="sub">Ana, 14 gold, owes a 2-coin loan. The player row never changes: the money line stays the main thing. Pick where the die and the bank live.</p>
+
+<section class="opt"><h2>A. Tap the bank, die beside the panel</h2><p>The marble bank on the table is the bank: tap it to borrow or repay. A silver badge shows what you owe. The die sits under the players panel; tap it to roll.</p>
+<div class="pair"><div><small>start of turn</small><div class="tbl" data-v="A0"></div></div><div><small>after tapping the bank</small><div class="tbl" data-v="A1"></div></div></div></section>
+
+<section class="opt"><h2>B. One tray under the board</h2><p>A slim tray under the board holds the die and a small bank button with your loan count. Everything for the start of a turn is in one place.</p>
+<div class="pair"><div><small>start of turn</small><div class="tbl" data-v="B0"></div></div><div><small>after tapping the bank button</small><div class="tbl" data-v="B1"></div></div></div></section>
+
+<section class="opt"><h2>C. Die on the board, like the printed game</h2><p>The die rests on the board beside your token; tap it to roll. The bank building on the table opens the bank window, as in A.</p>
+<div class="pair"><div><small>start of turn</small><div class="tbl" data-v="C0"></div></div><div><small>after tapping the bank</small><div class="tbl" data-v="C1"></div></div></div></section>
+
+<script type="module">
+import {renderCoin} from './coin.js'
+const C=renderCoin(48,[-.22,.18,0],'gold',1.35),coin=s=>`<img src="${C}" width="${s}" height="${s}" alt="">`
+const BANK=`<svg class="bk" viewBox="0 0 132 120"><defs><linearGradient id="am" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#cfcbc1"/></linearGradient><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9dd92"/><stop offset="1" stop-color="#b8892e"/></linearGradient></defs>
+ <path d="M30 34h72v-8H86v-8H46v8H30z" fill="url(#ag)"/><path d="M58 18V10h16v8" fill="url(#ag)"/>
+ <g stroke="#8a6420" stroke-width="1.2" opacity=".75"><path d="M66 32 54 20M66 32 62 19M66 32 70 19M66 32 78 20"/></g>
+ <rect x="24" y="34" width="84" height="12" rx="1" fill="url(#am)"/><text x="66" y="43.5" text-anchor="middle" fill="#3b3833" style="font:400 9.5px Federo;letter-spacing:2.4px">BANK</text>
+ <path d="M24 46h84" stroke="#b8892e" stroke-width="2"/>
+ <g fill="url(#am)"><rect x="32" y="50" width="11" height="42"/><rect x="51" y="50" width="11" height="42"/><rect x="70" y="50" width="11" height="42"/><rect x="89" y="50" width="11" height="42"/></g>
+ <g stroke="#bdb8ad" stroke-width=".9"><path d="M35.5 52v38M39.5 52v38M54.5 52v38M58.5 52v38M73.5 52v38M77.5 52v38M92.5 52v38M96.5 52v38"/></g>
+ <g fill="url(#ag)"><rect x="30" y="48" width="15" height="3"/><rect x="49" y="48" width="15" height="3"/><rect x="68" y="48" width="15" height="3"/><rect x="87" y="48" width="15" height="3"/></g>
+ <path d="M20 92h92v7H20zM14 99h104v7H14zM8 106h116v8H8z" fill="#141210"/><path d="M20 92h92M14 99h104M8 106h116" stroke="#d8b05a" stroke-width="1.4"/>
+</svg>`
+const silver=s=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path d="M12 3 21 8H3z M5 10h14v8H5z M3 19h18v2H3z" fill="#d6dbe2"/><path d="M8 11v6M12 11v6M16 11v6" stroke="#23262d" stroke-width="1.6"/></svg>`
+const die=(x,y,cls='')=>`<div class="die ${cls}" style="left:${x}px;top:${y}px"><i style="grid-area:1/1"></i><i style="grid-area:1/3"></i><i style="grid-area:2/2"></i><i style="grid-area:3/1"></i><i style="grid-area:3/3"></i></div>`
+const P=[['Ana','usa',14,'+6',1,2],['Bo','china',9,'+8',2,0],['Kenji','japan',21,'',0,0],['Lena','germany',6,'+3',1,0]]
+const rows=P.map(([n,c,cash,pl,k,d],i)=>`<div class="row ${i?'':'on'}"><span class="por" style="background-image:url(/art/countries/${c}.jpg)"></span><div><div class="nm">${n}</div><div class="ml">${[1,2,3,4].map(t=>t===k?`<span class="pl">${pl}</span>`:'<b></b>').join('<i></i>')}</div></div><div><div class="cash">${coin(14)}${cash}</div>${d?`<div class="dbt">${silver(11)}${d}</div>`:''}</div></div>`).join('')
+const table=(extra,ps='')=>`<div class="brd"><span class="tok" style="left:170px;top:120px"></span></div><div class="pnl" style="${ps}">${rows}</div>${extra}`
+const bankAt=(x,y,owe=true)=>`<div style="position:absolute;left:${x}px;top:${y}px;width:84px;height:76px">${BANK.replace('class="bk"','class="bk" style="left:0;top:0"')}${owe?`<span class="badge" style="right:-2px;top:-4px">2</span>`:''}</div>`
+const win=(x,y)=>`<div class="bw" style="left:${x}px;top:${y}px"><h3>${silver(16)} Bank <span>repay any time</span></h3>
+ <div class="lc"><div class="card"><div class="n">1</div><div class="g">+1 now</div><div class="r">pay back <b>2</b><br>3 after 3 turns</div></div>
+ <div class="card held"><div class="n">2</div><div class="g">you owe this</div><div class="r">&nbsp;<br>&nbsp;</div></div>
+ <div class="card"><div class="n">3</div><div class="g">+3 now</div><div class="r">pay back <b>4</b><br>5 after 3 turns</div></div></div>
+ <div class="owe">${silver(14)} You owe 2. Pay 3 now (4 from next turn).<span class="b">Repay ${coin(12)}3</span></div>
+ <div class="rule">Paying back late, or still owing at the end, costs 1 more.</div></div>`
+const V={
+ A0:table(bankAt(8,16)+`<div class="hint" style="left:4px;top:12px;width:92px;height:84px"></div><div class="cap" style="left:6px;top:98px;width:88px">tap to borrow</div>`+die(380,240)+`<div class="cap" style="left:432px;top:254px">tap to roll</div>`,'bottom:66px'),
+ A1:table(bankAt(8,16)+die(380,240)+win(18,60),'bottom:66px'),
+ B0:`<div class="brd" style="height:214px"><span class="tok" style="left:170px;top:110px"></span></div><div class="pnl">${rows}</div><div style="position:absolute;left:96px;top:238px;width:250px;height:52px;border-radius:12px;background:#0d0c0acc;box-shadow:0 0 0 1px #d8b05a44"></div>`+die(110,242)+`<div class="cap" style="left:162px;top:258px">tap to roll</div><div style="position:absolute;left:254px;top:249px;display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:9px;background:linear-gradient(180deg,#2b2720,#14120e);box-shadow:inset 0 0 0 1px #d8b05a55;font:900 12px Nunito">${silver(15)} Bank <span class="badge" style="position:static">2</span></div>`,
+ B1:`<div class="brd" style="height:214px"><span class="tok" style="left:170px;top:110px"></span></div><div class="pnl">${rows}</div><div style="position:absolute;left:96px;top:238px;width:250px;height:52px;border-radius:12px;background:#0d0c0acc;box-shadow:0 0 0 1px #d8b05a44"></div>`+die(110,242)+win(84,40),
+ C0:table(bankAt(8,16)+die(296,118)+`<div class="cap" style="left:288px;top:166px;width:60px;color:#fff">tap to roll</div>`),
+ C1:table(bankAt(8,16)+die(296,118)+win(18,60)),
+}
+document.querySelectorAll('[data-v]').forEach(el=>el.innerHTML=V[el.dataset.v])
+</script></body></html>

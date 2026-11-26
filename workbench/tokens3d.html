@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 3: 3D Tokens</title>
+<style>
+/* Step 3 options in real 3D: cast-metal tokens, one simple object per country. */
+html,body{margin:0;height:100%;background:#120a05;overflow:hidden;font:14px system-ui;color:#efe6d2}
+canvas{display:block}
+.ui{position:fixed;top:14px;left:0;right:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;z-index:2;pointer-events:none}
+.ui button{pointer-events:auto;font:600 14px system-ui;padding:9px 14px;border-radius:999px;border:1px solid #c9a24a66;background:#0d1426cc;color:#efe6d2;cursor:pointer}
+.ui button[aria-pressed=true]{background:#c9a24a;color:#1a1206;border-color:#c9a24a}
+.lab{position:fixed;transform:translate(-50%,0);text-align:center;pointer-events:none;z-index:1;text-shadow:0 1px 3px #000}
+.lab b{display:block;font:700 13px Georgia,serif;color:#f5d67b}.lab span{font-size:12px;color:#e6dcc6}
+.hint{position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:12px;color:#bdb39f;text-shadow:0 1px 3px #000}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div class="ui" id="ui"></div>
+<div id="labs"></div>
+<div class="hint">Drag to orbit, scroll to zoom. Each token turns slowly so you see it from every side.</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js'
+import {RoomEnvironment} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'
+
+const renderer=new THREE.WebGLRenderer({antialias:true})
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight)
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap
+document.body.appendChild(renderer.domElement)
+const scene=new THREE.Scene();scene.background=new THREE.Color('#120a05');scene.fog=new THREE.Fog('#120a05',12,22)
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),.04).texture
+const camera=new THREE.PerspectiveCamera(32,innerWidth/innerHeight,.1,100)
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=1.45
+
+// table: his wood photo, matte
+const wood=new THREE.TextureLoader().load('wood.jpg');wood.colorSpace=THREE.SRGBColorSpace;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;wood.repeat.set(1,1)
+const table=new THREE.Mesh(new THREE.PlaneGeometry(24,14),new THREE.MeshStandardMaterial({map:wood,roughness:.85}))
+table.rotation.x=-Math.PI/2;table.receiveShadow=true;scene.add(table)
+const key=new THREE.DirectionalLight('#fff3e0',2.2);key.position.set(-4,8,5);key.castShadow=true
+key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-8,right:8,top:6,bottom:-6});key.shadow.radius=4;scene.add(key)
+scene.add(new THREE.HemisphereLight('#ffe9c8','#2a1608',.5))
+
+// materials
+const METALS={
+ pewter:()=>new THREE.MeshPhysicalMaterial({color:'#c9ced6',metalness:1,roughness:.26}),
+ gold:()=>new THREE.MeshPhysicalMaterial({color:'#f3c875',metalness:1,roughness:.17}),
+ lacquer:()=>new THREE.MeshPhysicalMaterial({color:'#0e0e12',metalness:.3,roughness:.18,clearcoat:1,clearcoatRoughness:.05}),
+}
+const LABEL={pewter:'Pewter',gold:'Gold',lacquer:'Black lacquer'}
+let metalKey=location.hash.slice(1)in METALS?location.hash.slice(1):'gold'
+let M=METALS[metalKey]()
+const TRIM=new THREE.MeshPhysicalMaterial({color:'#e9b75a',metalness:1,roughness:.22})
+const enamel=c=>new THREE.MeshPhysicalMaterial({color:c,roughness:.3,clearcoat:1,clearcoatRoughness:.1})
+const glow=new THREE.MeshStandardMaterial({color:'#ffb347',emissive:'#ff7a00',emissiveIntensity:1.2,roughness:.4})
+
+const lathe=(pts,seg=72)=>new THREE.LatheGeometry(pts.map(([r,y])=>new THREE.Vector2(r,y)),seg)
+const mesh=(g,m=M)=>{const o=new THREE.Mesh(g,m);o.castShadow=o.receiveShadow=true;return o}
+const at=(o,x,y,z)=>(o.position.set(x,y,z),o)
+
+// flags as textures wrapped round each base
+const FLAG={
+ usa:'<rect width="30" height="20" fill="#fff"/>'+[0,2,4,6,8,10,12].map(i=>`<rect y="${i*1.54}" width="30" height="1.54" fill="#b22234"/>`).join('')+'<rect width="13" height="10.8" fill="#3c3b6e"/>',
+ china:'<rect width="30" height="20" fill="#de2910"/><path d="M6 3l1.2 3.6H11L8 8.8l1.1 3.6L6 10.2 2.9 12.4 4 8.8 1 6.6h3.8z" fill="#ffde00"/>',
+ japan:'<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/>',
+ germany:'<rect width="30" height="7" fill="#111"/><rect y="7" width="30" height="6" fill="#dd0000"/><rect y="13" width="30" height="7" fill="#ffce00"/>',
+ bangladesh:'<rect width="30" height="20" fill="#006a4e"/><circle cx="13.5" cy="10" r="6" fill="#f42a41"/>',
+ uk:'<rect width="30" height="20" fill="#012169"/><path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" stroke-width="1.5"/><path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/><path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.5"/>',
+}
+const flagTex=c=>{const t=new THREE.TextureLoader().load('data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 30 20" preserveAspectRatio="none">${FLAG[c]}</svg>`))
+ t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.set(3,1);return t}
+
+// the base every token stands on: a bevelled metal disc with an enamel flag band
+function base(c){const g=new THREE.Group()
+ g.add(mesh(lathe([[0,0],[.47,0],[.5,.025],[.5,.05],[.47,.06],[.47,.12],[.5,.13],[.5,.155],[.47,.18],[0,.18]])))
+ const band=mesh(new THREE.CylinderGeometry(.472,.472,.06,96,1,true),new THREE.MeshPhysicalMaterial({map:flagTex(c),roughness:.3,clearcoat:1}))
+ band.position.y=.09;g.add(band);return g}
+
+// ---- the twelve objects, each standing on y=0 ----
+const OBJ={
+ hat(){const g=new THREE.Group(),h=mesh(lathe([[0,0],[.25,0],[.4,.01],[.47,.06],[.45,.075],[.36,.04],[.25,.045],[.26,.3],[.22,.37],[.1,.36],[0,.33]]))
+  h.scale.z=.82;g.add(h);const b=mesh(new THREE.CylinderGeometry(.258,.255,.06,64,1,true),enamel('#6b2a18'));b.position.y=.08;b.scale.z=.82;g.add(b);return g},
+ torch(){const g=new THREE.Group();g.add(mesh(lathe([[0,0],[.08,0],[.1,.5],[.18,.56],[.19,.64],[.13,.66],[0,.66]])))
+  g.add(mesh(lathe([[0,.62],[.13,.69],[.15,.79],[.1,.92],[.04,1.03],[0,1.08]]),glow));return g},
+ lantern(){const g=new THREE.Group(),pts=[];for(let i=0;i<=24;i++){const t=i/24;pts.push([.3*Math.sin(Math.PI*t)+.08*(1-Math.sin(Math.PI*t)),.14+.5*t])}
+  g.add(mesh(lathe(pts),enamel('#c8202f')))
+  for(let k=0;k<8;k++){const a=k/8*Math.PI*2,curve=new THREE.CatmullRomCurve3(pts.map(([r,y])=>new THREE.Vector3(Math.cos(a)*(r+.004),y,Math.sin(a)*(r+.004))));g.add(mesh(new THREE.TubeGeometry(curve,32,.01,6)))}
+  g.add(at(mesh(new THREE.CylinderGeometry(.14,.16,.06,48)),0,.13,0),at(mesh(new THREE.CylinderGeometry(.16,.14,.06,48)),0,.66,0))
+  g.add(at(mesh(new THREE.CylinderGeometry(.015,.015,.1,8)),0,.06,0),at(mesh(new THREE.TorusGeometry(.05,.012,8,24)),0,.75,0));return g},
+ panda(){const g=new THREE.Group(),w=enamel('#f1ede4'),k=enamel('#15161a')
+  g.add(at(mesh(new THREE.CylinderGeometry(.16,.22,.12,48)),0,.06,0))
+  const head=at(mesh(new THREE.SphereGeometry(.32,48,32),w),0,.42,0);head.scale.set(1,.92,.95);g.add(head)
+  for(const s of[-1,1]){g.add(at(mesh(new THREE.SphereGeometry(.11,32,16),k),s*.23,.68,0))
+   const e=at(mesh(new THREE.SphereGeometry(.075,24,16),k),s*.11,.46,.25);e.scale.set(1,1.4,.6);e.rotation.z=s*.5;g.add(e)
+   g.add(at(mesh(new THREE.SphereGeometry(.025,12,8),w),s*.11,.47,.3))}
+  const n=at(mesh(new THREE.SphereGeometry(.05,16,12),k),0,.34,.3);n.scale.set(1.3,.8,.8);g.add(n);return g},
+ crane(){const V=THREE.Vector3,P={B:new V(0,.08,0),Bb:new V(-.24,.3,0),Bf:new V(.24,.3,0),Ct:new V(0,.42,0),S1:new V(0,.28,.13),S2:new V(0,.28,-.13),
+   T:new V(-.62,.72,0),N:new V(.52,.82,0),H:new V(.66,.7,0),N2:new V(.5,.74,0),W1:new V(-.08,1.0,.42),W2:new V(-.08,1.0,-.42)}
+  const tris=[['Bb','B','S1'],['B','Bf','S1'],['Bf','Ct','S1'],['Ct','Bb','S1'],['B','Bb','S2'],['Bf','B','S2'],['Ct','Bf','S2'],['Bb','Ct','S2'],
+   ['T','Bb','Ct'],['Bf','N','Ct'],['N','H','N2'],['Bb','Ct','W1'],['Ct','Bf','W1'],['Ct','Bb','W2'],['Bf','Ct','W2']]
+  const pos=[];tris.forEach(t=>t.forEach(k=>pos.push(P[k].x,P[k].y,P[k].z)))
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.computeVertexNormals()
+  const m=M.clone();m.side=THREE.DoubleSide;m.flatShading=true;return mesh(geo,m)},
+ fuji(){const g=new THREE.Group(),slope=[[0,0],[.48,0],[.45,.04],[.27,.3],[.15,.52],[.09,.56],[0,.55]]
+  g.add(mesh(lathe(slope,96)))
+  const snow=[];for(let i=0;i<=8;i++){const t=i/8,y=.22+(.56-.22)*t,r=y<.3?.27+(.48-.27)*(.3-y)/.26:.27-(.27-.09)*(y-.3)/.26;snow.push([r+.01,y])}snow.push([0,.565])
+  g.add(mesh(lathe(snow,96),enamel('#f4f1ea')));return g},
+ pretzel(){const p=new THREE.Path(),s=1/52
+  p.moveTo(-21*s,23*s);p.bezierCurveTo(-6*s,25*s,10*s,33*s,4*s,45*s);p.bezierCurveTo(-2*s,57*s,-26*s,55*s,-26*s,37*s);p.bezierCurveTo(-26*s,19*s,-12*s,11*s,0,11*s)
+  p.bezierCurveTo(12*s,11*s,26*s,19*s,26*s,37*s);p.bezierCurveTo(26*s,55*s,2*s,57*s,-4*s,45*s);p.bezierCurveTo(-10*s,33*s,6*s,25*s,21*s,23*s)
+  const pts=p.getPoints(60).map((q,i,a)=>{const t=i/(a.length-1);return new THREE.Vector3(q.x,q.y-.1,t<.2?.06*Math.sin(t/.2*Math.PI):t>.8?-.06*Math.sin((1-t)/.2*Math.PI):0)})
+  const g=new THREE.Group(),tube=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),240,.065,20));g.add(tube)
+  for(const e of[pts[0],pts.at(-1)])g.add(at(mesh(new THREE.SphereGeometry(.065,20,12)),e.x,e.y,e.z))
+  g.add(at(mesh(new THREE.CylinderGeometry(.03,.05,.12,16)),0,.05,0));g.position.y=.02;return g},
+ stein(){const g=new THREE.Group();g.add(mesh(lathe([[0,0],[.25,0],[.26,.04],[.22,.06],[.22,.58],[.25,.6],[.25,.63],[0,.63]])))
+  g.add(at(mesh(lathe([[0,.63],[.26,.63],[.2,.7],[.08,.74],[0,.745]])),0,0,0))
+  for(const y of[.14,.5])g.add(at(mesh(new THREE.TorusGeometry(.225,.012,8,64)),0,y,0)).children.at(-1).rotation.x=Math.PI/2
+  const h=at(mesh(new THREE.TorusGeometry(.16,.04,16,32,Math.PI)),.22,.34,0);h.rotation.z=-Math.PI/2;g.add(h)
+  g.add(at(mesh(new THREE.BoxGeometry(.08,.04,.06)),.2,.74,0));return g},
+ boat(){const g=new THREE.Group(),hull=mesh(new THREE.SphereGeometry(.5,48,24,0,Math.PI*2,Math.PI/2,Math.PI/2));hull.scale.set(1,.42,.34);hull.position.y=.22
+  const tip=(s)=>{const c=at(mesh(new THREE.ConeGeometry(.06,.22,16)),s*.47,.3,0);c.rotation.z=-s*.6;return c}
+  g.add(hull,tip(1),tip(-1),at(mesh(new THREE.CylinderGeometry(.168,.168,.02,48)),0,.22,0))
+  g.children.at(-1).scale.set(2.95,1,1)
+  g.add(at(mesh(new THREE.CylinderGeometry(.018,.022,.9,12)),-.1,.62,0))
+  const sail=new THREE.PlaneGeometry(.42,.56,12,12),v=sail.attributes.position
+  for(let i=0;i<v.count;i++){const x=v.getX(i),y=v.getY(i);v.setZ(i,.09*Math.sin((x/.42+.5)*Math.PI)*(1-Math.abs(y)/.6))}
+  sail.computeVertexNormals();const sm=M.clone();sm.side=THREE.DoubleSide;const sl=at(mesh(sail,sm),.13,.7,0);sl.rotation.y=.25;g.add(sl);return g},
+ fish(){const s=new THREE.Shape(),k=1/62;s.moveTo(-31*k,0);s.quadraticCurveTo(-10*k,15*k,14*k,6*k);s.lineTo(29*k,15*k);s.lineTo(24*k,0);s.lineTo(29*k,-15*k);s.lineTo(14*k,-6*k);s.quadraticCurveTo(-10*k,-15*k,-31*k,0)
+  const g=new THREE.Group(),f=mesh(new THREE.ExtrudeGeometry(s,{depth:.06,bevelEnabled:true,bevelThickness:.04,bevelSize:.03,bevelSegments:6,curveSegments:32}));f.position.set(0,.62,-.03);g.add(f)
+  g.add(at(mesh(new THREE.CylinderGeometry(.025,.035,.5,12)),.0,.25,0))
+  for(const z of[.075,-.075])g.add(at(mesh(new THREE.SphereGeometry(.03,12,8),enamel('#15161a')),-.33,.64,z));return g},
+ crown(){const g=new THREE.Group();g.add(mesh(lathe([[.3,0],[.36,0],[.36,.16],[.3,.16]],72)))
+  const cap=at(mesh(new THREE.SphereGeometry(.3,48,24,0,Math.PI*2,0,Math.PI/2),enamel('#8b1424')),0,.14,0);cap.scale.y=.75;g.add(cap)
+  for(let i=0;i<5;i++){const a=i/5*Math.PI*2+Math.PI/2,x=Math.cos(a)*.33,z=Math.sin(a)*.33
+   g.add(at(mesh(new THREE.ConeGeometry(.08,.3,24)),x,.3,z),at(mesh(new THREE.SphereGeometry(.045,16,12)),x,.47,z))}
+  g.add(at(mesh(new THREE.SphereGeometry(.05,16,12)),0,.42,0),at(mesh(new THREE.SphereGeometry(.03,16,12),enamel('#c8202f')),0,.08,.36))
+  for(const s of[-1,1])g.add(at(mesh(new THREE.SphereGeometry(.024,16,12),enamel('#1f4fbf')),s*.17,.08,.32));return g},
+ bowler(){const g=new THREE.Group();g.add(mesh(lathe([[0,0],[.27,0],[.42,.0],[.47,.04],[.44,.06],[.3,.05],[.29,.22],[.24,.34],[.13,.4],[0,.41]])))
+  g.add(at(mesh(new THREE.CylinderGeometry(.296,.3,.07,64,1,true),enamel('#15161a')),0,.09,0));return g},
+}
+const SETS=[['usa','USA',['hat','Cowboy hat'],['torch','Liberty torch']],['china','China',['lantern','Lantern'],['panda','Panda']],['japan','Japan',['crane','Paper crane'],['fuji','Mount Fuji']],
+ ['germany','Germany',['pretzel','Pretzel'],['stein','Beer stein']],['bangladesh','Bangladesh',['boat','Nouka boat'],['fish','Ilish fish']],['uk','UK',['crown','Crown'],['bowler','Bowler hat']]]
+
+let tokens=[]
+function build(){tokens.forEach(t=>scene.remove(t.g));tokens=[];M=METALS[metalKey]()
+ SETS.forEach(([c,name,...opts],col)=>opts.forEach(([key,label],row)=>{const g=new THREE.Group(),b=base(c),o=OBJ[key]();o.position.y=.18;o.scale.setScalar(1.25);b.scale.set(.85,1,.85);g.add(b,o)
+  g.position.set((col-2.5)*1.5,0,(row-.5)*2.6);g.rotation.y=-.4+col*.5;scene.add(g);tokens.push({g,name,label})}))
+ document.getElementById('labs').innerHTML=tokens.map((t,i)=>`<div class="lab" id="lb${i}"><b>${t.name}</b><span>${t.label}</span></div>`).join('')
+ document.getElementById('ui').innerHTML=Object.keys(METALS).map(k=>`<button aria-pressed="${k===metalKey}" data-k="${k}">${LABEL[k]}</button>`).join('')
+ document.querySelectorAll('#ui button').forEach(b=>b.onclick=()=>{metalKey=b.dataset.k;location.hash=metalKey;build()})}
+build()
+
+function fit(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h
+ const narrow=w<700;camera.position.set(0,narrow?11:6.2,narrow?13:9.6);controls.target.set(0,.35,.25);camera.fov=narrow?44:30;camera.updateProjectionMatrix()}
+fit();addEventListener('resize',fit)
+const v=new THREE.Vector3(),clock=new THREE.Clock()
+renderer.setAnimationLoop(()=>{const dt=clock.getDelta();tokens.forEach(t=>t.g.rotation.y+=dt*.35);controls.update();renderer.render(scene,camera)
+ tokens.forEach((t,i)=>{v.copy(t.g.position);v.z+=.55;v.project(camera);const el=document.getElementById('lb'+i);if(el){el.style.left=(v.x*.5+.5)*innerWidth+'px';el.style.top=(-v.y*.5+.5)*innerHeight+'px'}})})
+</script></body></html>

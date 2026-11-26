@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Character card options</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Federo&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kit.css"><link rel="stylesheet" href="game.css">
+<style>
+html,body{overflow:auto!important;height:auto!important}body{padding:24px 16px 60px;font:15px/1.4 Nunito}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font:700 30px 'KC Obra Letra',Federo;color:var(--gold2);margin:0 0 4px}
+.opt{margin:28px 0 0;padding:18px;border-radius:16px;background:#0d0c0ad9;box-shadow:0 0 0 1px #d8b05a33}
+.opt h2{font:700 22px 'KC Obra Letra',Federo;color:var(--gold2);margin:0 0 4px}.opt p{margin:0 0 14px;color:#cfc5b0;max-width:760px}
+.row2{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.card{--w:96px;width:var(--w);aspect-ratio:180/252;border-radius:8px;background:center/cover;box-shadow:0 8px 18px -6px #000,0 0 0 1px #d8b05a55;flex:none;position:relative}
+.panel{width:330px;padding:12px;border-radius:16px;background:#14110ce6;box-shadow:0 0 0 1px #d8b05a44}
+.pr{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px}.pr.on{background:#d8b05a1c;box-shadow:inset 0 0 0 1px #d8b05a66}
+.pr b{font:700 17px 'KC Obra Letra',Federo;color:#fff}.pr small{display:block;color:#a39a86;font:700 11px Nunito}.pr .m{margin-left:auto;font:400 20px Federo;color:var(--gold2)}
+/* A: card rows */
+.A .card{--w:54px}
+/* B: turn spotlight */
+.B .big{--w:190px;transform:rotate(-3deg)}.B .strip{display:flex;gap:8px;margin-top:12px}.B .strip .card{--w:58px;opacity:.7}.B .strip .card.on{opacity:1;box-shadow:0 0 0 2px #f5dc94,0 8px 18px -6px #000}
+.B .roll{display:flex;gap:16px;align-items:center;padding:14px;border-radius:16px;background:#14110ce6;box-shadow:0 0 0 1px #d8b05a44;width:420px}
+.B .roll .die{width:70px;height:70px;border-radius:14px;background:linear-gradient(#e9c977,#9c7224);box-shadow:inset 0 -4px 0 #6e4f16;display:grid;place-items:center;font:900 30px Nunito;color:#2a1d08}
+/* C: seat cards on the table */
+.C .table{display:flex;gap:16px;align-items:stretch}.C .board{width:330px;aspect-ratio:1;border-radius:6px;background:url(/art/board.jpg) center/cover;box-shadow:0 0 0 4px #b8892e}
+.C .seats{display:grid;grid-template-columns:repeat(2,auto);gap:30px 14px;padding-top:20px;align-content:start}.C .card{--w:118px}
+.C .badge{position:absolute;left:6px;right:6px;bottom:6px;display:flex;justify-content:space-between;padding:4px 8px;border-radius:999px;background:#0d0c0ae0;font:400 15px Federo;color:var(--gold2)}
+.C .card.on{box-shadow:0 0 0 3px #f5dc94,0 0 26px #f5dc9466;transform:translateY(-6px)}
+.C .name{position:absolute;left:0;right:0;top:-20px;text-align:center;font:700 13px 'KC Obra Letra',Federo;color:#fff}
+/* setup: pick a card */
+.D .pick{display:flex;gap:12px;flex-wrap:wrap}.D .card{--w:120px;cursor:pointer;transition:transform .2s}.D .card:hover{transform:translateY(-6px)}.D .card.taken{filter:grayscale(1) brightness(.5)}.D .card.mine{box-shadow:0 0 0 3px #f5dc94,0 0 22px #f5dc9466}
+.D .card .who{position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);padding:2px 10px;border-radius:999px;background:#f5dc94;color:#1a1408;font:900 11px Nunito;white-space:nowrap}
+.tagline{font:800 11px Nunito;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+</style></head><body><div class="wrap">
+<h1>Character cards in the game</h1>
+<div class="opt A"><h2>A. Card rows</h2><p>The players panel keeps its layout, but each avatar circle becomes a small copy of the printed card. Least change, works on phones.</p>
+<div class="panel" id="pa"></div></div>
+<div class="opt B"><h2>B. Turn spotlight</h2><p>Whoever's turn it is gets their full card in the roll box, next to the die. Everyone else is a small card in a strip below, so you always see whose turn it is from the art.</p>
+<div class="roll"><div class="card big" style="background-image:url(/art/countries/cards/japan.jpg)"></div><div><div class="tagline">Kenji's turn</div><div class="die">4</div></div></div>
+<div class="strip" id="pb"></div></div>
+<div class="opt C"><h2>C. Seat cards on the table</h2><p>Each player's card sits on the table beside the board, like the physical game, with money on a badge across the bottom. The active card lifts and glows. Replaces the avatars in the players panel.</p>
+<div class="table"><div class="board"></div><div class="seats" id="pc"></div></div></div>
+<div class="opt D"><h2>Setup (goes with any of the three): pick your card</h2><p>Instead of a country dropdown, the six cards are laid out. Click one to take it; taken cards go grey. Hovering lifts the card and shows its perk.</p>
+<div class="pick" id="pd"></div></div>
+</div>
+<script>
+const P=[['You','usa',5,1],['Ana','germany',7,0],['Bo','bangladesh',3,2],['Kenji','japan',5,0]],img=c=>`url(/art/countries/cards/${c}.jpg)`
+document.getElementById('pa').innerHTML=P.map((p,i)=>`<div class="pr ${i===3?'on':''}"><div class="card" style="background-image:${img(p[1])}"></div><div><b>${p[0]}</b><small>${i===3?'Your turn':'No money on its way yet'}</small></div><span class="m">${p[2]}</span></div>`).join('')
+document.getElementById('pb').innerHTML=P.map((p,i)=>`<div class="card ${i===3?'on':''}" style="background-image:${img(p[1])}"></div>`).join('')
+document.getElementById('pc').innerHTML=P.map((p,i)=>`<div class="card ${i===3?'on':''}" style="background-image:${img(p[1])}"><span class="name">${p[0]}</span><div class="badge"><span>${p[2]}</span><span>${p[3]?'debt '+p[3]:''}</span></div></div>`).join('')
+document.getElementById('pd').innerHTML=['usa','china','japan','germany','bangladesh','uk'].map(c=>`<div class="card ${c==='usa'?'mine':c==='germany'?'taken':''}" style="background-image:${img(c)}">${c==='usa'?'<span class="who">You</span>':c==='germany'?'<span class="who">Ana</span>':''}</div>`).join('')
+</script></body></html>

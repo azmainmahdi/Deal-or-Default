@@ -72,8 +72,10 @@ describe('card effects', () => {
     expect(p[0]!.capital).toBe(6)
     expect(effects).toEqual([{ t: 'push', p: 1, by: 2, via: 'card', tiles: true }])
   })
-  it('Trade Corridor: status for 3 turns', () => {
-    expect(draw('tradeCorridor').p[0]!.statuses).toEqual([{ kind: 'tradeCorridor', turns: 3 }])
+  it('Trade Corridor (printed): cancels the next tariff landed on', () => {
+    const r = draw('tradeCorridor')
+    expect(r.s.corridor).toBe(1)
+    expect(r.p[0]!.statuses).toEqual([])
   })
   it('Currency Devaluation: -3, can go negative', () => {
     expect(draw('devaluation', undefined, edit(table(), (s) => (s.players[0]!.capital = 1))).p[0]!.capital).toBe(-2)
@@ -82,8 +84,8 @@ describe('card effects', () => {
     expect(draw('bankingPanic', 'pay').p[0]).toMatchObject({ capital: 3, debt: 2 })
     expect(draw('bankingPanic', 'debt').p[0]).toMatchObject({ capital: 5, debt: 3 })
   })
-  it('Cyber Attack: highest-profit project -5, min 0', () => {
-    expect(draw('cyberAttack').p[0]!.projects.map((x) => x.profit)).toEqual([5, 4])
+  it('Cyber Attack (printed): highest-profit project -10, min 0', () => {
+    expect(draw('cyberAttack').p[0]!.projects.map((x) => x.profit)).toEqual([0, 4])
   })
   it('Trade Embargo: skip-next-turn status', () => {
     expect(draw('embargo').p[0]!.statuses).toEqual([{ kind: 'embargo', turns: 1 }])
@@ -116,9 +118,9 @@ describe('card effects', () => {
   it('Interest Rate Hike hits every player', () => {
     expect(draw('rateHike').p.every((x) => x.statuses[0]?.kind === 'rateHike')).toBe(true)
   })
-  it('Commodity Crash: every project of every player -3, min 0', () => {
+  it('Commodity Crash (printed): every project of every player -5, min 0', () => {
     const { p } = draw('commodityCrash')
-    expect(p[0]!.projects.map((x) => x.profit)).toEqual([7, 1])
+    expect(p[0]!.projects.map((x) => x.profit)).toEqual([5, 0])
     expect(p[1]!.projects.map((x) => x.profit)).toEqual([0])
   })
   it('Capital Controls: 3-turn status on you only', () => {

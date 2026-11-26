@@ -16,7 +16,7 @@ export function Rules({ onClose }: { onClose: () => void }) {
       <section className="rules-card" onClick={(e) => e.stopPropagation()}>
         <p className="eyebrow">How to play</p>
         <h2>Finish with the highest Net Worth</h2>
-        <p className="lede">Net Worth = Capital − {C.debtWeight} × Debt. Unfinished projects count for nothing. Everyone starts with {C.startCapital} Capital and {C.startWaivers} Tariff Waiver.</p>
+        <p className="lede">Net Worth = Capital − open loans, each counting its size + {C.debtLateInterest}. Unfinished projects count for nothing. Everyone starts with {C.startCapital} Capital and {C.startWaivers} Tariff Waiver.</p>
         <div className="rules-grid">
           {ROWS.map(([icon, name, text]) => (
             <div key={icon} className="rule">
@@ -26,8 +26,8 @@ export function Rules({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <div className="rules-foot">
-          <p><b>Your turn:</b> borrow up to {C.maxDebtTake} Debt (cap {C.debtCap}) or repay, then roll. From square {C.crunchFrom} your roll is halved while you owe anything.</p>
-          <p><b>Takeover:</b> end your move on a rival with projects and you may pay {C.takeoverCost} to take their smallest one.</p>
+          <p><b>Your turn:</b> borrow one of the three loans ({C.loanSizes.join(', ')}, each held once) or repay, then roll. From square {C.crunchFrom} your roll is halved while you owe anything.</p>
+          <p><b>Takeover:</b> share a square and you may pay {C.takeoverCost} to challenge: both roll, the higher takes the other's best project.</p>
           <p><b>Countries:</b> each has one perk, shown on its card.</p>
         </div>
         <button className="primary" onClick={onClose}>Got it</button>

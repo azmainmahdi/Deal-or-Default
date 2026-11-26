@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Numbers and takeover icon</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Nunito:wght@700;800;900&family=Federo&family=Limelight&family=Josefin+Sans:wght@700&family=Poiret+One&display=swap" rel="stylesheet">
+<style>
+/* Two picks: the tile-number font on light tiles (dark tiles stay pale gold), and a takeover icon in the tile-icon style. */
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:#f3ecdc;font:15px/1.35 Nunito,system-ui;padding:28px 16px}
+h1{font:800 22px Fraunces;text-align:center;margin:0 0 6px}h2{font:800 17px Fraunces;margin:30px 0 12px;text-align:center}
+.wrap{max-width:860px;margin:auto}
+.row{display:grid;grid-template-columns:180px 1fr;gap:14px;align-items:center;padding:12px 14px;border-radius:16px;background:#0d0c0acc;box-shadow:0 0 0 1px #d8b05a33;margin-bottom:10px}
+.row b{font:800 15px Fraunces}.row small{display:block;color:#a39a86;font-size:12px}
+.tiles{display:flex;gap:8px;flex-wrap:wrap;padding:8px;border-radius:10px;background:#101830}
+.t{position:relative;width:64px;height:64px;border-radius:4px;background:#17223d center/cover}
+.t span{position:absolute;top:3px;right:6px;line-height:1}
+.ic{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
+.ic figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 18px;border-radius:16px;background:#0d0c0acc;box-shadow:0 0 0 1px #d8b05a33}
+.ic figcaption{font:800 14px Fraunces;text-align:center}.ic figcaption small{display:block;font:700 12px Nunito;color:#a39a86}
+.qrow{display:flex;align-items:center;gap:8px;font:800 15px Fraunces}
+</style></head><body><div class="wrap">
+<h1>Tile numbers on light tiles</h1>
+<p style="text-align:center;color:#a39a86;margin:0">Dark, red and purple tiles keep pale gold in every option. Light tiles get the black.</p>
+<div id="nums"></div>
+<h2>Takeover icon (gold and black, like the tile icons)</h2>
+<div class="ic" id="icons"></div>
+</div>
+<script>
+const T=[['',57],['event',76],['ladder',59],['tariff',83],['snake',65],['sanction',79]],LIGHT=['event','ladder','tariff']
+const OPTS=[
+ ['A','Federo, black','The coin font, as now, in black on light tiles.',"400 17px Federo",''],
+ ['B','Federo, bold black','Same font thickened with a black outline.',"400 17px Federo",'-webkit-text-stroke:.7px currentColor'],
+ ['C','Limelight, black','A heavier Deco face.',"400 16px Limelight",''],
+ ['D','Josefin Sans bold, black','Deco-era geometric sans, bold.',"700 16px 'Josefin Sans'",''],
+]
+document.getElementById('nums').innerHTML=OPTS.map(([k,n,d,f,x])=>`<div class="row"><div><b>${k}. ${n}</b><small>${d}</small></div><div class="tiles">${T.map(([t,q])=>`<div class="t" style="${t?`background-image:url(/icons/${t}.svg)`:''}"><span style="font:${f};${x};color:${LIGHT.includes(t)?'#0d0c0a':'#f5dc94'}">${q}</span></div>`).join('')}</div></div>`).join('')
+// icons: navy glyph, gold gradient edge, on the gold takeover tile; shown at tile size and at panel size
+const G='<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a6"/><stop offset="1" stop-color="#b8892e"/></linearGradient><linearGradient id="tb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3cf6a"/><stop offset="1" stop-color="#c99a3e"/></linearGradient></defs>'
+const tile=g=>`<rect width="64" height="64" rx="5" fill="url(#tb)"/><g fill="#14213b" stroke="url(#gg)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">${g}</g>`
+const ICONS=[
+ ['A','Pawns face off','two tokens, a spark between',`<path d="M8 54h20l-3-9h-3a9 9 0 1 0-8 0h-3z"/><path d="M36 54h20l-3-9h-3a9 9 0 1 0-8 0h-3z"/><path d="M33 12l-6 11h6l-4 11 10-14h-6l4-8z" fill="url(#gg)" stroke="#14213b" stroke-width="1.4"/>`],
+ ['B','Hand takes the coin','grabbing a project',`<circle cx="40" cy="22" r="9"/><rect x="36.5" y="18.5" width="7" height="7" fill="url(#gg)" stroke="none"/><path d="M12 46c4-10 10-14 18-14h8c3 0 3 4 0 4h-7M14 52l6-6M30 36c2 0 9-1 13-4 3-2 5 1 3 3-4 5-10 9-18 10l-8 1"/>`],
+ ['C','Chess knight','the takeover move',`<path d="M20 52h26v-5H20zM24 47c0-8 5-11 6-16l-8 3-3-5 10-12c2-3 8-3 12 2 5 6 6 17 3 28z"/><circle cx="33" cy="22" r="1.6" fill="url(#gg)" stroke="none"/>`],
+]
+document.getElementById('icons').innerHTML=ICONS.map(([k,n,d,g])=>`<figure><svg viewBox="0 0 64 64" width="96" height="96">${G}${tile(g)}</svg>
+ <div class="qrow"><svg viewBox="0 0 64 64" width="26" height="26">${G}${tile(g)}</svg>Hostile takeover?</div><figcaption>${k}. ${n}<small>${d}</small></figcaption></figure>`).join('')
+</script></body></html>

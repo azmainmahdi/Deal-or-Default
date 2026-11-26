@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 6: Decisions</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Nunito:wght@700;800;900&family=Federo&display=swap" rel="stylesheet">
+<style>
+/* Step 6, round 3: the decision dock sits beside the board (below it on phones) so the board stays visible.
+   Hovering a choice previews it on the board: a ghost token where you would end up, and the path there. */
+:root{--bg:#0d0c0a;--bg2:#1c1a15;--gold:#d8b05a;--gold2:#f5dc94;--ink:#f3ecdc;--mute:#a39a86;--green:#4fdcaa;--red:#ff8590}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 40%,#0008 100%);pointer-events:none}
+.top{position:relative;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px 16px 0;z-index:3}
+.top button{font:800 13px Nunito;padding:8px 15px;border-radius:999px;border:1px solid #d8b05a55;background:#0d0c0acc;color:var(--gold2);cursor:pointer}
+.top button[aria-pressed=true]{background:var(--gold);color:#1a1206}
+.stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;align-items:center;max-width:1180px;margin:16px auto 40px;padding:0 16px}
+@media (max-width:900px){.stage{grid-template-columns:1fr;gap:14px}}
+
+/* board (flat here so the preview reads clearly) */
+.board{position:relative;aspect-ratio:1;border:5px solid #b8892e;border-radius:12px;background:#101830;box-shadow:0 3px 0 #6e5018,0 18px 34px -10px #000c;overflow:hidden}
+.board::before{content:"";position:absolute;inset:0;background:url(board-bg.jpg) center/cover;opacity:.12}
+.board svg{position:absolute;inset:2.4%;width:95.2%;height:95.2%;overflow:visible}
+.tile{fill:#16203cdd;stroke:#c9a24a8c;stroke-width:1.4}
+.num{fill:#efe6d2;font:700 15px Fraunces}.num.art{fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3.5px}
+.hl{fill:none;stroke-width:5;rx:6}
+.ghost{opacity:.55;animation:gh 1.4s ease-in-out infinite}@keyframes gh{50%{opacity:.85}}
+.pathln{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:2 12;animation:march 1s linear infinite}@keyframes march{to{stroke-dashoffset:-28}}
+.flag text{font:400 26px Federo}
+
+/* the dock: rounded, black and gold, a fine double rule */
+.dock{position:relative;padding:28px 26px 24px;border-radius:24px;background:linear-gradient(180deg,var(--bg2),var(--bg));
+ box-shadow:0 0 0 1px #d8b05a55,0 30px 60px -20px #000,inset 0 1px 0 #ffffff12;transform:translateY(10px);opacity:0;transition:transform .45s cubic-bezier(.2,1.3,.4,1),opacity .3s}
+.dock.on{transform:none;opacity:1}
+.dock::before{content:"";position:absolute;inset:8px;border-radius:18px;border:1px solid #d8b05a2a;pointer-events:none}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.head .t{display:flex;align-items:center;gap:14px}
+.medal{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;flex:none;background:radial-gradient(circle at 50% 35%,var(--mc,#3a2a10),#0d0c0a 75%);box-shadow:0 0 0 1.5px var(--gold),0 0 0 4px #0d0c0a,0 0 0 5px #d8b05a55,0 6px 14px -4px #000}
+.medal img{width:34px;height:34px;border-radius:7px}
+.kind{font:800 10px Nunito;letter-spacing:.26em;text-transform:uppercase;color:var(--gold)}
+.title{font:800 22px/1.1 Fraunces;margin-top:3px}
+.mine{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:#ffffff08;box-shadow:inset 0 0 0 1px #d8b05a33}
+.mine i{width:30px;height:30px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 1.5px var(--gold)}
+.mine b{font:400 19px Federo;color:var(--gold2);transition:color .2s}
+.mine b.up{color:var(--green)}.mine b.dn{color:var(--red)}
+.rule{height:1px;margin:20px 0;background:linear-gradient(90deg,transparent,#d8b05a66,transparent)}
+
+/* minted coin: milled rim, inner ring, Deco star */
+.coin{display:inline-block;vertical-align:-4px;flex:none}
+
+/* choice tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ch{position:relative;cursor:pointer;display:grid;justify-items:center;gap:6px;padding:20px 10px 16px;border-radius:18px;border:0;color:var(--ink);font:inherit;text-align:center;
+ background:linear-gradient(180deg,#ffffff0b,#ffffff03);box-shadow:inset 0 0 0 1px #d8b05a33,0 8px 18px -10px #000;transition:transform .18s,box-shadow .18s,background .18s}
+.ch:hover,.ch:focus-visible,.ch.sel{transform:translateY(-3px);outline:none;background:linear-gradient(180deg,#d8b05a1c,#d8b05a06);box-shadow:inset 0 0 0 1.5px var(--gold),0 14px 26px -12px #000,0 0 26px -10px #d8b05a}
+.ch.good{--tone:var(--green)}.ch.bad{--tone:var(--red)}
+.ch .md{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--tone,#d8b05a) 30%,#1c1a15),#0d0c0a 80%);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--tone,#d8b05a) 70%,#000),0 0 0 4px #0d0c0a,0 0 0 5px #d8b05a44}
+.ch .md svg{width:28px;height:28px}
+.ch .big{display:flex;align-items:center;gap:6px;font:400 32px/1 Federo;color:var(--gold2);margin-top:4px}
+.ch.bad .big{color:var(--red)}
+.ch .cap{font:800 11px Nunito;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.chip{display:inline-flex;align-items:center;gap:4px;font:800 11.5px Nunito;padding:3px 9px;border-radius:999px;background:#ffffff0d;color:#ddd4c0}
+.chip.g{background:#4fdcaa1f;color:var(--green)}.chip.r{background:#ff85901f;color:var(--red)}
+.ch kbd{position:absolute;top:10px;right:12px;font:800 10px Nunito;color:#8a826f;border:1px solid #ffffff1c;border-radius:5px;padding:1px 5px}
+
+/* ladder: route, coin picker, the deal */
+.hop{display:flex;align-items:center;justify-content:center;gap:14px;font:400 38px Federo;color:var(--gold2)}
+.hop svg{width:44px;height:26px}
+.pick{display:flex;gap:10px;justify-content:center;margin:18px 0 16px}
+.pick button{position:relative;width:54px;height:54px;padding:0;border:0;background:none;cursor:pointer;opacity:.32;transition:opacity .15s,transform .2s cubic-bezier(.2,1.6,.4,1)}
+.pick button.on{opacity:1;transform:translateY(-4px)}
+.pick button span{position:absolute;inset:0;display:grid;place-items:center;font:400 19px Federo;color:#3a2600;text-shadow:0 1px 0 #fff6}
+.deal{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 16px;border-radius:16px;background:#ffffff07;box-shadow:inset 0 0 0 1px #d8b05a2a}
+.deal .s{text-align:center}.deal .s b{display:flex;justify-content:center;align-items:center;gap:6px;font:400 30px/1 Federo}
+.deal small{display:block;margin-top:5px;font:800 9.5px Nunito;letter-spacing:.2em;color:var(--mute)}
+.deal .mid{display:flex;flex-direction:column;align-items:center;gap:4px;font:800 11px Nunito;color:var(--mute)}
+.deal .mid svg{width:64px;height:12px}
+.go{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;cursor:pointer;padding:14px 16px;border-radius:999px;font:900 15px Nunito;letter-spacing:.02em;border:0;color:var(--ink);background:#ffffff0a;box-shadow:inset 0 0 0 1px #d8b05a44;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.primary{color:#241800;background:linear-gradient(180deg,#fbe6a6,#e2bb5e 55%,#c99a3e);box-shadow:0 8px 20px -8px #d8b05a,inset 0 1px 0 #fff8}
+.vics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.vics .por{width:58px;height:58px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 2px var(--gold),0 0 0 5px #0d0c0a,0 0 0 6px #d8b05a44}
+.cost{display:flex;justify-content:center;margin-top:14px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);padding:11px 20px;border-radius:999px;background:#0d0c0aee;box-shadow:0 0 0 1px var(--gold);color:var(--gold2);font:800 14px Nunito;opacity:0;transition:opacity .3s;white-space:nowrap;z-index:9}
+.toast.on{opacity:1}
+.tapnote{display:none;text-align:center;font:800 11px Nunito;color:var(--mute);margin-top:10px;letter-spacing:.06em}
+@media (hover:none){.tapnote{display:block}}
+@media (max-width:420px){.dock{padding:24px 18px 18px}.title{font-size:19px}.ch .big{font-size:27px}}
+</style></head><body>
+<div class="top" id="top"></div>
+<div class="stage"><div class="board"><svg viewBox="0 0 1000 1000" id="b"></svg></div><section class="dock" id="dock" aria-live="polite"></section></div>
+<div class="toast" id="toast"></div>
+<script>
+// ---- board ----
+const L={10:13,22:26,29:32,37:42,50:55,59:64,67:75,71:86},S={17:5,28:9,31:14,48:26,58:39,65:46,88:73,99:63}
+const E=[7,25,43,54,61,69,76,87,96],T=[23,34,62,72,83],X=[18,45,68,79,91]
+const type=q=>q===1?'start':q===100?'goal':L[q]?'ladder':S[q]?'snake':E.includes(q)?'event':T.includes(q)?'tariff':X.includes(q)?'sanction':''
+const cell=q=>{const i=q-1,r=Math.floor(i/10),c=r%2===0?i%10:9-i%10;return{x:c*100,y:(9-r)*100}}
+const mid=q=>{const{x,y}=cell(q);return{x:x+50,y:y+50}}
+const IN=7,W=86
+function boardTiles(){let h='<defs>'+['usa','china','japan','germany','bangladesh','uk'].map(c=>`<pattern id="p-${c}" width="1" height="1" patternContentUnits="objectBoundingBox"><image href="/art/countries/${c}.jpg" x="-.25" y="-.1" width="1.5" height="1.5" preserveAspectRatio="xMidYMid slice"/></pattern>`).join('')+'</defs>'
+ for(let q=1;q<=100;q++){const{x,y}=cell(q),t=type(q),art=t&&t!=='start'
+  h+=`<rect class="tile" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}" rx="3"/>`
+  if(art)h+=`<image href="/icons/${t}.svg" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}"/>`
+  if(t!=='goal'&&t!=='start')h+=`<text class="num ${art?'art':''}" x="${x+100-IN-4}" y="${y+IN+16}" text-anchor="end">${q}</text>`}
+ return h}
+const puck=(q,c,cls='',dx=0,dy=0)=>{const{x,y}=mid(q);return`<g class="${cls}" transform="translate(${x+dx},${y+dy})"><ellipse cy="10" rx="30" ry="10" fill="#000" opacity=".45"/><circle r="30" fill="#b8892e"/><circle r="27" fill="url(#p-${c})" stroke="#f5dc94" stroke-width="3"/></g>`}
+
+// ---- minted coin (SVG): milled rim, ring, Deco star ----
+function coin(s=20,plain=false){const t=[...Array(28)].map((_,i)=>{const a=i/28*Math.PI*2;return`<line x1="${12+Math.cos(a)*10.6}" y1="${12+Math.sin(a)*10.6}" x2="${12+Math.cos(a)*11.6}" y2="${12+Math.sin(a)*11.6}"/>`}).join('')
+ return`<svg class="coin" width="${s}" height="${s}" viewBox="0 0 24 24"><defs><radialGradient id="cg" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#fff4c8"/><stop offset=".45" stop-color="#f1c65a"/><stop offset="1" stop-color="#9c6b0c"/></radialGradient></defs>
+ <circle cx="12" cy="12" r="11.8" fill="#8a5d0a"/><circle cx="12" cy="12" r="11.2" fill="url(#cg)"/><g stroke="#8a5d0a" stroke-width=".9" opacity=".7">${t}</g>
+ <circle cx="12" cy="12" r="7.6" fill="none" stroke="#a8770f" stroke-width=".9"/>${plain?'':'<path d="M12 6.4 13.3 10.7 17.6 12 13.3 13.3 12 17.6 10.7 13.3 6.4 12 10.7 10.7Z" fill="#b8860f" opacity=".85"/>'}<path d="M5 7.5a8 8 0 0 1 5-3.4" stroke="#fff" stroke-width="1" fill="none" opacity=".6" stroke-linecap="round"/></svg>`}
+const IC={
+ shield:'<svg viewBox="0 0 24 24"><path d="M12 2.5 19.5 5.5v6c0 5-3.4 8.6-7.5 10-4.1-1.4-7.5-5-7.5-10v-6z" fill="#4fdcaa33" stroke="#4fdcaa" stroke-width="1.6"/><path d="m8.5 12 2.5 2.5 4.7-5" fill="none" stroke="#4fdcaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ fall:'<svg viewBox="0 0 24 24"><path d="M12 3v14m-5.5-5.5L12 17l5.5-5.5" fill="none" stroke="#ff8590" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21h14" stroke="#ff8590" stroke-width="1.8" stroke-linecap="round"/></svg>',
+ ticket:'<svg viewBox="0 0 24 24"><path d="M3 7h18v3.5a2 2 0 0 0 0 3V17H3v-3.5a2 2 0 0 0 0-3z" fill="#4fdcaa26" stroke="#4fdcaa" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 7.5v9" stroke="#4fdcaa" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>',
+ back:'<svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="#ff8590" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ debt:'<svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2" fill="#ff859022" stroke="#ff8590" stroke-width="1.6"/><path d="M8.5 8h7M8.5 11.5h7M8.5 15h4" stroke="#ff8590" stroke-width="1.6" stroke-linecap="round"/></svg>',
+ up:'<svg viewBox="0 0 44 26"><path d="M3 22 L38 5 M28 3 L39 5 L34 15" fill="none" stroke="#4fdcaa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ arr:'<svg viewBox="0 0 64 12"><path d="M2 6h56m-6-4.5 6 4.5-6 4.5" fill="none" stroke="#d8b05a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+}
+
+// ---- scenes (sample state) ----
+const ME={name:'Ana',c:'usa',cap:14}
+const OTHERS=[['Bo','china',32],['Lena','germany',8],['Rafi','bangladesh',61],['Will','uk',50]]
+const SC={
+ ladder:{tab:'Ladder',kind:'FDI ladder',icon:'ladder',title:'Invest?',at:37,mc:'#123d2e'},
+ crash:{tab:'Crash',kind:'Market crash',icon:'snake',title:'Hedge?',at:48,mc:'#4a1520'},
+ tariff:{tab:'Tariff',kind:'Tariff',icon:'tariff',title:'Pushed back 3',at:24,mc:'#4a2a10'},
+ card:{tab:'Event card',kind:'Banking Panic',icon:'event',title:'Pay or borrow?',at:25,mc:'#4a3a10'},
+ takeover:{tab:'Takeover',kind:'Hostile takeover',icon:'sanction',title:'Take a project?',at:44,mc:'#2c1a4a'},
+}
+let sc=location.hash.slice(1)in SC?location.hash.slice(1):'ladder',chips=2,sel=null
+const touch=matchMedia('(hover: none)').matches
+
+// what each choice does, for the preview: where Ana ends up, the path colour, coin change
+function outcome(k){const at=SC[sc].at
+ if(sc==='ladder')return k==='invest'&&chips?{to:42,col:'#4fdcaa',coins:-chips,label:`+${chips*5}`}:{to:at,coins:0}
+ if(sc==='crash')return k==='1'?{to:37,col:'#d8b05a',coins:-4}:{to:26,col:'#ff8590',coins:0}
+ if(sc==='tariff')return k==='1'?{to:24,coins:0}:{to:21,col:'#ff8590',coins:0,walk:true}
+ if(sc==='card')return k==='1'?{to:at,coins:-2}:{to:at,coins:0}
+ if(sc==='takeover')return k&&k!=='none'?{to:at,coins:-3,steal:k}:{to:at,coins:0}}
+
+function drawBoard(prev){const at=SC[sc].at;let h=boardTiles()
+ OTHERS.forEach(([n,c,q],i)=>{const hi=prev&&prev.steal===n;h+=hi?`<rect class="hl" x="${cell(q).x+3}" y="${cell(q).y+3}" width="94" height="94" stroke="#d8b05a"/>`:'';h+=puck(q,c,'',0,0)})
+ if(prev&&prev.to!==at){const a=mid(at),b=mid(prev.to)
+  if(prev.walk){let pts=[];for(let q=at;q>=prev.to;q--){const m=mid(q);pts.push(`${m.x},${m.y}`)}h+=`<polyline class="pathln" points="${pts.join(' ')}" stroke="${prev.col}"/>`}
+  else{const cx=(a.x+b.x)/2+(a.y-b.y)*.25,cy=(a.y+b.y)/2-Math.abs(a.x-b.x)*.15-40;h+=`<path class="pathln" d="M${a.x},${a.y} Q${cx},${cy} ${b.x},${b.y}" stroke="${prev.col}"/>`}
+  const{x,y}=cell(prev.to);h+=`<rect class="hl" x="${x+3}" y="${y+3}" width="94" height="94" stroke="${prev.col}"/>`
+  h+=puck(at,ME.c,'',0,0)+puck(prev.to,ME.c,'ghost')
+  if(prev.label)h+=`<g class="flag" transform="translate(${b.x+34},${b.y-44})"><rect x="0" y="-26" width="66" height="36" rx="18" fill="#0d0c0a" stroke="#4fdcaa" stroke-width="2"/><text x="33" y="1" text-anchor="middle" fill="#4fdcaa">${prev.label}</text></g>`}
+ else{h+=puck(at,ME.c);const{x,y}=cell(at);h+=`<rect class="hl" x="${x+3}" y="${y+3}" width="94" height="94" stroke="#f5dc94" opacity=".9"/>`}
+ document.getElementById('b').innerHTML=h
+ const m=document.getElementById('mycoins');if(m){const d=prev?prev.coins:0;m.textContent=ME.cap+d;m.className=d>0?'up':d<0?'dn':''}}
+
+// ---- dock ----
+const head=s=>`<div class="head"><div class="t"><div class="medal" style="--mc:${s.mc}"><img src="/icons/${s.icon}.svg" alt=""></div><div><div class="kind">${s.kind}</div><div class="title">${s.title}</div></div></div>
+ <div class="mine"><i style="--art:url(/art/countries/${ME.c}.jpg)"></i>${coin(18)}<b id="mycoins">${ME.cap}</b></div></div><div class="rule"></div>`
+const ch=(k,tone,icon,big,cap,chips)=>`<button class="ch ${tone}" data-k="${k}"><kbd>${k}</kbd><span class="md">${icon}</span><span class="big">${big}</span><span class="cap">${cap}</span><span class="chips">${chips}</span></button>`
+function body(){
+ if(sc==='ladder')return`<div class="hop"><span>37</span>${IC.up}<span>42</span></div>
+  <div class="pick">${[1,2,3,4].map(n=>`<button class="${n<=chips?'on':''}" onclick="chips=${n};draw()" aria-label="${n} coins">${coin(54,true)}<span>${n}</span></button>`).join('')}</div>
+  <div class="deal"><div class="s"><b style="color:var(--gold2)">−${chips}</b><small>NOW</small></div><div class="mid">${IC.arr}<span>${chips===1?'1 turn':chips+' turns'}</span></div><div class="s"><b style="color:var(--green)">+${chips*5}</b><small>BACK</small></div></div>
+  <div class="go"><button class="btn" data-k="skip">Skip</button><button class="btn primary" data-k="invest">Invest ${chips}</button></div>`
+ if(sc==='crash')return`<div class="tiles">${ch(1,'good',IC.shield,`${coin(24)}4`,'Hedge','<span class="chip">to 37</span><span class="chip g">projects safe</span>')}${ch(2,'bad',IC.fall,'26','Ride it','<span class="chip r">lose +10</span>')}</div>`
+ if(sc==='tariff')return`<div class="tiles">${ch(1,'good',IC.ticket,'24','Use ticket','<span class="chip g">stay put</span>')}${ch(2,'bad',IC.back,'21','Go back','<span class="chip">keep ticket</span>')}</div>`
+ if(sc==='card')return`<div class="tiles">${ch(1,'good',coin(28),`−2`,'Pay','<span class="chip g">no debt</span>')}${ch(2,'bad',IC.debt,'+1','Debt','<span class="chip">keep coins</span>')}</div>`
+ if(sc==='takeover')return`<div class="vics">${[['Bo','china','+8'],['Lena','germany','+3'],['Rafi','bangladesh','+10']].map(([n,c,p],i)=>`<button class="ch good" data-k="${n}"><kbd>${i+1}</kbd><span class="por" style="--art:url(/art/countries/${c}.jpg)"></span><span class="big" style="font-size:26px;color:var(--green)">${p}</span><span class="cap">${n}</span></button>`).join('')}</div>
+  <div class="cost"><span class="chip">costs ${coin(16)} 3</span></div><div class="go"><button class="btn" data-k="none">Skip</button></div>`}
+function draw(){const d=document.getElementById('dock');d.innerHTML=head(SC[sc])+body()+(touch?'<div class="tapnote">Tap a choice to preview it, tap again to confirm</div>':'')
+ d.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k
+  el.onmouseenter=el.onfocus=()=>drawBoard(outcome(k));el.onmouseleave=el.onblur=()=>drawBoard(sel?outcome(sel):null)
+  el.onclick=()=>{if(touch&&sel!==k){sel=k;d.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');drawBoard(outcome(k));return}choose(k)}})
+ drawBoard(null)}
+function open(){sel=null;document.getElementById('top').innerHTML=Object.entries(SC).map(([k,s])=>`<button aria-pressed="${k===sc}" onclick="sc='${k}';location.hash='${k}';open()">${s.tab}</button>`).join('')
+ const d=document.getElementById('dock');d.style.transition=document.hidden?'none':'';d.classList.remove('on');draw();setTimeout(()=>d.classList.add('on'),40)}
+const SAID={ladder:k=>k==='invest'?`Ana invested ${chips}: +${chips*5} on the way`:'Ana skipped the ladder',crash:k=>k==='1'?'Ana hedged and kept every project':'Ana rode the crash down to 26',
+ tariff:k=>k==='1'?'Ana used a waiver ticket':'Ana went back to 21',card:k=>k==='1'?'Ana paid 2 coins':'Ana took 1 debt',takeover:k=>k==='none'?'No takeover this turn':`Ana took over ${k}'s project`}
+function choose(k){const o=outcome(k);drawBoard(o);const t=document.getElementById('toast');document.getElementById('dock').classList.remove('on')
+ t.textContent=SAID[sc](k);t.classList.add('on');setTimeout(()=>{t.classList.remove('on');open()},1700)}
+addEventListener('keydown',e=>{const map={'1':0,'2':1,'3':2},btns=[...document.querySelectorAll('#dock .ch')];if(e.key in map&&btns[map[e.key]])choose(btns[map[e.key]].dataset.k);if(e.key==='Enter'&&sc==='ladder')choose('invest')})
+open()
+</script></body></html>

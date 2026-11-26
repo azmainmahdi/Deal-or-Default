@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 6: Sleek Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Fraunces:opsz,wght@9..144,800&family=Federo&display=swap" rel="stylesheet">
+<style>
+/* Four modern looks for the decision controls: buttons, the invest track, the board's payout marker, the result.
+   Hover the coins to see the real 3D spin. */
+:root{--bg:#0d0c0a;--bg2:#1c1a15;--ink:#f3ecdc;--mute:#a39a86;--gold:#d8b05a;--green:#4fdcaa;--red:#ff7a7f}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui;padding:24px 16px 60px}
+h1{margin:0 auto 4px;max-width:900px;font:800 22px Fraunces}
+.lead{margin:0 auto 20px;max-width:900px;color:var(--mute);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px;max-width:900px;margin:0 auto}
+.opt{border-radius:22px;padding:16px 16px 18px;background:linear-gradient(180deg,#1c1a15,#0d0c0a);box-shadow:0 0 0 1px #d8b05a33,0 24px 50px -22px #000}
+.opt h2{margin:0;font:800 17px Fraunces}.opt>p{margin:3px 0 14px;font:700 12.5px Nunito;color:var(--mute)}
+.lbl{margin:16px 0 8px;font:800 10.5px Nunito;letter-spacing:.16em;text-transform:uppercase;color:#d8b05a99}
+.row{padding:14px 12px;border-radius:16px;background:radial-gradient(ellipse at 30% 0,#2ee6b01f,transparent 70%);box-shadow:inset 0 0 0 1px #2ee6b055}
+.q{display:flex;align-items:center;gap:9px;margin-bottom:12px;font:800 16px Fraunces}.q img{width:24px;height:24px;border-radius:6px}
+.inv{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pick{display:flex;gap:2px}
+.pick button{border:0;background:none;padding:2px;cursor:pointer;transition:transform .25s cubic-bezier(.2,1.6,.4,1),opacity .15s,filter .15s}
+.pick button.off{opacity:.3;filter:saturate(.2) brightness(.8)}
+.pick button:hover{transform:translateY(-5px) scale(1.12);opacity:1;filter:none}
+/* the coin: a strip of real 3D frames; hovering plays the spin */
+.c3d{display:block;width:30px;height:30px;background:var(--sp) 0 0/4000% 100% no-repeat;filter:drop-shadow(0 2px 2px #0009)}
+.pick button:hover .c3d{animation:spin 1.5s steps(40,jump-none) infinite}@keyframes spin{to{background-position:100% 0}}
+.go{display:flex;gap:8px;margin-top:14px}
+.go button{flex:1;cursor:pointer;border:0;font:800 15px Nunito;height:46px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:transform .15s,filter .15s,background .15s}
+.go button:active{transform:scale(.97)}
+.tile{position:relative;height:118px;border-radius:14px;background:#101830;overflow:hidden;display:grid;place-items:center}
+.tile svg{width:100%;height:100%}
+.res{margin-top:4px}
+
+/* ---------- A · Glass ---------- */
+.A .go button{border-radius:14px}
+.A .go .sec{color:var(--ink);background:#ffffff0d;box-shadow:inset 0 1px 0 #ffffff14;backdrop-filter:blur(6px)}
+.A .go .sec:hover{background:#ffffff17}
+.A .go .pri{color:#241800;background:linear-gradient(180deg,#f9dd92,#dcae4f);box-shadow:inset 0 1px 0 #fff9,0 8px 20px -10px #e2b54f}
+.A .go .pri:hover{filter:brightness(1.07)}
+.A .trk{min-width:132px}
+.A .nums{display:flex;justify-content:space-between;font:800 18px Nunito}.A .nums .o{color:var(--red)}.A .nums .i{color:var(--green)}
+.A .bar{display:flex;gap:4px;margin:6px 0 4px}.A .bar i{flex:1;height:5px;border-radius:9px;background:#ffffff1c}.A .bar i:last-child{background:linear-gradient(90deg,#ffffff1c,#4fdcaa);box-shadow:0 0 8px #4fdcaa88}
+.A .cap{display:flex;justify-content:space-between;font:700 10.5px Nunito;color:var(--mute)}
+.A .res{padding:12px 14px;border-radius:14px;background:#4fdcaa14;box-shadow:inset 0 1px 0 #ffffff12;backdrop-filter:blur(6px)}
+
+/* ---------- B · Flat ---------- */
+.B .go button{border-radius:12px}
+.B .go .sec{color:var(--ink);background:#2a2620}.B .go .sec:hover{background:#353028}
+.B .go .pri{color:#1d1404;background:#e3b955}.B .go .pri:hover{background:#efc766}
+.B .trk{text-align:right}
+.B .line{display:flex;align-items:center;gap:7px;font:800 17px Nunito}.B .line .o{color:var(--red)}.B .line .i{color:var(--green)}
+.B .dots{display:flex;gap:4px}.B .dots i{width:6px;height:6px;border-radius:50%;background:#a39a8677}
+.B .cap{font:700 10.5px Nunito;color:var(--mute);margin-top:3px}
+.B .res{padding:12px 14px;border-radius:12px;background:#2a2620}
+
+/* ---------- C · Capsule ---------- */
+.C .go button{border-radius:999px}
+.C .go .sec{color:var(--mute);background:transparent}.C .go .sec:hover{color:var(--ink);background:#ffffff0d}
+.C .go .pri{color:#241800;background:linear-gradient(180deg,#f9dd92,#dcae4f);box-shadow:0 6px 18px -8px #e2b54f}
+.C .rail{position:relative;display:flex;align-items:center;gap:8px;height:30px;padding:0 4px 0 12px;border-radius:999px;background:#ffffff0d;font:800 13px Nunito;white-space:nowrap}
+.C .rail .o{color:var(--red)}.C .rail .t{color:var(--mute);font-weight:700;font-size:11px}
+.C .rail .i{padding:3px 10px;border-radius:999px;color:#06331f;background:var(--green);font-weight:900}
+.C .res{padding:12px 16px;border-radius:999px;background:#ffffff0d}
+
+/* ---------- D · Countdown ---------- */
+.D .go{gap:0;padding:4px;border-radius:16px;background:#ffffff0d}
+.D .go button{border-radius:12px}
+.D .go .sec{color:var(--mute);background:transparent}.D .go .sec:hover{color:var(--ink)}
+.D .go .pri{color:#241800;background:linear-gradient(180deg,#f9dd92,#dcae4f)}
+.D .cd{display:flex;align-items:center;gap:10px}
+.D .ring{position:relative;width:40px;height:40px}.D .ring svg{position:absolute;inset:0}
+.D .ring b{position:absolute;inset:0;display:grid;place-items:center;font:900 16px Nunito}
+.D .cd .stack{display:flex;flex-direction:column;align-items:flex-start}
+.D .cd .i{font:900 20px Nunito;color:var(--green);line-height:1}.D .cd small{font:700 10.5px Nunito;color:var(--mute)}
+.D .cd .o{font:800 12px Nunito;color:var(--red)}
+.D .res{padding:12px 14px;border-radius:16px;background:#ffffff0d}
+.rh{display:flex;align-items:center;gap:8px;font:800 14px Nunito}.rp{margin-top:3px;font:700 12.5px Nunito;color:var(--mute)}
+.rh .g{color:var(--green)}
+</style></head><body>
+<h1>Pick a look</h1>
+<p class="lead">Same decision in four styles: buttons, the invest line, the payout marker on the board, the result. Hover the coins.</p>
+<div class="grid" id="grid"></div>
+<script type="module">
+import {renderSpin} from './coin.js'
+const dpr=Math.min(2,devicePixelRatio||1),SP=renderSpin(Math.round(36*dpr))
+document.documentElement.style.setProperty('--sp',`url(${SP})`)
+const coins=k=>`<div class="pick">${[1,2,3,4].map(i=>`<button class="${i<=k?'':'off'}" aria-label="Invest ${i}"><span class="c3d"></span></button>`).join('')}</div>`
+const head='<div class="q"><img src="/icons/ladder.svg" alt="">Invest?</div>'
+const smallCoin='<span class="c3d" style="width:16px;height:16px;display:inline-block;vertical-align:-3px"></span>'
+// the board tile: square 42 with the arrow coming in and the marker above it
+const board=m=>`<svg viewBox="0 0 300 130"><defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1 9 5 1 9z" fill="#4fdcaa"/></marker></defs>
+ <rect x="112" y="58" width="66" height="66" rx="5" fill="#2ee6b018" stroke="#4fdcaa" stroke-width="3"/><text x="171" y="74" text-anchor="end" fill="#efe6d2" style="font:700 12px Fraunces">42</text>
+ <path d="M290 120 Q230 70 160 98" fill="none" stroke="#4fdcaa" stroke-width="4" stroke-dasharray="2 10" stroke-linecap="round" marker-end="url(#a)"/>${m}</svg>`
+const OPTS=[
+ {k:'A',name:'A · Glass',say:'Frosted surfaces, a solid gold main button, a segmented bar for the wait.',
+  track:`<div class="trk"><div class="nums"><span class="o">−2</span><span class="i">+10</span></div><div class="bar"><i></i><i></i></div><div class="cap"><span>now</span><span>in 2 turns</span></div></div>`,
+  mark:`<foreignObject x="96" y="2" width="98" height="52"><div xmlns="http://www.w3.org/1999/xhtml" style="height:48px;border-radius:12px;background:#0d0c0acc;backdrop-filter:blur(6px);box-shadow:inset 0 1px 0 #ffffff1a,0 6px 14px #0008;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Nunito"><b style="font:900 19px Nunito;color:#4fdcaa;line-height:1">+10</b><span style="font:700 10px Nunito;color:#a39a86;margin-top:3px">in 2 turns</span></div></foreignObject>`,
+  res:`<div class="res"><div class="rh">Project started</div><div class="rp">Paid 2 ${smallCoin}. <b style="color:var(--green)">+10</b> lands in 2 turns.</div></div>`},
+ {k:'B',name:'B · Flat',say:'Solid flat buttons, no shine. The wait is a short sentence with a dot per turn.',
+  track:`<div class="trk"><div class="line"><span class="o">−2</span><span class="dots"><i></i><i></i></span><span class="i">+10</span></div><div class="cap">pays in 2 turns</div></div>`,
+  mark:`<g transform="translate(145,28)"><rect x="-62" y="-20" width="124" height="40" rx="10" fill="#0d0c0a" opacity=".92"/><circle cx="-42" cy="0" r="9" fill="none" stroke="#a39a8655" stroke-width="3"/><path d="M-42 -9 A9 9 0 0 1 -33 0" fill="none" stroke="#4fdcaa" stroke-width="3" stroke-linecap="round"/><text x="-26" y="7" fill="#4fdcaa" style="font:900 19px Nunito">+10</text><text x="34" y="6" text-anchor="middle" fill="#a39a86" style="font:700 10.5px Nunito">2 turns</text></g>`,
+  res:`<div class="res"><div class="rh">Invested 2 ${smallCoin}</div><div class="rp"><b style="color:var(--green)">+10</b> pays in 2 turns.</div></div>`},
+ {k:'C',name:'C · Capsule',say:'Round pills everywhere, a quiet Skip, the payout in a green bubble at the end of a rail.',
+  track:`<div class="rail"><span class="o">−2</span><span class="t">2 turns</span><span class="i">+10</span></div>`,
+  mark:`<g transform="translate(145,28)"><rect x="-62" y="-17" width="140" height="34" rx="17" fill="#0d0c0a" opacity=".92"/><text x="-26" y="7" text-anchor="middle" fill="#4fdcaa" style="font:900 18px Nunito">+10</text><circle cx="10" cy="0" r="7" fill="none" stroke="#a39a86" stroke-width="2"/><path d="M10 -4v4l3 2" fill="none" stroke="#a39a86" stroke-width="2" stroke-linecap="round"/><text x="36" y="5" text-anchor="middle" fill="#a39a86" style="font:800 11px Nunito">2 turns</text></g>`,
+  res:`<div class="res"><div class="rh">Project started · <span class="g">+10 in 2 turns</span></div></div>`},
+ {k:'D',name:'D · Countdown',say:'Skip and Invest in one switch. The wait is a countdown ring, like a game timer.',
+  track:`<div class="cd"><div class="ring"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#ffffff1c" stroke-width="4"/><circle cx="20" cy="20" r="16" fill="none" stroke="#4fdcaa" stroke-width="4" stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="50" transform="rotate(-90 20 20)"/></svg><b>2</b></div><div class="stack"><span class="i">+10</span><small>turns to wait</small><span class="o">−2 now</span></div></div>`,
+  mark:`<g transform="translate(145,28)"><circle cx="-24" r="20" fill="#0d0c0a" opacity=".95"/><circle cx="-24" r="15" fill="none" stroke="#ffffff1c" stroke-width="4"/><circle cx="-24" r="15" fill="none" stroke="#4fdcaa" stroke-width="4" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="47" transform="rotate(-90 -24 0)"/><text x="-24" y="6" text-anchor="middle" fill="#f3ecdc" style="font:900 15px Nunito">2</text><text x="4" y="8" fill="#4fdcaa" style="font:900 22px Nunito;paint-order:stroke;stroke:#0d0c0a;stroke-width:5px">+10</text></g>`,
+  res:`<div class="res"><div class="rh">Project started</div><div class="rp">The ring counts down 2 turns, then <b style="color:var(--green)">+10</b> lands.</div></div>`}]
+document.getElementById('grid').innerHTML=OPTS.map(o=>`<section class="opt ${o.k}"><h2>${o.name}</h2><p>${o.say}</p>
+ <div class="row">${head}<div class="inv">${coins(2)}${o.track}</div><div class="go"><button class="sec">Skip</button><button class="pri">Invest 2</button></div></div>
+ <div class="lbl">On the board</div><div class="tile">${board(o.mark)}</div>
+ <div class="lbl">After investing</div>${o.res}</section>`).join('')
+</script></body></html>

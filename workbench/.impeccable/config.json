@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          "workbench/pile.html"
+        ],
+        "createdAt": "2026-10-18T23:34:21.764Z",
+        "reason": "Claude: the board corner in each mock is cropped on purpose to show only the corner beside the pile"
+      }
+    ]
+  }
+}

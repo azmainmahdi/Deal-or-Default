@@ -1,0 +1,335 @@
+/* Shared look for the workbench turn page and the playable game (moved out of turn.html, 19 Oct). */
+
+/* Step 6, round 8. Glass controls (his pick): frosted surfaces, soft radius, a solid gold main button, a segmented
+   bar for the wait, a small glass capsule with a clock on the board. Crash path walks every square it falls through. */
+:root{--bg:#0d0c0a;--bg2:#1c1a15;--gold:#d8b05a;--gold2:#f5dc94;--ink:#f3ecdc;--mute:#a39a86;--green:#4fdcaa;--red:#ff6b78;--copper:#d77a4a;--tc:#d8b05a;--navy:#14213b}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 40%,#0008 100%);pointer-events:none}
+img{-webkit-user-drag:none;user-select:none}
+.top{position:relative;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px 16px 0;z-index:3}
+.top button{font:800 13px Nunito;padding:8px 15px;border-radius:999px;border:1px solid #d8b05a55;background:#0d0c0acc;color:var(--gold2);cursor:pointer}
+.top button[aria-pressed=true]{background:var(--gold);color:#1a1206}
+.opts{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:8px 16px 0;position:relative;z-index:3;font:800 12px Nunito;color:var(--mute);align-items:center}
+.opts button{font:800 12px Nunito;padding:5px 11px;border-radius:999px;border:1px solid #d8b05a44;background:#0d0c0aaa;color:var(--gold2);cursor:pointer}
+.opts button[aria-pressed=true]{background:#d8b05a33;border-color:var(--gold)}
+.rcol{position:relative;display:flex;flex-direction:column;gap:14px}
+/* the roll: a slim Deco card above the players panel; tap the die; the bank beside it */
+.rollov{position:relative;padding:10px 14px 8px;border-radius:20px;text-align:center;background:linear-gradient(165deg,#2b261d,#0d0c0a 72%);box-shadow:0 0 0 1px #d8b05a88,0 20px 40px -14px #000,inset 0 1px 0 #ffffff14;animation:rin .4s cubic-bezier(.2,1.3,.4,1)}
+.rollov::before{content:"";position:absolute;inset:6px;border-radius:15px;border:1px solid #d8b05a2e;pointer-events:none}
+@keyframes rin{from{transform:translateY(-10px);opacity:0}}
+.rollov .who{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:2px;font:400 12px Federo;letter-spacing:.3em;text-transform:uppercase;color:var(--gold2)}.rollov .who .mini{width:26px;height:26px}
+.rbody{position:relative;height:100px}
+/* the canvas is wider and taller than the card (transparent), so a jump never hits its edge */
+.rdie{position:absolute;left:-40px;right:-40px;bottom:-8px;width:calc(100% + 80px);height:260px;cursor:pointer;z-index:2}
+.rollov.going .rdie,.rollov.idle .rdie{cursor:default}
+.rollov .rn{position:absolute;left:14px;bottom:14px;font:400 0px/1 Federo;color:var(--gold2);transition:font-size .3s cubic-bezier(.2,1.6,.4,1);text-shadow:0 0 24px #d8b05a88}.rollov .rn.on{font-size:48px}
+.tko{display:flex;flex-direction:column;gap:8px;margin-top:6px}.tko .duo,.tko .mv{display:flex;align-items:center;gap:8px}
+.tko .pp{display:flex;align-items:center;gap:5px}.tko .pp.lo{opacity:.55;filter:saturate(.4)}.tko .duo b{font:400 20px Federo;color:var(--gold2)}.tko .mini{width:28px;height:28px}
+/* the bank window: everything about debt in one place */
+.bankm{pointer-events:auto!important;cursor:pointer;transition:transform .25s cubic-bezier(.2,1.5,.4,1)}.bankm:hover{transform:translateY(-4px) scale(1.04)}
+.bankm .owe{position:absolute;right:-4px;top:2px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(#f4f6f9,#b9c0ca);color:#1d2026;font:900 12px Nunito;box-shadow:0 2px 6px #000a}
+.bankw{position:relative;width:min(560px,94%);padding:16px 18px 16px;border-radius:24px;background:linear-gradient(165deg,#262a31,#0e1014 70%);box-shadow:0 0 0 1px #d6dbe266,0 40px 80px -16px #000;color:var(--ink)}
+.bankw::before{content:"";position:absolute;inset:7px;border-radius:18px;border:1px solid #d6dbe226;pointer-events:none}
+.bwh{display:flex;align-items:center;gap:14px;margin-bottom:12px}.bwh .bt{width:64px;height:58px;filter:drop-shadow(0 8px 10px #000a)}
+.bwh h3{margin:0;font:400 24px Federo;letter-spacing:.24em;text-transform:uppercase;color:#eef1f5}
+.bwh .x{margin-left:auto;width:32px;height:32px;border-radius:50%;border:0;background:#ffffff12;color:var(--ink);font:900 15px Nunito;cursor:pointer}
+.bpick{display:flex;align-items:center;gap:8px;margin-bottom:12px}.bpick .btn{flex:none;margin-left:auto;height:48px;padding:0 22px}
+.bsz{height:48px;padding:0 12px;border:0;border-radius:14px;background:#ffffff0c;box-shadow:inset 0 0 0 1px #ffffff1f;cursor:pointer;transition:transform .2s cubic-bezier(.2,1.6,.4,1)}
+.bsz:hover:not(:disabled){transform:translateY(-3px)}.bsz.on{background:#d8b05a1a;box-shadow:inset 0 0 0 1.5px var(--gold2)}.bsz:disabled{opacity:.25;filter:grayscale(1);cursor:not-allowed}
+.cstk{display:flex}.cstk .c3d{width:28px;height:28px;margin-left:-11px}.cstk .c3d:first-child{margin-left:0}
+.bsz:hover .c3d,.bx:hover .c3d{animation:spin 1.5s steps(40,jump-none) infinite}.c3d.bc{width:24px;height:24px}
+.bflow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch;gap:6px}
+.bx{padding:10px 8px;border-radius:14px;background:#ffffff0a;box-shadow:inset 0 0 0 1px #ffffff14;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bx small{font:800 10px Nunito;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}.bx b{display:inline-flex;align-items:center;gap:4px;font:900 24px Nunito;color:var(--red)}
+.bx.g b{color:var(--green)}.bx.late{opacity:.72}.bx em{display:inline-flex;align-items:center;gap:4px;font:800 11px Nunito;font-style:normal;color:var(--mute)}
+.bx em i{width:6px;height:6px;transform:rotate(45deg);border:1px solid #d8b05a99;background:#0d0c0a}.bx em i:last-of-type{margin-right:3px}
+.oc{display:inline-flex;align-items:center;gap:2px;padding:1px 7px;border-radius:999px;background:#ffffff10;color:var(--ink);font:900 13px Nunito}.oc.r{color:var(--red)}.bowe .ar{color:var(--mute);margin:0 2px}
+.bflow .ar,.bflow .or{align-self:center;font:800 13px Nunito;color:var(--mute)}
+.bowes{margin-top:12px;display:flex;flex-direction:column;gap:6px}.bowes>small{font:800 10px Nunito;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.bowe{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:14px;background:linear-gradient(170deg,#3b3121,#17130d);box-shadow:inset 0 0 0 1.5px var(--gold)}
+.bowe>b{font:400 24px Federo;color:#eef1f5}.bowe .bt2{display:inline-flex;align-items:center;gap:4px;font:700 12px Nunito;color:var(--mute)}.bowe .bt2 b{color:var(--ink)}.bowe .bt2 b.r{color:var(--red)}
+.bowe .btn{margin-left:auto;flex:none;height:36px}.bnone{padding:12px;text-align:center;color:var(--mute);font:700 13px Nunito}
+.bankm{position:absolute;left:-122px;top:-14px;z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+/* event pile, his pick C (A, one neat stack, is the fallback): the last card played above, the draw pile below,
+   beside the board's bottom-left corner. Card backs are the printed navy text side. */
+.pile{position:absolute;left:-134px;z-index:3;display:flex;flex-direction:column;align-items:center;gap:10px;width:118px}
+@media (max-width:1430px){.pile{display:none}}
+.pile .lab{font:800 9.5px Nunito;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.pile{user-select:none;-webkit-user-select:none;transition:transform .35s cubic-bezier(.2,1.4,.4,1)}
+.pile .last{position:relative;width:112px;height:75px;transform:rotate(3deg);transition:transform .25s}.pile .last.none{border-radius:6px;background:#ffffff08;box-shadow:inset 0 0 0 1.5px #ffffff22;transform:none}
+.pile .last:not(.none):hover{transform:rotate(0) scale(2.3) translate(26%,-22%);z-index:9}
+.pile .draw{position:relative;width:112px;height:84px;cursor:pointer}
+.cf{position:absolute;inset:0;border-radius:6px;background:center/cover;box-shadow:0 0 0 1px #0a1020,0 6px 10px -4px #000c}
+.cf b{position:absolute;left:4px;right:4px;bottom:5px;text-align:center;font:400 11px Federo;color:#fff;text-shadow:0 1px 4px #000,0 0 8px #000}
+.ct{position:absolute;inset:0;padding:22% 12% 8%;justify-content:center;border-radius:6px;background:#0e131a url(/art/backs/good.jpg) center/100% 100%;box-shadow:0 0 0 1px #0a1020,0 6px 12px -4px #000c;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.ct.bad{background-image:url(/art/backs/evil.jpg)}
+.ct b{font:400 9.5px Federo;color:var(--gold2);text-align:center}.ct span{font:700 6.5px/1.3 Nunito;color:#dfe6f5;text-align:center}.ct span em{font-style:normal;color:var(--gold2)}.ct.bad span em{color:#ffb3a0}
+.ct i{display:none;position:absolute;width:8px;height:8px;border-color:#e2b552;border-style:solid}.ct i:nth-child(1){left:6px;top:6px;border-width:1px 0 0 1px}.ct i:nth-child(2){right:6px;top:6px;border-width:1px 1px 0 0}.ct i:nth-child(3){left:6px;bottom:6px;border-width:0 0 1px 1px}.ct i:nth-child(4){right:6px;bottom:6px;border-width:0 1px 1px 0}
+.cb{position:absolute;width:112px;height:75px;border-radius:6px;background:linear-gradient(160deg,#2a2e36,#15171c);box-shadow:0 0 0 1px #0a1020,0 4px 8px -4px #000c}.cb i{display:none}
+.pile .draw .top{position:absolute;left:0;top:0;width:112px;height:75px;touch-action:none;cursor:grab;transition:transform .25s cubic-bezier(.2,1.5,.4,1)}.pile .draw:hover .top{transform:translateY(-6px) rotate(-2deg)}
+/* on an event square the pile comes forward: the table dims, the pile grows, the top card bobs with a gold ring */
+.stage.drawing .board,.stage.drawing .rcol,.stage.drawing .bankm{filter:brightness(.55) saturate(.7);transition:filter .4s}
+.pile.ready{transform:scale(1.18) translateX(6px);z-index:8}.pile.ready .lab{color:var(--gold2)}
+.pile.ready .draw .top{animation:nudge 1.4s ease-in-out infinite;box-shadow:0 0 0 2px var(--gold2),0 0 0 6px #d8b05a33;border-radius:6px}@keyframes nudge{50%{transform:translateY(-10px) rotate(-3deg)}}
+.pile .count{position:absolute;right:-6px;bottom:-4px;padding:1px 8px;border-radius:999px;background:#0d0c0ae6;box-shadow:0 0 0 1px #d8b05a66;font:400 12px Federo;color:var(--gold2)}
+.flycard{position:fixed;z-index:50;pointer-events:none}
+.bankm .bt{width:132px;height:120px;filter:drop-shadow(0 12px 10px #000b);transform-origin:50% 90%}
+@media (max-width:1430px){.bankm{left:auto;right:148px;top:auto;bottom:6px}}
+@media (max-width:900px){.bankm{position:relative;right:auto;margin:0 auto}}
+.fly{position:fixed;left:0;top:0;z-index:20;pointer-events:none;will-change:transform}
+.stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:22px;align-items:start;max-width:1160px;margin:14px auto 40px;padding:0 16px}
+@media (max-width:900px){.stage{grid-template-columns:1fr;gap:14px}}
+.board{position:relative;aspect-ratio:1;border:5px solid #b8892e;border-radius:12px;background:#101830;box-shadow:0 3px 0 #6e5018,0 18px 34px -10px #000c;overflow:hidden}
+.board::before{content:"";position:absolute;inset:0;background:url(board-bg.jpg) center/cover;opacity:.12}
+.board>svg{position:absolute;inset:2.4%;width:95.2%;height:95.2%;overflow:visible}
+.tile{fill:#16203cdd;stroke:#c9a24a8c;stroke-width:1.4}
+.num{fill:#f5dc94;font:400 19px Federo;letter-spacing:.5px}.num.lt{fill:#0d0c0a;stroke:#0d0c0a;stroke-width:1px;paint-order:stroke}   /* option B: bold black on light tiles */
+.pathln{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 13;animation:march 1s linear infinite}@keyframes march{to{stroke-dashoffset:-30}}
+.pathln.faded{opacity:.28;animation:none}.pathln.faded2{opacity:.6;stroke-width:5}
+.tag text{font:400 26px Federo}
+.land{animation:land 1.3s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes land{50%{opacity:.45;transform:scale(.94)}}
+.hhint{opacity:.62}.hhint .gleam{animation:gleam 3.6s ease-in-out infinite}@keyframes gleam{0%,70%,100%{opacity:0}82%{opacity:.95}}
+.hon{filter:drop-shadow(0 0 10px #4fdcaa)}
+
+.coin{display:inline-block;flex:none;vertical-align:-5px;pointer-events:none;filter:drop-shadow(0 1px 1.5px #0009)}
+
+/* the panel */
+.panel{position:relative;padding:18px 14px 12px;border-radius:24px;background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 0 0 1px #d8b05a55,0 30px 60px -20px #000,inset 0 1px 0 #ffffff12}
+.panel::before{content:"";position:absolute;inset:7px;border-radius:18px;border:1px solid #d8b05a26;pointer-events:none}
+.ph{display:flex;align-items:center;gap:10px;justify-content:center;margin:0 6px 6px;font:700 11px Fraunces;letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
+.ph i{flex:1;height:1px;background:linear-gradient(90deg,transparent,#d8b05a99)}.ph i:last-child{background:linear-gradient(90deg,#d8b05a99,transparent)}
+.row{position:relative;display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:9px 8px;border-radius:16px}
+.row+.row{margin-top:2px}
+.por{position:relative;width:42px;height:42px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 1.5px var(--gold),0 0 0 3.5px var(--bg),0 0 0 4.5px #d8b05a44}
+.por .fl{position:absolute;right:-5px;bottom:-3px;width:17px;height:12px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1.2px var(--gold)}.por .fl svg{display:block;width:100%;height:100%}
+.name{font:800 15px Fraunces}
+.inc{margin-top:2px;font:800 11px Nunito}.inc .none{color:var(--mute)}
+/* money on its way (approved in players-deco.html): four turns, deco diamonds, gold pills where money lands */
+.line{display:grid;grid-template-columns:repeat(4,1fr);margin-top:4px;max-width:200px}
+.slot{position:relative;height:22px;display:grid;place-items:center}
+.slot::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#d8b05a44}
+.slot:first-child::before{left:50%}.slot:last-child::before{right:50%}
+.dia{position:relative;width:7px;height:7px;transform:rotate(45deg);border:1px solid #d8b05a99;background:#0d0c0a}
+.pill{position:relative;display:flex;align-items:center;gap:3px;padding:1px 2px 1px 7px;border-radius:999px;font:800 11.5px Nunito;color:#2a1a00;background:linear-gradient(#ffe9a6,#e2b54f);box-shadow:0 0 0 1px #8a6420,0 3px 8px -3px #000}
+.slot:first-child .pill{background:#4fdcaa;color:#08291d;box-shadow:0 0 0 1px #1f7a58}   /* next turn: flat green, no glow */
+.slot .pill.lose{background:#ff6b7833;color:#ffd0d5;box-shadow:0 0 0 1px var(--red)}
+.lbls{display:grid;grid-template-columns:repeat(4,1fr);max-width:200px;font:800 8px Nunito;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-align:center}
+.inc s{color:var(--red);text-decoration-thickness:2px}
+.money{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.cash{display:flex;align-items:center;gap:6px;font:400 22px Federo;color:var(--gold2);transition:color .2s}
+.cash.up{color:var(--green)}.cash.dn{color:var(--red)}
+.ghost{animation:land 1.2s ease-in-out infinite}
+/* debt looks, option A-D */
+.debtA{display:flex;align-items:center;gap:4px;font:400 15px Federo;color:#f0a27c}
+.por .dchips{position:absolute;left:-7px;bottom:-4px;display:flex;flex-direction:column-reverse}.por .dchips img{margin-top:-11px;filter:drop-shadow(0 1px 1px #000)}
+.por .dchips b{position:absolute;left:-4px;top:-14px;font:400 12px Federo;color:#f0a27c}
+.ribbon{display:inline-flex;align-items:center;gap:5px;margin-top:3px;padding:1px 8px 1px 4px;font:800 10.5px Nunito;color:#ffd8c4;background:linear-gradient(90deg,#7a3418,#5a2410);clip-path:polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)}
+.worth{font:400 13px Federo;color:#f0a27c;white-space:nowrap}.worth b{font-weight:400;color:var(--mute)}
+/* active row */
+.row.on{grid-template-columns:52px 1fr auto;padding:12px 10px 14px}
+/* whose turn it is, three looks (no outline): A gold lift, B Deco rail, C spotlight */
+/* A takes the colour of the decision: gold by default, green on a ladder, red on a snake, and so on */
+[data-active=A] .row.on{background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 14%,transparent),color-mix(in srgb,var(--tc) 4%,transparent) 60%,transparent);box-shadow:0 14px 24px -16px #000}
+[data-active=A] .row.on .por{box-shadow:0 0 0 1.5px var(--tc),0 0 0 3.5px var(--bg),0 0 18px 2px color-mix(in srgb,var(--tc) 45%,transparent)}
+[data-active=B] .row.on{background:#ffffff07}[data-active=B] .row.on::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:2px;background:linear-gradient(var(--gold2),var(--gold))}
+[data-active=B] .row.on::after{content:"";position:absolute;left:-3px;top:8px;width:9px;height:9px;transform:rotate(45deg);background:var(--gold2)}
+[data-active=C] .row:not(.on){opacity:.5;filter:saturate(.6)}[data-active=C] .row.on{background:radial-gradient(ellipse at 30% 0,#ffffff0d,transparent 70%)}
+.row.on .por{width:52px;height:52px;box-shadow:0 0 0 2px var(--gold2),0 0 0 4px var(--bg),0 0 18px 2px #e8c15e66}
+.turn{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font:900 9.5px Nunito;letter-spacing:.14em;text-transform:uppercase;color:#241800;background:linear-gradient(#f9e3a0,#d8b05a);vertical-align:2px}
+.dec{grid-column:1/-1;margin-top:12px}
+.q{display:flex;align-items:center;gap:9px;margin-bottom:12px;font:800 17px Fraunces}
+.q img{width:26px;height:26px;border-radius:6px;box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 80%,#000)}
+.go{display:flex;gap:8px;margin-top:12px}
+/* glass buttons, dressed up: dark glass with a gold-to-clear hairline, a light sweep on hover; the main button is
+   polished gold with a slow sheen; good and bad choices are tinted glass in their colour */
+.btn{position:relative;overflow:hidden;isolation:isolate;flex:1;cursor:pointer;height:48px;padding:0 12px;border:1px solid transparent;border-radius:14px;font:800 15px Nunito;white-space:nowrap;color:var(--ink);
+ background:linear-gradient(180deg,#2b2720,#14120e) padding-box,linear-gradient(160deg,#f5dc94aa,#ffffff12 42%,#ffffff08 62%,#d8b05a80) border-box;
+ box-shadow:inset 0 1px 0 #ffffff1c,0 10px 24px -14px #000;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:transform .15s,box-shadow .2s,filter .15s}
+.btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,#ffffff26 50%,transparent 65%);transform:translateX(-120%);transition:transform .7s;pointer-events:none}
+.btn:hover::after{transform:translateX(120%)}
+.btn:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 #ffffff26,0 12px 26px -12px #000}.btn:active{transform:scale(.97)}
+.btn.primary{color:#2a1a00;text-shadow:0 1px 0 #fff7;background:linear-gradient(180deg,#fff3c8,#f6d57e 32%,#e1b14d 64%,#b9862a) padding-box,linear-gradient(180deg,#fff8dc,#8a6420) border-box;
+ box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 #0003,0 8px 16px -10px #000}
+.btn.primary::after{background:linear-gradient(105deg,transparent 38%,#fffbe8cc 50%,transparent 62%);animation:sheen 3.8s ease-in-out infinite}
+@keyframes sheen{0%,62%{transform:translateX(-120%)}86%,100%{transform:translateX(120%)}}
+.btn.primary:hover{filter:brightness(1.06);box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 #0003,0 10px 18px -10px #000,0 0 14px -8px #f5dc94}
+.btn.good{color:#fff;text-shadow:0 1px 0 #0004;background:linear-gradient(180deg,#348a70,#1f5546) padding-box,linear-gradient(160deg,#b4ffe6,#4fdcaa44 45%,#4fdcaa99) border-box}
+/* green and red light up on hover instead of casting a coloured glow */
+.btn.good:hover,.btn.bad:hover{filter:brightness(1.14);box-shadow:inset 0 1px 0 #ffffff40,0 10px 22px -12px #000}
+.btn.bad{color:#fff;text-shadow:0 1px 0 #0004;background:linear-gradient(180deg,#9a3a48,#62222d) padding-box,linear-gradient(160deg,#ffc2c7,#ff6b7844 45%,#ff6b7899) border-box}
+.cost{display:inline-flex;align-items:center;gap:4px;font:700 12.5px Nunito;opacity:.9}
+.cost b{font:900 15px Nunito;color:var(--red)}.btn.good .cost b{color:#ffb3b9;text-shadow:0 1px 2px #6a0f1a}.btn.bad .cost b,.btn.bad .cost s{color:#ffd0d4}.btn.primary .cost b{color:#a11a2b}
+.cost s{color:var(--red);text-decoration-thickness:2px;font:900 14px Nunito}
+/* ladder */
+.inv{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pick{display:flex;gap:2px}
+.pick button{position:relative;border:0;background:none;padding:2px;cursor:pointer;opacity:.32;filter:saturate(.25) brightness(.8);transition:opacity .15s,transform .25s cubic-bezier(.2,1.6,.4,1),filter .15s;-webkit-tap-highlight-color:transparent}
+.pick button.on{opacity:1;filter:none;transform:translateY(-2px)}
+.pick button.pre{opacity:.85;filter:none;transform:translateY(-5px)}
+.pick.off button{opacity:.22;filter:saturate(0) brightness(.7);transform:none}
+.pick button:hover{opacity:1;filter:none;transform:translateY(-7px) scale(1.1)}
+/* the coin: a strip of real 3D frames; hovering plays the spin (tips on all axes, the light travels) */
+.c3d{display:block;width:32px;height:32px;background:var(--sp) 0 0/4000% 100% no-repeat;filter:drop-shadow(0 2px 2px #0009)}
+.pick button:hover .c3d{animation:spin 1.5s steps(40,jump-none) infinite}@keyframes spin{to{background-position:100% 0}}
+.pick button.spent{animation:spend .6s cubic-bezier(.4,0,.6,1) forwards}@keyframes spend{to{transform:translateY(-30px) scale(.6);opacity:0}}
+/* the wait: pay now on the left, payout on the right, one bar segment per turn */
+.tl{min-width:140px;transition:opacity .2s,filter .2s}.tl.off{opacity:.25;filter:saturate(0)}
+.tl .nums{display:flex;justify-content:space-between;font:800 18px Nunito}.tl .o{color:var(--red)}.tl .i{color:var(--green)}
+.tl .bar{display:flex;gap:4px;margin:6px 0 4px}.tl .bar i{flex:1;height:5px;border-radius:9px;background:#ffffff1c}
+.tl .bar i:last-child{background:linear-gradient(90deg,#ffffff1c,#4fdcaa);box-shadow:0 0 8px #4fdcaa88}
+.tl .cap{display:flex;justify-content:space-between;align-items:center;font:700 10.5px Nunito;color:var(--mute)}
+.tl .cap span:last-child{display:inline-flex;align-items:center;gap:3px}
+.bl{min-width:200px}.bl .g{display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;align-items:end}
+.bl .g>span{font:800 17px Nunito}.bl .g .i{color:var(--green);grid-column:1}.bl .g .s{color:#d6dbe2;grid-column:3;text-align:right}.bl .g .o{color:var(--red);grid-column:4;text-align:right}
+.bl .bar{gap:4px;margin:6px 0 4px}.bl .bar i{height:5px;border-radius:9px;background:linear-gradient(90deg,#d6dbe255,#d6dbe2)}.bl .bar b{height:0;border-top:2px dashed #ff6b78aa;margin-top:2px}
+.bl .cap>span{font:700 10px Nunito;color:var(--mute)}.bl .cap>span:nth-child(2){grid-column:2/4;text-align:right;display:inline-flex;justify-content:flex-end;align-items:center;gap:3px}.bl .cap>span:last-child{text-align:right}
+.bl .late{font:700 10.5px Nunito;color:var(--mute);margin-top:4px}
+.bk{display:flex;align-items:center;gap:6px;margin-top:2px}.btn.sm{flex:none;height:30px;padding:0 11px;border-radius:10px;font-size:12.5px;gap:5px}.btn.sm .cost b{font-size:13px}
+.loan{display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 6px;border-radius:999px;background:#d6dbe214;font:900 14px Nunito;color:#e6e9ee}.loan .t{display:inline-flex;align-items:center;gap:2px;color:#cfc5b0;font:800 11px Nunito}.loan .ln{margin-left:auto;font:700 12px Nunito;color:var(--mute)}.loan .ln b{color:var(--ink)}
+.plq{display:inline-block;padding:3px 10px;border-radius:999px;font:900 15px Nunito;color:var(--green);background:#4fdcaa1a}
+/* results: a glass card in the row (placeholder until he picks a visual one) */
+.res{--rc:var(--gold);padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--rc) 10%,#ffffff08);box-shadow:inset 0 1px 0 #ffffff12;backdrop-filter:blur(6px);animation:pop .45s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.9);opacity:0}}
+.rvis{display:flex;flex-direction:column;gap:8px;margin-top:8px}.rvis .ln{display:flex;align-items:center;gap:8px}
+.sqc{position:relative;flex:none;width:36px;height:36px;border-radius:6px;background:#17223d center/cover;box-shadow:0 0 0 1px #ffffff1a}.sqc b{position:absolute;top:2px;right:4px;font:400 11px Federo;color:#f5dc94}.sqc.art b{color:#0d0c0a}
+.sqc .bd{position:absolute;right:-7px;bottom:-7px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#0d0c0a;color:var(--green)}.sqc .bd svg{width:14px;height:14px}
+.rvis .skip{opacity:.35;position:relative}.rvis .skip::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:2px;background:var(--red);transform:rotate(-35deg)}
+.chip-r{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:#ff6b7822;color:var(--red);font:900 14px Nunito}
+.rvis .ok{font:800 12px Nunito;color:var(--green)}.rvis .paid{display:inline-flex;align-items:center;gap:3px;margin-left:auto;font:700 12px Nunito;color:var(--mute)}.rvis .paid b{font:900 14px Nunito;color:var(--red)}.rvis .gone{font:800 12px Nunito;color:var(--red)}.rvis .by{font:400 18px Federo;color:var(--red)}.rvis .to{font:800 13px Nunito;color:var(--mute)}.rvis .mini{width:30px;height:30px}
+.rh{display:flex;align-items:center;gap:8px;font:800 15px Nunito;color:var(--ink)}.rh svg,.rh img{flex:none;color:var(--rc)}
+.mtl{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:10px}
+.mtl .lab{height:26px;display:flex;align-items:flex-end;justify-content:center}
+.mtl .chip{display:inline-flex;align-items:center;gap:3px;font:900 15px Nunito;color:#4fdcaabb}.mtl .chip.new{color:var(--green);opacity:0;animation:drop .7s cubic-bezier(.3,1.6,.5,1) .35s forwards}
+@keyframes drop{from{opacity:0;transform:translateY(-34px) scale(1.3)}to{opacity:1;transform:none}}
+.mtl .seg{position:relative;height:5px;border-radius:9px;background:#ffffff1c;margin-top:6px}.mtl .seg.has{background:#4fdcaa55}
+.mtl .seg.new{background:linear-gradient(90deg,#ffffff1c,#4fdcaa);box-shadow:0 0 8px #4fdcaa88}
+.mtl .seg.new::after{content:"";position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px;border-radius:50%;border:2px solid var(--green);opacity:0;animation:rip .8s ease-out .8s}
+@keyframes rip{20%{opacity:1}to{opacity:0;transform:scale(2.4)}}
+.mtl .cap{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:5px;font:700 10.5px Nunito;color:var(--mute)}
+.rp{margin-top:4px;font:700 13px Nunito;color:var(--mute)}
+/* waiver count: a ticket and a number, red at 0 */
+.wvr{display:flex;align-items:center;gap:4px;justify-content:flex-end;font:400 14px Federo;color:#ffb27a}.wvr.none{color:var(--red);opacity:.75}
+.tw{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:#ee7a3222;color:#ffb27a;font:900 13px Nunito}.tw.none{background:#ff6b781a;color:var(--red)}
+/* a project as a capsule: payout, coin, clock and turns left */
+.pj{display:inline-flex;align-items:center;gap:3px;padding:2px 8px 2px 9px;border-radius:999px;background:#4fdcaa1f;color:var(--green);font:900 13px Nunito;white-space:nowrap}
+.pj .t{display:inline-flex;align-items:center;gap:2px;margin-left:3px;color:#cfc5b0;font:800 11px Nunito}.pj.lose{background:#00000033;color:#fff}.pj.lose .t{color:#ffe0e3}
+.btn.two{flex-direction:column;height:auto;min-height:52px;padding:8px 10px;gap:3px;line-height:1.1}
+.btn.two>span:first-child{display:inline-flex;align-items:center;justify-content:center;gap:5px}.btn.two svg{flex:none}
+/* tariff victims, sanction leader, takeover duel */
+.mini{display:inline-block;width:34px;height:34px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 1.5px var(--gold),0 0 0 3px var(--bg)}
+.vic{display:flex;gap:12px;flex-wrap:wrap}.vic .v{display:flex;align-items:center;gap:6px}.vic .v b{font:900 15px Nunito;color:var(--orange,#ffa25a)}
+.qi{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#f9dd92,#c99a3e)}
+.lead{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:#a26bf01f}.lead .mini{width:36px;height:36px}.lead>img{flex:none}.lead b{display:block;font:800 15px Fraunces}.lead small{display:inline-flex;align-items:center;gap:3px;font:700 11.5px Nunito;color:var(--mute)}
+.lead .minus{margin-left:auto;font:400 22px Federo;color:var(--purple,#c4a0ff)}.lead .btn{flex:none;height:38px;padding:0 16px}
+.lead b{display:block;font:800 15px Fraunces}.lead small{display:inline-flex;align-items:center;gap:3px;font:700 11.5px Nunito;color:var(--mute)}.lead .minus{margin-left:auto;font:900 15px Nunito;color:var(--purple,#c4a0ff)}
+.duel{display:flex;align-items:center;justify-content:space-around;gap:8px;padding:12px;border-radius:14px;background:#ffffff08}
+.duel .side{display:flex;flex-direction:column;align-items:center;gap:3px}.duel .mini{width:46px;height:46px}.duel b{font:800 14px Fraunces}.duel small{font:700 11px Nunito;color:var(--mute)}.duel small i{font-style:normal;color:var(--green);font-weight:900}
+.vsx{font:900 18px Fraunces;color:var(--gold2);text-shadow:0 0 14px #d8b05a88}
+/* the dice duel over the board */
+.duelov{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 22px 14px;width:min(380px,86%);border-radius:24px;background:linear-gradient(160deg,#2a261f,#0f0e0b);box-shadow:0 0 0 1px #d8b05a55,0 30px 60px -10px #000}
+.duelov .cols{display:flex;align-items:center;justify-content:space-around;width:100%}
+.duelov canvas{width:100%;height:104px;display:block}
+.duelov .col{display:flex;flex-direction:column;align-items:center;gap:10px;transition:transform .3s,filter .3s}
+.duelov .mini{width:54px;height:54px}.duelov b{font:800 16px Fraunces}
+.duelov .col.win{transform:scale(1.08);filter:drop-shadow(0 0 18px #f5dc94aa)}.duelov .col.lose{filter:saturate(.3) brightness(.7)}
+.duelov .msg{text-align:center;font:800 14px Nunito;color:var(--gold2);margin-top:4px}
+.duelov .won{display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:6px}.duelov .won small{font:700 11px Nunito;color:var(--mute)}
+.die{width:60px;height:60px;padding:9px;border-radius:14px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);background:linear-gradient(145deg,#fbe3a0,#c8952f);box-shadow:inset 0 2px 0 #fff8,inset 0 -3px 0 #8a6420,0 10px 18px -6px #000}
+.die i{width:10px;height:10px;border-radius:50%;place-self:center;background:#3a2608;box-shadow:inset 0 1px 1px #000}
+.duelov .pj.fly2{position:absolute;left:0;top:0;z-index:2}
+.duelov .pj.big{font-size:19px;padding:6px 14px 6px 16px;gap:5px}.duelov .pj.big .t{font-size:14px}
+.winlab{position:absolute;left:50%;top:8px;transform:translateX(-50%);padding:3px 12px;border-radius:999px;font:900 11px Nunito;letter-spacing:.2em;text-transform:uppercase;color:#241800;background:linear-gradient(#f9e3a0,#d8b05a);animation:pop .4s cubic-bezier(.2,1.5,.4,1)}
+.pchip{position:fixed;z-index:30;padding:4px 10px;border-radius:999px;font:900 15px Nunito;color:#06331f;background:var(--green);pointer-events:none}
+/* tariff waiver */
+.tkt{position:relative;display:flex;height:78px;margin:0 0 4px;filter:drop-shadow(0 6px 10px #0009)}
+.tkt .main{flex:1;display:flex;align-items:center;gap:14px;padding:0 18px;border-radius:10px 0 0 10px;background:linear-gradient(160deg,#151515,#050505);transition:transform .6s,opacity .6s}
+.tkt .main b{font:400 23px Federo;color:#f0812f;letter-spacing:.04em}
+.tkt .stub{position:relative;width:78px;border-radius:0 10px 10px 0;background:linear-gradient(180deg,#f2873a,#d8521f);transform-origin:0 50%;transition:transform .7s cubic-bezier(.3,.7,.2,1),opacity .7s}
+.tkt .stub::before{content:"";position:absolute;left:-1px;top:4px;bottom:4px;border-left:2px dashed #050505}
+.tkt .stub i{position:absolute;inset:14px 18px 14px 22px;background:repeating-linear-gradient(90deg,#1a1208 0 2px,transparent 2px 3px,#1a1208 3px 4px,transparent 4px 6px,#1a1208 6px 9px,transparent 9px 10px)}
+.tkt.hint .stub{transform:rotate(7deg) translateX(3px)}
+.tkt.tear .stub{transform:translate(40px,30px) rotate(30deg);opacity:0}.tkt.tear .main{opacity:.25}
+/* takeover */
+.vs{display:flex;align-items:center;justify-content:center;gap:12px;margin:2px 0 6px}
+.vs .p{width:44px;height:44px;border-radius:50%;background:var(--art) center 30%/150%;box-shadow:0 0 0 1.5px var(--gold)}
+.vs .plq{transition:transform .3s}.vs.take .plq{transform:translateX(-30px)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{font:800 12px Nunito;padding:6px 11px;border-radius:999px;border:0;cursor:pointer;color:var(--gold2);background:#ffffff0a;box-shadow:inset 0 0 0 1px #d8b05a44}
+.chips button[aria-pressed=true]{background:var(--gold);color:#1a1206}
+.note{margin-top:10px;font:700 12.5px Nunito;color:var(--mute)}
+
+/* the event card */
+.ov{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:18px;background:radial-gradient(ellipse at 50% 42%,#00000066,#000000e0 72%);opacity:0;pointer-events:none;transition:opacity .3s;z-index:2;perspective:1400px}
+.ov.on{opacity:1;pointer-events:auto}
+.card{position:relative;width:min(440px,84%);aspect-ratio:1.4;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.4,.1,.2,1)}
+.card.flip{transform:rotateY(180deg)}
+.card .side{position:absolute;inset:0;border-radius:16px;overflow:hidden;backface-visibility:hidden;box-shadow:0 30px 50px -14px #000}
+.card .front{background:#2a1a0f;box-shadow:0 30px 50px -14px #000,inset 0 0 0 3px #e0802f}
+.card .front .art{position:absolute;inset:6px;border-radius:11px;background:var(--art) center/cover;box-shadow:0 0 0 1.5px #e0802f}
+/* printed faces carry their own gold frame and title (31 Oct): show them edge to edge */
+.card.printed .front{box-shadow:0 30px 50px -14px #000}.card.printed .front .art{inset:0;border-radius:inherit;box-shadow:none}
+.card .front h3{position:absolute;left:0;right:0;top:40%;margin:0;text-align:center;font:900 clamp(24px,5.4vw,38px)/1 Fraunces;color:#f6a23e;text-shadow:0 2px 0 #4a2208,0 0 18px #000}
+.card .front .logo{position:absolute;left:50%;bottom:10px;width:15%;transform:translateX(-50%);filter:drop-shadow(0 2px 3px #000)}
+/* text side (1 Nov): the printed card back from 12 Cards Good/Evil.ai with its own text taken out; the game writes the rule
+   where the print had it. A thin rim light and one glint replace the coloured halo; only the diamond icon glows. */
+.card .back{transform:rotateY(180deg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9%;padding:24% 14% 11%;text-align:center;
+ background:#0e131a url(/art/backs/good.jpg) center/100% 100%;box-shadow:0 30px 50px -14px #000,inset 0 0 0 1px #f5dc9426}
+.card .back.bad{background-image:url(/art/backs/evil.jpg)}
+.card .back::before{content:"";position:absolute;left:50%;top:19.9%;width:15%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+ background:radial-gradient(closest-side,color-mix(in srgb,var(--k) 55%,transparent),transparent);mix-blend-mode:screen;animation:iglow 2.6s ease-in-out infinite;pointer-events:none}
+@keyframes iglow{50%{opacity:.45;transform:translate(-50%,-50%) scale(.85)}}
+.card .back::after{content:"";position:absolute;inset:0;border-radius:16px;background:linear-gradient(115deg,transparent 40%,#fff4d61c 50%,transparent 60%) no-repeat;background-size:250% 100%;background-position:120% 0;pointer-events:none}
+.card.flip .back::after{animation:glint 1.4s .8s ease-in-out}
+@keyframes glint{from{background-position:120% 0}to{background-position:-20% 0}}
+.card .back .quote{position:relative;font:300 italic clamp(15px,2.5vw,20px)/1.3 'Josefin Sans';letter-spacing:.06em;color:#eeeae2}
+.card .back .rule{position:relative;font:700 clamp(15px,2.6vw,21px)/1.25 Almendra,'Josefin Sans';color:#f6c96b}
+.card .back .rule em{font-style:normal;color:var(--k)}
+.ov .go{width:min(440px,84%);margin:0;opacity:0;transform:translateY(8px);transition:opacity .3s .7s,transform .3s .7s}.ov .card.flip~.go{opacity:1;transform:none}
+/* phone layouts, picked with ?layout=A|B|C (only shown on narrow screens).
+   A bottom sheet: the deciding row sits fixed at the bottom; the other players are a strip above the board.
+   B compact strip: every player in a strip above the board; the decision sits under the board.
+   C pull-up sheet: the bottom sheet shows the deciding row; drag or tap the handle to see everyone. */
+.strip{display:none}
+@media (max-width:900px){
+ [data-layout] .top{padding-top:8px}[data-layout] .top button{padding:6px 10px;font-size:11.5px}
+ [data-layout] .stage{margin-top:8px;padding:0 10px}[data-layout] .bankm{display:none}
+ [data-layout=A] .strip,[data-layout=B] .strip{display:flex;justify-content:center;gap:6px;padding:10px 8px 0}
+ .strip .sp{display:flex;align-items:center;gap:4px;padding:3px 8px 3px 3px;border-radius:999px;background:#0d0c0acc;font:400 15px Federo;color:var(--gold2)}
+ .strip .sp .mini{width:26px;height:26px}.strip .sp.on{box-shadow:inset 0 0 0 1.5px var(--gold2)}.strip .sp .coin{width:13px;height:13px}
+ [data-layout=A] .row:not(.on),[data-layout=B] .row:not(.on),[data-layout=C] .rcol:not(.open) .row:not(.on){display:none}
+ [data-layout=A] .ph,[data-layout=B] .ph{display:none}
+ [data-layout=A] .rcol,[data-layout=C] .rcol{position:fixed;left:0;right:0;bottom:0;z-index:6}
+ [data-layout=A] .panel,[data-layout=C] .panel{border-radius:22px 22px 0 0;padding:12px 10px 14px;max-height:62vh;overflow:auto}
+ [data-layout=A] body,[data-layout=C] body{padding-bottom:280px}
+ [data-layout=C] .ph{cursor:grab;margin-bottom:8px}[data-layout=C] .ph::before{content:"";position:absolute;left:50%;top:6px;width:44px;height:5px;margin-left:-22px;border-radius:9px;background:#d8b05a66}
+ [data-layout=C] .rcol .panel{transition:max-height .3s}
+
+ /* D compact: everyone's wealth in the strip (tap it for the full list); a small decision panel under the board */
+ [data-layout=D] .strip{display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 4px 0;cursor:pointer}[data-layout=D] .strip .sp{gap:3px;padding:3px 7px 3px 3px;font-size:14px}[data-layout=D] .strip .sp .mini{width:24px;height:24px}
+ [data-layout=D] .strip .more{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#0d0c0acc;color:var(--gold2);font:900 12px Nunito;transition:transform .2s}
+ [data-layout=D].open .strip .more{transform:rotate(180deg)}
+ [data-layout=D] .stage{gap:8px}[data-layout=D] .ph{display:none}
+ [data-layout=D] .rcol{order:2}[data-layout=D] .panel{padding:8px 8px 8px;border-radius:18px}[data-layout=D] .panel::before{inset:4px;border-radius:14px}
+ [data-layout=D]:not(.open) .row:not(.on){display:none}
+ [data-layout=D] .row{grid-template-columns:30px 1fr auto;gap:8px;padding:6px}[data-layout=D] .por{width:30px;height:30px}
+ [data-layout=D] .row.on{grid-template-columns:34px 1fr auto;padding:8px 8px 9px;border-radius:14px}[data-layout=D] .row.on .por{width:34px;height:34px}
+ [data-layout=D] .por .fl{width:13px;height:9px;right:-4px;bottom:-2px}
+ [data-layout=D] .name{font-size:14px}[data-layout=D] .turn{font-size:8px;padding:1px 6px}[data-layout=D] .inc{font-size:10px}
+ [data-layout=D] .cash{font-size:18px;gap:4px}[data-layout=D] .cash .coin{width:18px;height:18px}
+ [data-layout=D] .dec{margin-top:6px}[data-layout=D] .q{font-size:14px;margin-bottom:6px;gap:7px}[data-layout=D] .q img,[data-layout=D] .qi{width:20px;height:20px}
+ [data-layout=D] .pick button{padding:1px}[data-layout=D] .c3d{width:24px;height:24px}
+ [data-layout=D] .tl{min-width:104px}[data-layout=D] .tl .nums{font-size:14px}[data-layout=D] .tl .bar{margin:3px 0 2px}[data-layout=D] .tl .bar i{height:4px}[data-layout=D] .tl .cap{font-size:9.5px}
+ [data-layout=D] .go{margin-top:8px;gap:6px}[data-layout=D] .btn{height:36px;font-size:13.5px;border-radius:11px}[data-layout=D] .btn.two{min-height:40px;padding:5px 8px}
+ [data-layout=D] .cost{font-size:11px}[data-layout=D] .cost b{font-size:13px}
+ [data-layout=D] .duel{padding:6px}[data-layout=D] .duel .mini{width:32px;height:32px}[data-layout=D] .rp{font-size:11.5px}
+ [data-layout=D] .tkt{height:52px}[data-layout=D] .tkt .main b{font-size:17px}[data-layout=D] .tkt .main svg{width:30px;height:30px}[data-layout=D] .tkt .stub{width:54px}
+ [data-layout=D] .vic{gap:8px}[data-layout=D] .mini{width:28px;height:28px}[data-layout=D] .lead{padding:6px 8px}
+ [data-layout=D] .res{padding:9px 11px}[data-layout=D] .rh{font-size:13.5px}
+ [data-layout=D] .chips button{padding:4px 9px;font-size:11px}
+}
+/* the print's lettering style: words only, numbers stay Federo/Nunito. --disp/--rule come from the font switch (game.js FONTS);
+   Almendra (free, Google Fonts) is the default stand-in for the print's KC Obra Letra, which is personal-use only */
+html.fx .sbox h1,html.fx .fin h2,html.fx .bwh h3,html.fx .card .front h3,html.fx .cf b,html.fx .ct b,html.fx .rollov .who,html.fx .startl{font-family:var(--disp),Federo;font-weight:700;letter-spacing:.03em}
+html.fx .bwh h3,html.fx .rollov .who{text-transform:none}
+html.fx .card .front h3{color:#f5d67b;text-shadow:0 3px 0 #000,0 0 18px #000}
+html.fx .card .back .rule{font-family:var(--rule),Almendra;font-weight:700}

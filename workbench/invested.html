@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 6: After Investing</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Fraunces:opsz,wght@9..144,800&family=Federo&display=swap" rel="stylesheet">
+<style>
+/* Three visual ways to show "you just started a project". Each plays once; Replay runs it again. */
+:root{--bg:#0d0c0a;--ink:#f3ecdc;--mute:#a39a86;--gold:#d8b05a;--green:#4fdcaa;--red:#ff7a7f}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui;padding:24px 16px 60px}
+h1{margin:0 auto 4px;max-width:1180px;font:800 22px Fraunces}.lead{margin:0 auto 20px;max-width:1180px;color:var(--mute);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;max-width:1180px;margin:0 auto}
+.opt{position:relative;border-radius:22px;padding:16px;background:linear-gradient(180deg,#1c1a15,#0d0c0a);box-shadow:0 0 0 1px #d8b05a33,0 24px 50px -22px #000;overflow:hidden}
+.opt h2{margin:0;font:800 17px Fraunces}.opt>p{margin:3px 0 12px;font:700 12.5px Nunito;color:var(--mute)}
+.replay{position:absolute;right:14px;top:14px;border:0;border-radius:12px;padding:7px 12px;font:800 12px Nunito;color:var(--ink);background:#ffffff12;cursor:pointer}
+.stage{position:relative;height:330px}
+/* the mock row */
+.row{position:relative;display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:12px 10px;border-radius:16px;background:radial-gradient(ellipse at 30% 0,#2ee6b01f,transparent 70%);box-shadow:inset 0 0 0 1px #2ee6b055}
+.por{width:52px;height:52px;border-radius:50%;background:url(/art/countries/usa.jpg) center 30%/150%;box-shadow:0 0 0 2px #f5dc94,0 0 0 4px var(--bg)}
+.name{font:800 15px Fraunces}.inc{font:800 11px Nunito;color:var(--green)}
+.cash{display:flex;align-items:center;gap:6px;font:400 22px Federo;color:#f5dc94}.cash.dn{color:var(--red)}
+.coin{display:inline-block;vertical-align:-5px;filter:drop-shadow(0 1px 1.5px #0009)}
+.fly{position:absolute;z-index:5;pointer-events:none;will-change:transform}
+/* A: board square */
+.sq{position:absolute;left:50%;bottom:22px;width:92px;height:92px;margin-left:-46px;border-radius:8px;background:#16203c;box-shadow:inset 0 0 0 3px #4fdcaa}
+.sq b{position:absolute;right:7px;top:4px;font:700 13px Fraunces;color:#efe6d2}
+.stack{position:absolute;left:50%;bottom:30px;width:40px;margin-left:-20px;height:60px}
+.stack img{position:absolute;left:0;width:40px;height:40px}
+.cap{position:absolute;left:50%;bottom:126px;transform:translateX(-50%) scale(.6);opacity:0;display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:#0d0c0ad0;box-shadow:inset 0 1px 0 #ffffff22,0 8px 18px #0009;white-space:nowrap;transition:transform .5s cubic-bezier(.2,1.6,.4,1),opacity .3s}
+.cap.on{opacity:1;transform:translateX(-50%) scale(1)}
+.cap b{font:900 20px Nunito;color:var(--green)}.cap span{display:inline-flex;align-items:center;gap:4px;font:800 13px Nunito;color:var(--mute)}
+/* B: project card */
+.card{margin-top:12px;padding:14px;border-radius:16px;background:linear-gradient(160deg,#4fdcaa1c,#ffffff08 60%);box-shadow:inset 0 1px 0 #ffffff14;backdrop-filter:blur(6px);opacity:0;transform:translateY(16px) scale(.96);transition:transform .5s cubic-bezier(.2,1.4,.4,1),opacity .35s}
+.card.on{opacity:1;transform:none}
+.card .top{display:flex;align-items:center;gap:12px}
+.card .ic{width:44px;height:44px;border-radius:12px;background:#2ee6b0 url(/icons/ladder.svg) center/100%;box-shadow:0 6px 14px -6px #2ee6b0}
+.card .t{font:800 15px Nunito}.card .s{font:700 12px Nunito;color:var(--mute)}
+.card .big{margin-left:auto;font:900 30px Nunito;color:var(--green);text-shadow:0 0 18px #4fdcaa66}
+.card .bar{display:flex;gap:5px;margin:14px 0 6px}.card .bar i{flex:1;height:7px;border-radius:9px;background:#ffffff14;overflow:hidden;position:relative}
+.card .bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#4fdcaa55,#4fdcaa);transform:scaleX(0);transform-origin:0 50%;transition:transform .5s}
+.card .bar i.lit::after{transform:none}
+.card .lbl{display:flex;justify-content:space-between;font:700 11px Nunito;color:var(--mute)}
+.card .paid{display:flex;align-items:center;gap:2px;margin-top:10px;font:800 12px Nunito;color:var(--mute)}.card .paid img+img{margin-left:-6px}
+/* C: timeline in the row */
+.tlw{grid-column:1/-1;margin-top:10px}
+.tln{position:relative;height:62px;margin:0 6px}
+.tln .rail{position:absolute;left:0;right:0;top:30px;height:3px;border-radius:3px;background:#ffffff14}
+.tln .tick{position:absolute;top:24px;width:2px;height:15px;border-radius:2px;background:#ffffff26}
+.tln .tick small{position:absolute;top:18px;left:50%;transform:translateX(-50%);font:700 10.5px Nunito;color:var(--mute);white-space:nowrap}
+.tln .chip{position:absolute;top:0;transform:translateX(-50%);padding:3px 10px;border-radius:999px;font:900 14px Nunito;color:#06331f;background:var(--green);box-shadow:0 6px 14px -6px #4fdcaa}
+.tln .chip.old{color:var(--green);background:#4fdcaa22;box-shadow:none}
+.tln .chip.new{opacity:0;transform:translate(-50%,-40px)}
+.tln .chip.new.on{animation:drop .7s cubic-bezier(.3,1.6,.5,1) forwards}@keyframes drop{to{opacity:1;transform:translate(-50%,0)}}
+.tln .now{position:absolute;left:0;top:23px;width:17px;height:17px;margin-left:-8px;border-radius:50%;background:#f5dc94;box-shadow:0 0 0 4px #f5dc9433}
+.ripple{position:absolute;width:34px;height:34px;border-radius:50%;border:2px solid var(--green);transform:translate(-50%,-50%) scale(.3);opacity:0}
+.ripple.on{animation:rip .8s ease-out}@keyframes rip{20%{opacity:1}to{opacity:0;transform:translate(-50%,-50%) scale(2.2)}}
+</style></head><body>
+<h1>After investing</h1>
+<p class="lead">Three visual ways to show the project you just started. Each one plays on load; press Replay to see it again.</p>
+<div class="grid">
+ <section class="opt" id="A"><button class="replay">Replay</button><h2>A · Coins go to the ladder</h2><p>Your coins fly from your row onto the square and stack there. A glass tag pops up: +10, clock, 2 turns.</p>
+  <div class="stage"><div class="row"><div class="por"></div><div><div class="name">Ana</div><div class="inc">+6 next</div></div><div class="cash"><span class="ci"></span><span class="n">14</span></div></div>
+  <div class="sq"><b>42</b></div><div class="stack"></div><div class="cap"><b>+10</b><span><svg viewBox="-10 -10 20 20" width="13" height="13"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle r="8"/><path d="M0-4.5V0l3 2"/></g></svg>2 turns</span></div></div></section>
+ <section class="opt" id="B"><button class="replay">Replay</button><h2>B · Project card</h2><p>A card slides into your row: what you built, what it pays, and a bar that lights one segment per turn as it gets closer.</p>
+  <div class="stage"><div class="row"><div class="por"></div><div><div class="name">Ana</div><div class="inc">+6 next</div></div><div class="cash"><span class="ci"></span><span class="n">14</span></div></div>
+  <div class="card"><div class="top"><div class="ic"></div><div><div class="t">New project</div><div class="s">Ladder on 37</div></div><div class="big">+<span class="cnt">0</span></div></div>
+   <div class="bar"><i></i><i></i></div><div class="lbl"><span>started</span><span>pays in 2 turns</span></div><div class="paid">Paid&nbsp;<span class="pc"></span></div></div></div></section>
+ <section class="opt" id="C"><button class="replay">Replay</button><h2>C · Your money timeline</h2><p>Your row shows every payout coming on one timeline. The new +10 drops onto its turn with a ripple, next to what you already have.</p>
+  <div class="stage"><div class="row"><div class="por"></div><div><div class="name">Ana</div><div class="inc">2 projects</div></div><div class="cash"><span class="ci"></span><span class="n">14</span></div>
+   <div class="tlw"><div class="tln"><div class="rail"></div><div class="now"></div>
+    <div class="tick" style="left:30%"><small>next turn</small></div><div class="tick" style="left:60%"><small>2 turns</small></div><div class="tick" style="left:90%"><small>3 turns</small></div>
+    <div class="chip old" style="left:30%">+6</div><div class="chip new" style="left:60%">+10</div><div class="ripple" style="left:60%;top:13px"></div></div></div></div></div></section>
+</div>
+<script type="module">
+import {renderCoin} from './coin.js'
+const dpr=Math.min(2,devicePixelRatio||1),C=renderCoin(Math.round(48*dpr),[-.22,.18,0],'gold',1.35)
+const img=s=>`<img class="coin" src="${C}" width="${s}" height="${s}" alt="">`
+document.querySelectorAll('.ci').forEach(e=>e.innerHTML=img(26))
+const wait=ms=>new Promise(r=>setTimeout(r,ms))
+const count=(el,from,to,ms)=>{const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/ms);el.textContent=Math.round(from+(to-from)*k);if(k<1)requestAnimationFrame(f)})(t0);setTimeout(()=>el.textContent=to,ms+50)}
+function cash(sec,to){const c=sec.querySelector('.cash');c.classList.add('dn');count(c.querySelector('.n'),14,to,500)}
+// a coin flies on an arc from one point to another inside the card
+function fly(sec,from,to,ms,delay){return new Promise(res=>setTimeout(()=>{const s=sec.getBoundingClientRect(),el=document.createElement('img');el.src=C;el.className='fly';el.width=el.height=30
+ sec.appendChild(el);const a={x:from.left-s.left+from.width/2-15,y:from.top-s.top+from.height/2-15},b={x:to.x,y:to.y}
+ el.animate([{transform:`translate(${a.x}px,${a.y}px) scale(1)`},{transform:`translate(${(a.x+b.x)/2}px,${Math.min(a.y,b.y)-60}px) scale(1.25) rotate(160deg)`},{transform:`translate(${b.x}px,${b.y}px) scale(1.1) rotate(340deg)`}],{duration:ms,easing:'cubic-bezier(.4,0,.3,1)'}).onfinish=()=>{el.remove();res()}},delay))}
+const PLAY={
+ async A(sec){const stack=sec.querySelector('.stack'),cap=sec.querySelector('.cap');stack.innerHTML='';cap.classList.remove('on');sec.querySelector('.cash').classList.remove('dn');sec.querySelector('.n').textContent=14;sec.querySelector('.inc').textContent='+6 next'
+  await wait(300);const src=sec.querySelector('.cash .coin').getBoundingClientRect(),s=sec.getBoundingClientRect(),st=stack.getBoundingClientRect()
+  cash(sec,12)
+  await Promise.all([0,1].map(i=>fly(sec,src,{x:st.left-s.left+5,y:st.bottom-s.top-40-i*9},750,i*180).then(()=>{const c=document.createElement('img');c.src=C;c.style.bottom=i*9+'px';stack.appendChild(c);c.animate([{transform:'scale(1.25,.8)'},{transform:'none'}],{duration:260,easing:'cubic-bezier(.2,1.6,.4,1)'})})))
+  await wait(150);cap.classList.add('on');await wait(500);sec.querySelector('.inc').textContent='+6 next · +10 in 2'},
+ async B(sec){const card=sec.querySelector('.card'),bars=card.querySelectorAll('.bar i');card.classList.remove('on');bars.forEach(b=>b.classList.remove('lit'));card.querySelector('.cnt').textContent=0;sec.querySelector('.cash').classList.remove('dn');sec.querySelector('.n').textContent=14
+  card.querySelector('.pc').innerHTML=img(20)+img(20)
+  await wait(300);cash(sec,12);card.classList.add('on');await wait(350);count(card.querySelector('.cnt'),0,10,700)
+  await wait(500);bars[bars.length-1].classList.add('lit')},  // the payout segment lights; earlier ones fill as turns pass
+ async C(sec){const chip=sec.querySelector('.chip.new'),rip=sec.querySelector('.ripple');chip.classList.remove('on');rip.classList.remove('on');sec.querySelector('.cash').classList.remove('dn');sec.querySelector('.n').textContent=14
+  await wait(350);cash(sec,12);void chip.offsetWidth;chip.classList.add('on');await wait(420);void rip.offsetWidth;rip.classList.add('on')}}
+document.querySelectorAll('.opt').forEach(sec=>{sec.querySelector('.replay').onclick=()=>PLAY[sec.id](sec);setTimeout(()=>PLAY[sec.id](sec),400)})
+</script></body></html>

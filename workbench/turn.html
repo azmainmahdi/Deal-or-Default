@@ -1,0 +1,638 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 6: Turn Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&family=Nunito:wght@700;800;900&family=Federo&family=Josefin+Sans:ital,wght@0,600;1,300&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<link rel="stylesheet" href="kit.css"></head><body>
+<div class="top" id="top"></div>
+<div class="opts" id="opts"></div>
+<div class="strip" id="strip"></div><div class="stage"><div class="bankm" id="bankm"><span id="bankart"></span></div><div class="pile" id="pile"></div><div class="board"><svg viewBox="0 0 1000 1000" id="b"></svg><div class="ov" id="ov"></div></div><div class="rcol"><section class="panel"><div class="ph"><i></i>Players<i></i></div><div id="rows"></div></section></div></div>
+<script type="module">
+import {renderCoin,renderSpin,renderGavel} from './coin.js'
+import {duelDice} from './dice.js'
+window.duelDice=duelDice
+const T=[-.22,.18,0],dpr=Math.min(2,devicePixelRatio||1)
+const COIN=renderCoin(Math.round(64*dpr),T,'gold',1.35),COPPER=renderCoin(Math.round(64*dpr),T,'copper',1.35)
+document.documentElement.style.setProperty('--sp',`url(${renderSpin(Math.round(40*dpr))})`)
+window.COIN_SRC=COIN
+window.GAVEL_SRC=renderGavel(Math.round(220*dpr))
+window.coinImg=(s,kind)=>`<img class="coin" src="${kind==='copper'?COPPER:COIN}" width="${s}" height="${s}" alt="" draggable="false">`
+document.querySelectorAll('.bci').forEach(e=>e.innerHTML=window.coinImg(20))
+window.dispatchEvent(new Event('coins'))
+</script>
+<script>
+// ---------- board ----------
+const L={10:13,22:26,29:32,37:42,50:55,59:64,67:75,71:86},S={17:5,28:9,31:14,48:26,58:39,65:46,88:73,99:63}
+const E=[7,25,43,54,61,69,76,87,96],TA=[23,34,62,72,83],X=[18,45,68,79,91]
+const type=q=>q===1?'start':q===100?'goal':L[q]?'ladder':S[q]?'snake':E.includes(q)?'event':TA.includes(q)?'tariff':X.includes(q)?'sanction':''
+const cell=q=>{const i=q-1,r=Math.floor(i/10),c=r%2===0?i%10:9-i%10;return{x:c*100,y:(9-r)*100}}
+const mid=q=>{const{x,y}=cell(q);return{x:x+50,y:y+50}}
+const range=(a,b)=>{const out=[],st=a>b?-1:1;for(let q=a;q!==b+st;q+=st)out.push(q);return out}
+const FLAG={
+ usa:'<rect width="30" height="20" fill="#fff"/>'+[0,2,4,6,8,10,12].map(i=>`<rect y="${i*1.54}" width="30" height="1.54" fill="#b22234"/>`).join('')+'<rect width="13" height="10.8" fill="#3c3b6e"/>',
+ china:'<rect width="30" height="20" fill="#de2910"/><path d="M6 3l1.2 3.6H11L8 8.8l1.1 3.6L6 10.2 2.9 12.4 4 8.8 1 6.6h3.8z" fill="#ffde00"/>',
+ japan:'<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/>',
+ germany:'<rect width="30" height="7" fill="#111"/><rect y="7" width="30" height="6" fill="#dd0000"/><rect y="13" width="30" height="7" fill="#ffce00"/>',
+ bangladesh:'<rect width="30" height="20" fill="#006a4e"/><circle cx="13.5" cy="10" r="6" fill="#f42a41"/>',
+ uk:'<rect width="30" height="20" fill="#012169"/><path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" stroke-width="1.5"/><path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/><path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.5"/>',
+}
+const TILE_COL={bank:'#d8b05a',ladder:'#2ee6b0',snake:'#ff5a6a',tariff:'#f08a3c',event:'#f2d14a',sanction:'#a26bf0',takeover:'#e2b552'}
+const COL={green:'#4fdcaa',red:'#ff6b78',gold:'#f5dc94',purple:'#c4a0ff',orange:'#ffa25a'}
+function boardTiles(){let h='<defs>'+Object.keys(FLAG).map(c=>`<pattern id="p-${c}" width="1" height="1" patternContentUnits="objectBoundingBox"><image href="/art/countries/${c}.jpg" x="-.25" y="-.1" width="1.5" height="1.5" preserveAspectRatio="xMidYMid slice"/></pattern>`).join('')
+  +Object.entries(COL).map(([k,c])=>`<marker id="ar-${k}" viewBox="0 0 12 12" refX="8" refY="6" markerWidth="3.6" markerHeight="3.6" orient="auto" markerUnits="strokeWidth"><path d="M3 2 9 6 3 10" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker>`).join('')
+  +'<linearGradient id="sweep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffa25a" stop-opacity="0"/><stop offset=".75" stop-color="#ff8a3c" stop-opacity=".55"/><stop offset="1" stop-color="#ffd0a0" stop-opacity=".9"/></linearGradient><linearGradient id="beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#4fdcaa" stop-opacity=".75"/><stop offset="1" stop-color="#4fdcaa" stop-opacity="0"/></linearGradient><filter id="soft" x="-20%" y="-30%" width="140%" height="190%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter></defs>'
+ for(let q=1;q<=100;q++){const{x,y}=cell(q),t=type(q),art=t&&t!=='start'
+  h+=`<rect class="tile" x="${x+7}" y="${y+7}" width="86" height="86" rx="3"/>`
+  if(art)h+=`<image href="/icons/${t}.svg" x="${x+7}" y="${y+7}" width="86" height="86"/>`
+  if(t!=='goal'&&t!=='start'){const fwd=Math.floor((q-1)/10)%2===0;h+=`<text class="num ${['event','ladder','tariff'].includes(t)?'lt':''}" x="${fwd?x+89:x+11}" y="${y+23}" text-anchor="${fwd?'end':'start'}">${q}</text>`}}
+ return h}
+const puckSvg=c=>`<ellipse class="sh" cy="12" rx="30" ry="10" fill="#000" opacity=".45"/><g class="body"><circle r="30" fill="#b8892e"/><circle r="27" fill="url(#p-${c})" stroke="#f5dc94" stroke-width="3"/></g>`
+const puck=(q,c,id='',dx=0)=>{const{x,y}=mid(q);return`<g ${id?`id="${id}"`:''} data-dx="${dx}" transform="translate(${x+dx},${y})">${puckSvg(c)}</g>`}
+const land=(q,col)=>{const{x,y}=cell(q);return`<rect class="land" x="${x+4}" y="${y+4}" width="92" height="92" rx="8" fill="${col}22" stroke="${col}" stroke-width="5"/>`}
+const ringAt=(q,col)=>{const{x,y}=cell(q);return`<rect x="${x+3}" y="${y+3}" width="94" height="94" rx="7" fill="none" stroke="${col}" stroke-width="5"/>`}
+const wash=(q,col,op)=>{const{x,y}=cell(q);return`<rect x="${x+5}" y="${y+5}" width="90" height="90" rx="6" fill="${col}" opacity="${op}"/>`}
+// a Deco plaque on the board: cut corners, gold edge
+// a glass capsule on the board: dark see-through fill, a light top edge, a soft drop shadow
+const capsule=(cx,cy,w,inner,h=36)=>`<g transform="translate(${cx-w/2},${cy-h/2})" filter="url(#soft)"><rect width="${w}" height="${h}" rx="${h/2}" fill="#0d0c0a" opacity=".82"/><rect x="1" y="1" width="${w-2}" height="${h-2}" rx="${h/2-1}" fill="none" stroke="#ffffff22" stroke-width="1.5"/>${inner}</g>`
+const tag=(q,txt,col,dy=-44,strike=false)=>{const b=mid(q),w=txt.length*14+30;return`<g class="tag">${capsule(b.x,b.y+dy-8,w,`<text x="${w/2}" y="26" text-anchor="middle" fill="${col}" style="font:900 22px Nunito">${txt}</text>${strike?`<line x1="12" y1="18" x2="${w-12}" y2="18" stroke="${col}" stroke-width="3"/>`:''}`)}</g>`}
+const CLOCK='<g fill="none" stroke="#a39a86" stroke-width="2.4" stroke-linecap="round"><circle r="8"/><path d="M0-4.5V0l3 2"/></g>'
+// the ladder's payout: +amount, then a small clock and how long you wait
+function moneyTag(q,txt,col,k,dy=-66){const b=mid(q),tw=txt.length*12.5+8,w=tw+48+(k?44:0)
+ return`<g class="tag">${capsule(b.x,b.y+dy,w,`<text x="14" y="26" fill="${col}" style="font:900 21px Nunito">${txt}</text><image href="${window.COIN_SRC||''}" x="${14+tw}" y="7" width="22" height="22"/>${k?`<g transform="translate(${14+tw+42},18)">${CLOCK}</g><text x="${14+tw+54}" y="25" fill="#cfc5b0" style="font:900 17px Nunito">${k}</text>`:''}`)}</g>`}
+// crash tags: "lose" then the project as its own green pill; the hedge square shows what the shield costs
+function loseTag(q,amt,k,dy=-66){const b=mid(q),tw=String(amt).length*12.5+22,pw=tw+34+44,w=62+pw
+ return`<g class="tag">${capsule(b.x,b.y+dy,w,`<text x="14" y="25" fill="${COL.red}" style="font:900 19px Nunito">lose</text><g transform="translate(56,5)"><rect width="${pw}" height="26" rx="13" fill="#4fdcaa2e" stroke="#4fdcaa66" stroke-width="1.2"/><text x="10" y="19.5" fill="${COL.green}" style="font:900 18px Nunito">+${amt}</text><image href="${window.COIN_SRC||''}" x="${8+tw}" y="4" width="18" height="18"/><g transform="translate(${8+tw+34},13) scale(.8)">${CLOCK}</g><text x="${8+tw+44}" y="19.5" fill="#cfc5b0" style="font:900 16px Nunito">${k}</text></g>`)}</g>`}
+function costTag(q,n,dy=-60){const b=mid(q),w=104
+ return`<g class="tag">${capsule(b.x,b.y+dy,w,`<text x="14" y="25" fill="#cfc5b0" style="font:900 18px Nunito">pay</text><text x="54" y="25" fill="${COL.red}" style="font:900 20px Nunito">${n}</text><image href="${window.COIN_SRC||''}" x="70" y="7" width="22" height="22"/>`)}</g>`}
+const payTag=(q,amt,k)=>moneyTag(q,'+'+amt,COL.green,k)
+// moves on the board (not money): a back arrow and the number of squares
+const stepTag=(q,n,col)=>{const b=mid(q),f=mid(q+1),ang=Math.atan2(b.y-f.y,b.x-f.x)*180/Math.PI+180;return`<g class="tag">${capsule(b.x,b.y-50,74,`<text x="16" y="26" fill="${col}" style="font:900 21px Nunito">${n}</text><g transform="translate(50,18) rotate(${ang})" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 0H-7M-2-6-8 0l6 6"/></g>`)}</g>`}
+const SHIELD=(q,cls='')=>{const{x,y}=mid(q);return`<g class="${cls}" transform="translate(${x-26},${y-26}) scale(2.2)"><path d="M12 2.5 19.5 5.5v6c0 5-3.4 8.6-7.5 10-4.1-1.4-7.5-5-7.5-10v-6z" fill="#0d0c0acc" stroke="#4fdcaa" stroke-width="1.6"/><path d="m8.5 12 2.5 2.5 4.7-5" fill="none" stroke="#4fdcaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path class="gleam" d="M12 2.5 19.5 5.5v6c0 5-3.4 8.6-7.5 10-4.1-1.4-7.5-5-7.5-10v-6z" fill="#c9fff0" opacity="0"/></g>`}
+const hedgeHint=q=>{const{x,y}=cell(q);return`<g class="hhint"><rect x="${x+6}" y="${y+6}" width="88" height="88" rx="7" fill="none" stroke="#4fdcaa" stroke-width="3" stroke-dasharray="8 7"/>${SHIELD(q)}</g>`}
+const arcD=(a,b)=>{const A=mid(a),B=mid(b),cx=(A.x+B.x)/2+(A.y-B.y)*.3,cy=(A.y+B.y)/2-Math.abs(A.x-B.x)*.2-60;return`M${A.x},${A.y} Q${cx},${cy} ${B.x},${B.y}`}
+const back=p=>p.c==='china'?2:3
+const crown=q=>{const{x,y}=mid(q);return`<g transform="translate(${x-20},${y-74})"><path d="M2 30 6 8l10 12L20 2l4 18L34 8l4 22z" fill="#ffd23a" stroke="#7a5a10" stroke-width="2" stroke-linejoin="round"/></g>`}
+const tileD=(a,b)=>range(a,b).map((q,i)=>{const m=mid(q);return`${i?'L':'M'}${m.x},${m.y}`}).join('')
+const lineD=(a,b)=>{const A=mid(a),B=mid(b);return`M${A.x},${A.y} L${B.x},${B.y}`}
+// the crash walks every square it falls through; the line through their centres is rounded at the row ends and
+// given a gentle serpent wave (one wave about every two squares), fading out at both ends
+function snakeRoute(qs,amp=13,wl=200){const P=qs.map(mid),pts=[]
+ for(let i=0;i<P.length-1;i++){const p0=P[Math.max(0,i-1)],p1=P[i],p2=P[i+1],p3=P[Math.min(P.length-1,i+2)]
+  for(let j=0;j<12;j++){const t=j/12,t2=t*t,t3=t2*t;pts.push({x:.5*(2*p1.x+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),y:.5*(2*p1.y+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)})}}
+ pts.push(P[P.length-1]);let s=0;const len=[0];for(let i=1;i<pts.length;i++){s+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);len.push(s)}
+ return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)],dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1,f=Math.min(1,len[i]/60,(s-len[i])/60),o=amp*f*Math.sin(Math.PI*2*len[i]/wl)
+  return`${i?'L':'M'}${(p.x-dy/l*o).toFixed(1)},${(p.y+dx/l*o).toFixed(1)}`}).join('')}
+const pathEl=(d,col,cls='',id='')=>`<path ${id?`id="${id}"`:''} class="pathln ${cls}" d="${d}" stroke="${COL[col]}" marker-end="url(#ar-${col})"/>`
+
+// ---------- sample state ----------
+const P0=[{name:'Ana',c:'usa',cap:14,inc:[[6,1]],debt:0,best:6,bt:1,waiver:1},{name:'Bo',c:'china',sq:32,best:8,bt:2,cap:9,inc:[[8,2]],debt:0,waiver:1},{name:'Kenji',c:'japan',sq:61,cap:21,inc:[],debt:0,waiver:1},
+ {name:'Lena',c:'germany',sq:8,cap:6,inc:[[3,1]],debt:0},{name:'Rafi',c:'bangladesh',sq:50,cap:12,inc:[[10,4]],debt:0,waiver:1}]
+const clone=a=>a.map(p=>({...p}))
+let P=clone(P0),act=0,phase=null
+const anaAt=()=>sc==='sanction'&&selfSanc?37:SC[sc].at
+const SC={ladder:{tab:'Ladder',t:'ladder',q:'Invest?',at:37},crash:{tab:'Crash',t:'snake',q:'Market crash: hedge?',at:48},tariff:{tab:'Tariff',t:'tariff',q:'Tariff! Everyone else goes back',at:23},sanction:{tab:'Sanction',t:'sanction',q:'Sanction the richest player',at:45},
+ card:{tab:'Event card',t:'event',q:'Event card',at:25},takeover:{tab:'Takeover',t:'takeover',q:'Hostile takeover?',at:32},
+ roll:{tab:'Roll & bank',t:'bank',q:'Your roll',at:37}}
+const CARDS={
+ panic:{name:'Banking Panic',kind:'bad',quote:'Queues at every branch.',rule:'Pay <em>2 coins</em>, or borrow <em>1 debt coin</em> and gain nothing.',art:'/world-bg.jpg',choices:['pay','debt']},
+ windfall:{name:'Surplus Budget',kind:'good',quote:'Unexpected fiscal windfall.',rule:'No projects: <em>+2 coins</em>. Otherwise every project pays <em>1 turn sooner</em>.',art:'/world-bg.jpg',choices:['ok']},
+ probe:{name:'Corruption Probe',kind:'bad',quote:'Officials under arrest.',rule:'Whoever has the <em>most coins</em> pays <em>2</em>.',art:'/art/events/corruptionProbe.jpg',titled:true,choices:['ok']},
+}
+// what a debt chip looks like. The copper coin read too close to gold, so three alternatives
+const DTOK={silver:'Silver bank',copper:'Copper coin',iou:'IOU note',iron:'Iron coin',chain:'Chain link'}
+function debtTok(sz,k='silver'){
+ if(k==='silver')return`<svg class="coin" viewBox="0 0 40 40" width="${sz}" height="${sz}"><defs><linearGradient id="sv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#b9c0ca"/><stop offset=".5" stop-color="#eef1f5"/><stop offset=".75" stop-color="#7d8590"/><stop offset="1" stop-color="#d6dbe2"/></linearGradient></defs><g fill="url(#sv)" stroke="#4b525c" stroke-width=".8"><path d="M20 3 37 12.5H3z"/><rect x="4" y="14" width="32" height="3.4" rx="1"/><rect x="7" y="19" width="4.4" height="12" rx="1.2"/><rect x="14.2" y="19" width="4.4" height="12" rx="1.2"/><rect x="21.4" y="19" width="4.4" height="12" rx="1.2"/><rect x="28.6" y="19" width="4.4" height="12" rx="1.2"/><rect x="3" y="32.5" width="34" height="4" rx="1.2"/></g></svg>`
+ if(k==='copper')return coin(sz,'copper')
+ const svg=b=>`<svg class="coin" viewBox="0 0 40 40" width="${sz}" height="${sz}">${b}</svg>`
+ if(k==='iou')return svg('<g transform="rotate(-10 20 20)"><rect x="3" y="9" width="34" height="22" rx="3" fill="#f3e6c6"/><rect x="3" y="9" width="8" height="22" rx="3" fill="#d23b2c"/><rect x="3" y="9" width="34" height="22" rx="3" fill="none" stroke="#8c2a1e" stroke-width="1.6"/><text x="24.5" y="24.5" text-anchor="middle" fill="#c12c1c" style="font:900 11px Nunito">IOU</text></g>')
+ if(k==='iron')return svg('<defs><radialGradient id="ir" cx=".35" cy=".3"><stop offset="0" stop-color="#c3c8d0"/><stop offset=".55" stop-color="#6b7079"/><stop offset="1" stop-color="#2d3036"/></radialGradient></defs><circle cx="20" cy="20" r="17" fill="url(#ir)" stroke="#23262b" stroke-width="1.5"/><circle cx="20" cy="20" r="12.5" fill="none" stroke="#ffffff30" stroke-width="1.2"/><rect x="15.5" y="15.5" width="9" height="9" rx="1.5" transform="rotate(45 20 20)" fill="#14161a"/><circle cx="31" cy="31" r="7" fill="#e0384a" stroke="#14161a" stroke-width="1.5"/><path d="M27.5 31h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>')
+ return svg('<defs><linearGradient id="st" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6e9ee"/><stop offset="1" stop-color="#6e737c"/></linearGradient></defs><rect x="3" y="12" width="22" height="14" rx="7" fill="none" stroke="url(#st)" stroke-width="5"/><rect x="15" y="15" width="22" height="14" rx="7" fill="none" stroke="#e0384a" stroke-width="5"/>')}
+const DEBT={A:['Copper beside gold','Copper coins and their count sit under your gold.'],B:['Chips on the portrait','Copper chips stack on the portrait frame, opposite the flag. Seen at a glance on every row.'],
+ C:['Owed ribbon','A copper ribbon under the name says what you owe and what it costs at the end.'],D:['Worth after debt','Your gold stays big; a small copper line shows what you are worth once debt is paid.']}
+const store=(k,v)=>{try{v===undefined?v=localStorage.getItem(k):localStorage.setItem(k,v)}catch(e){}return v}
+let sc=location.hash.slice(1)in SC?location.hash.slice(1):'ladder',chips=2,hoverN=0,hover=null,busy=false,result=null,cardId='panic'
+let selfSanc=false,autoT=0,bankPhase=null,LOANS=[],dealt=false,lastCard=null,debtLook='A'   // his pick: the silver bank and the count, under the gold
+const coin=(s,k)=>window.coinImg?coinImg(s,k):`<span class="coin" style="width:${s}px;height:${s}px;display:inline-block"></span>`
+const cost=n=>`<span class="cost">pay <b>${n}</b>${coin(17)}</span>`
+const n=()=>hoverN||chips
+const debtOf=(p,i)=>sc==='debt'?[2,0,0,1,0][i]:p.debt
+
+function preview(k){const at=SC[sc].at
+ if(sc==='ladder')return k==='skip'?{stay:true,coins:0}:{to:42,d:arcD(at,42),col:'green',coins:-n(),pay:n()*5,k:n()}
+ if(sc==='crash')return{to:26,via:37,hedge:k==='hedge',coins:k==='hedge'?-4:0,strong:k==='crash',lose:k==='crash'}
+ if(sc==='card')return k==='pay'?{coins:-2}:k==='debt'?{coins:0,debt:1}:{coins:0}
+ if(sc==='takeover')return{coins:0}
+ if(sc==='bank')return{coins:k==='borrow'?n():k==='repay'?-3:0}
+ if(sc==='tariff'||sc==='sanction')return{coins:0}
+ return{coins:0}}
+
+function drawBoard(pv){const at=anaAt();let h=boardTiles(),dx=0
+ const others=P.slice(1)
+ if(sc==='crash'){const stop=pv.via
+  range(at,pv.to).forEach(q=>{if(q===at)return;const saved=pv.hedge&&q<stop;h+=wash(q,saved?'#000':COL.red,saved?.55:pv.strong?.32:.18)})
+  if(pv.hedge)h+=pathEl(snakeRoute(range(at,stop)),'green','','mv')+`<path class="pathln faded" d="${snakeRoute(range(stop,pv.to))}" stroke="${COL.red}"/>`+land(stop,COL.green)+`<g id="hsh">${SHIELD(stop,'hon')}</g>`+costTag(stop,4)
+  else h+=pathEl(snakeRoute(range(at,pv.to)),'red','','mv')+land(pv.to,COL.red)+loseTag(pv.to,6,1)+hedgeHint(stop)+costTag(stop,4)}
+ else if(pv&&pv.d){h+=pathEl(pv.d,pv.col,'','mv')+land(pv.to,COL[pv.col])+(pv.pay?payTag(pv.to,pv.pay,pv.k):tag(pv.to,pv.label,COL[pv.col]))}
+ if(sc==='takeover')dx=24
+ if(sc==='tariff'&&phase===null&&!busy)P.slice(1).forEach((p,i)=>{const n=back(p),to=p.sq-n
+  h+=pathEl(tileD(p.sq,to),'orange','faded2')+(p.waiver?tag(p.sq,'waiver?',COL.green,-50):land(to,COL.orange))})
+ if(sc==='sanction'&&phase===null){const k=P[2];h+=pathEl(tileD(k.sq,k.sq-5),'purple','','sp')+land(k.sq-5,COL.purple)+stepTag(k.sq-5,5,COL.purple)+crown(k.sq)}
+ if(sc==='takeover')h+=land(at,COL.gold)
+ others.forEach((p,i)=>{h+=puck(p.sq,p.c,'pk'+(i+1),p.sq===at?-24:0)})
+ h+=puck(at,'usa','me',dx)+(pv&&pv.d||sc==='crash'?'':ringAt(at,COL.gold))
+ if(pv&&pv.stay)h+=pv.shield?SHIELD(at):tag(at,'stay',COL.gold)
+ if(pv&&pv.steal)h+=tag(at,'+8 → you',COL.green,-56)
+ document.getElementById('b').innerHTML=h
+ if(result)return
+ const m=document.getElementById('mycash');if(m){const d=pv?pv.coins:0;m.querySelector('span').textContent=P[act].cap+d;m.className='cash '+(d>0?'up':d<0?'dn':'')}
+ const inc=document.getElementById('myinc');if(inc)inc.innerHTML=pjs(pv&&pv.lose?[]:P[act].inc,pv&&pv.lose?[[6,1]]:[])
+ const g=pv&&pv.debt;if(sc==='card'){const box=document.getElementById('mymoney');if(box){box.outerHTML=moneyHTML(P[0],0,true,g?1:0)}}}
+
+// how a player's money and debt show, by the chosen debt look
+function moneyHTML(p,i,on,extra=0){const d=debtOf(p,i)+extra,gh=extra?'ghost':''
+ let h=`<div class="cash" ${on?'id="mycash"':''}>${coin(on?26:22)}<span>${p.cap}</span></div>`
+ if(d&&debtLook==='A')h+=`<div class="debtA ${gh}">${debtTok(16)}<span>${d}</span></div>`
+ if(d&&debtLook==='D')h+=`<div class="worth ${gh}"><b>worth</b> ${p.cap-1.5*d}</div>`
+ h+=`<span class="tw ${p.waiver?'':'none'}">${TW_ICON}${p.waiver||0}</span>`   // waivers held: the ticket pill, red at 0
+ return`<div class="money" ${on?'id="mymoney"':''}>${h}</div>`}
+function porHTML(p,i){const d=debtOf(p,i)
+ return`<div class="por"><span class="fl"><svg viewBox="0 0 30 20" preserveAspectRatio="none">${FLAG[p.c]}</svg></span>${d&&debtLook==='B'?`<span class="dchips">${[...Array(d)].map(()=>debtTok(15)).join('')}${d>1?`<b>${d}</b>`:''}</span>`:''}</div>`}
+
+// moves: hop = cartoon jump (crouch, stretch on take-off, hang at the top, squash on landing);
+// brake = slide that slows to a stop (hedge); fall = slide that speeds up into a crash; steps = three small hops
+const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,easeOut=t=>1-Math.pow(1-t,3),easeIn=t=>t*t*t
+function move(style,ms,done,onNear){const p=document.getElementById('mv'),me=document.getElementById('me');if(!p||!me)return done()
+ if(document.hidden)ms=1;const L=p.getTotalLength(),body=me.querySelector('.body'),sh=me.querySelector('.sh'),t0=performance.now();p.style.opacity=.3
+ let over=false,guard=0,near=false
+ ;(function f(now){const t=Math.min(1,(now-t0)/ms);let e=t,lift=0,sx=1,sy=1
+  if(style==='hop'){const A=.2,B=.84
+   if(t<A){const k=Math.sin(Math.PI/2*t/A);e=0;sx=1+.2*k;sy=1-.24*k}
+   else if(t<B){const u=(t-A)/(B-A);e=easeIO(u);lift=150*4*u*(1-u);const st=.22*Math.pow(Math.cos(Math.PI*u),2);sy=1+st;sx=1-st*.6}
+   else{const v=(t-B)/(1-B);e=1;sx=1+.26*Math.sin(Math.PI*v);sy=1-.3*Math.sin(Math.PI*v)}}
+  else if(style==='brake')e=t*(.6+.4*t)   // no slowing down on its own: the shield does the stopping
+  else if(style==='fall')e=easeIn(t)
+  else if(style==='steps'){const u=(t*3)%1;e=(Math.floor(t*3)+easeIO(u))/3;lift=t<1?Math.sin(Math.PI*u)*26:0}
+  if(onNear&&!near&&e>.9){near=true;onNear()}
+  const pt=p.getPointAtLength(L*Math.min(1,e))
+  me.setAttribute('transform',`translate(${pt.x},${pt.y})`);body.setAttribute('transform',`translate(0,${-lift}) scale(${sx},${sy})`);sh.setAttribute('opacity',(.45-lift/400).toFixed(2))
+  if(t<1&&!over)requestAnimationFrame(f);else end()})(t0)
+ // a hidden or busy tab throttles animation frames: a timer makes sure the move always lands on time
+ function end(){if(over)return;over=true;clearTimeout(guard);if(onNear&&!near)onNear();const e=p.getPointAtLength(L);me.setAttribute('transform',`translate(${e.x},${e.y})`);body.removeAttribute('transform');sh.setAttribute('opacity',.45);done(e)}
+ guard=setTimeout(end,ms+120)}
+
+// coins fly on an arc from the player's money into the bank, which counts them in
+// bank A (his pick 19 Oct): white marble, stepped gold crown with a sunburst, fluted columns, black stepped base
+document.getElementById('bankart').outerHTML=`<svg class="bt" viewBox="0 0 132 120"><defs><linearGradient id="bam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#cfcbc1"/></linearGradient><linearGradient id="bag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9dd92"/><stop offset="1" stop-color="#b8892e"/></linearGradient></defs>
+ <path d="M30 34h72v-8H86v-8H46v8H30z" fill="url(#bag)"/><path d="M58 18V10h16v8" fill="url(#bag)"/>
+ <g stroke="#8a6420" stroke-width="1.2" opacity=".75"><path d="M66 32 54 20M66 32 62 19M66 32 70 19M66 32 78 20"/></g>
+ <rect x="24" y="34" width="84" height="12" rx="1" fill="url(#bam)"/><text x="66" y="43.5" text-anchor="middle" fill="#3b3833" style="font:400 9.5px Federo;letter-spacing:2.4px">BANK</text>
+ <path d="M24 46h84" stroke="#b8892e" stroke-width="2"/>
+ <g fill="url(#bam)"><rect x="32" y="50" width="11" height="42"/><rect x="51" y="50" width="11" height="42"/><rect x="70" y="50" width="11" height="42"/><rect x="89" y="50" width="11" height="42"/></g>
+ <g stroke="#bdb8ad" stroke-width=".9"><path d="M35.5 52v38M39.5 52v38M54.5 52v38M58.5 52v38M73.5 52v38M77.5 52v38M92.5 52v38M96.5 52v38"/></g>
+ <g fill="url(#bag)"><rect x="30" y="48" width="15" height="3"/><rect x="49" y="48" width="15" height="3"/><rect x="68" y="48" width="15" height="3"/><rect x="87" y="48" width="15" height="3"/></g>
+ <path d="M20 92h92v7H20zM14 99h104v7H14zM8 106h116v8H8z" fill="#141210"/><path d="M20 92h92M14 99h104M8 106h116" stroke="#d8b05a" stroke-width="1.4"/>
+</svg>`
+// coins fly on an arc from the paying player's money into the bank; resolves when the last one lands
+function toBank(n){const from=document.querySelector('#mycash .coin'),to=document.querySelector('#bankm .bt');if(!from||!to||!n)return Promise.resolve()
+ const a=from.getBoundingClientRect(),r=to.getBoundingClientRect(),bx=r.left+r.width/2-13,by=r.top+r.height/2-13
+ return Promise.all([...Array(n)].map((_,i)=>{const el=document.createElement('img');el.src=window.COIN_SRC;el.className='fly';el.width=el.height=26;document.body.appendChild(el)
+  const an=el.animate([{transform:`translate(${a.left}px,${a.top}px) scale(1)`},{transform:`translate(${(a.left+bx)/2}px,${Math.min(a.top,by)-60}px) scale(1.25) rotate(180deg)`},{transform:`translate(${bx}px,${by}px) scale(.55) rotate(360deg)`,opacity:.7}],{duration:document.hidden?1:460,delay:i*80,easing:'cubic-bezier(.4,0,.3,1)',fill:'backwards'})
+  return new Promise(res=>{const fin=()=>{if(!el.isConnected)return res();el.remove();to.animate([{transform:'scale(1)'},{transform:'scale(1.1,.9)'},{transform:'scale(.96,1.05)'},{transform:'none'}],{duration:280,easing:'ease-out'});res()}
+   an.finished.then(fin,fin);setTimeout(fin,600+i*80)})}))}
+
+// one-off effects drawn on the board and thrown away
+// sanction: a wave of purple pixels rolls out across the whole board from c (board units). Every square is a 5x5
+// grid of pixels in one purple hue; brightness follows the wave front (brightest at the front, fading with distance
+// from the blow) with a fixed random spread per pixel and a little flicker. The pixels are SVG squares inside the
+// board itself, so they sit exactly on the tiles and bend with the board's ripple. ~30 frames a second.
+function pixelWave(c,ms){const g=svgEl('g',{style:'mix-blend-mode:screen;pointer-events:none'}),N=5,P=86/N,cells=[],t0=performance.now()
+ for(let q=1;q<=100;q++){const o=cell(q);for(let i=0;i<N;i++)for(let j=0;j<N;j++){const x=o.x+7+i*P,y=o.y+7+j*P
+  const el=svgEl('rect',{x:x+.6,y:y+.6,width:P-1.2,height:P-1.2,opacity:0});g.appendChild(el)
+  cells.push({el,d:Math.hypot(x+P/2-c.x,y+P/2-c.y),r:.45+Math.random()*.55,lag:(Math.random()-.5)*60})}}
+ fxLayer().appendChild(g)
+ const frame=()=>{const t=Math.min(1,(performance.now()-t0)/ms),rf=1500*(1-Math.pow(1-t,2.2)),fade=1-t*.6
+  for(const p of cells){const off=p.d+p.lag-rf,front=Math.exp(-((off/190)**2)),trail=off<0?.22*Math.exp(off/260):0,near=1-Math.min(1,p.d/1400)*.55
+   let a=(front+trail)*p.r*near*fade
+   if(a<.02){if(p.on){p.el.setAttribute('opacity',0);p.on=false}continue}
+   if(Math.random()<.08)a*=.4+Math.random()   // flicker
+   p.on=true;p.el.setAttribute('opacity',Math.min(.85,a).toFixed(3));p.el.setAttribute('fill',`hsl(268,85%,${(38+34*Math.min(1,a)).toFixed(0)}%)`)}
+  if(t<1)setTimeout(frame,33);else g.remove()}
+ frame()}
+// the board itself ripples: an SVG displacement map of rings moving out from c (board units), redrawn ~30 times a second
+function boardRipple(c,ms){const B=document.querySelector('.board'),W=B.offsetWidth,H=B.offsetHeight
+ if(!document.getElementById('ripf'))document.body.insertAdjacentHTML('beforeend','<svg width="0" height="0" style="position:absolute"><filter id="ripf" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feImage id="ripimg" result="m0" preserveAspectRatio="none"/><feGaussianBlur in="m0" stdDeviation="6" result="m"/><feDisplacementMap id="ripd" in="SourceGraphic" in2="m" xChannelSelector="R" yChannelSelector="G" scale="0"/></filter></svg>')
+ const img=document.getElementById('ripimg'),dm=document.getElementById('ripd');Object.entries({x:0,y:0,width:W,height:H}).forEach(([k,v])=>img.setAttribute(k,v))
+ const N=200,cv=document.createElement('canvas');cv.width=cv.height=N;const ctx=cv.getContext('2d'),im=ctx.createImageData(N,N),t0=performance.now()
+ B.style.filter='url(#ripf)'
+ const frame=()=>{const t=Math.min(1,(performance.now()-t0)/ms),rf=1.5*(1-Math.pow(1-t,3)),amp=1-t
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const u=(x+.5)/N-c.x/1000,v=(y+.5)/N-c.y/1000,d=Math.hypot(u,v)||1e-3,k=d-rf,val=Math.exp(-((k/.14)**2))*Math.sin(k*30),o=(y*N+x)*4
+   im.data[o]=128+127*val*u/d;im.data[o+1]=128+127*val*v/d;im.data[o+2]=128;im.data[o+3]=255}
+  ctx.putImageData(im,0,0);img.setAttribute('href',cv.toDataURL());dm.setAttribute('scale',(22*amp).toFixed(1))
+  if(t<1)setTimeout(frame,33);else B.style.filter=''}
+ frame()}
+function fxLayer(){let g=document.getElementById('fx');if(!g){g=document.createElementNS('http://www.w3.org/2000/svg','g');g.id='fx';document.getElementById('b').appendChild(g)}return g}
+function svgEl(tag,attrs){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e}
+const kill=(e,a)=>a.finished.then(()=>e.remove()).catch(()=>e.remove())
+const ringFx=(pt,col,r1,ms,w=5)=>{const c=svgEl('circle',{cx:pt.x,cy:pt.y,r:r1,fill:'none',stroke:col,'stroke-width':w});fxLayer().appendChild(c)
+ kill(c,c.animate([{opacity:1,strokeWidth:w+'px',r:r1+'px'},{opacity:0,strokeWidth:'1px',r:r1*3.2+'px'}],{duration:ms,easing:'ease-out'}))}
+// a crash: the square shatters into shards that fall away, a comic CRASH! burst, a red flash, the board shakes,
+// the token is squashed flat and pops back
+function crash(pt){const g=fxLayer(),q=26,{x,y}=cell(q),rnd=(a,b)=>a+Math.random()*(b-a)
+ const hole=svgEl('rect',{x:x+7,y:y+7,width:86,height:86,rx:3,fill:'#05070f'});g.appendChild(hole);kill(hole,hole.animate([{opacity:1},{opacity:1,offset:.7},{opacity:0}],{duration:1500}))
+ const P=[[0,0],[45,0],[86,0],[86,40],[86,86],[40,86],[0,86],[0,45]],c=[43+rnd(-8,8),43+rnd(-8,8)]
+ for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],m=[(a[0]+b[0])/2+rnd(-10,10),(a[1]+b[1])/2+rnd(-10,10)]
+  for(const tri of [[a,m,c],[m,b,c]]){const sh=svgEl('polygon',{points:tri.map(p=>`${x+7+p[0]},${y+7+p[1]}`).join(' '),fill:i%2?'#c43a4c':'#1c2a4c',stroke:'#ff9aa2','stroke-width':1.5});g.appendChild(sh)
+   const dx=(tri[0][0]+tri[1][0]+c[0])/3-43,dy=(tri[0][1]+tri[1][1]+c[1])/3-43,vx=dx*rnd(3,5),r=rnd(-260,260)
+   sh.style.transformBox='fill-box';sh.style.transformOrigin='center'
+   kill(sh,sh.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${vx*.5}px,${dy*2-60}px) rotate(${r*.5}deg)`,opacity:1,offset:.35},{transform:`translate(${vx}px,${dy*2+260}px) rotate(${r}deg)`,opacity:0}],{duration:1100,easing:'cubic-bezier(.3,.1,.6,1)'}))}}
+ const flash=svgEl('rect',{x:-30,y:-30,width:1060,height:1060,fill:'#ff2a3d'});g.appendChild(flash);kill(flash,flash.animate([{opacity:.38},{opacity:0}],{duration:500,easing:'ease-out'}))
+ const me=document.getElementById('me');if(me){const b=me.querySelector('.body');b.animate([{transform:'scale(1.7,.3)'},{transform:'scale(1.7,.3)',offset:.45},{transform:'scale(.85,1.2)',offset:.7},{transform:'scale(1)'}],{duration:900,easing:'ease-out'});me.parentNode.appendChild(me)}
+ document.querySelector('.board').animate([0,1,2,3,4,5,6].map(i=>({transform:i===6?'none':`translate(${rnd(-14,14)}px,${rnd(-10,10)}px) rotate(${rnd(-1,1)}deg)`})),{duration:620,easing:'ease-out'})}
+// the hedge: square 37 lights up, a beam rises out of it and the shield grows from the tile, then a ripple
+function shieldPop(){const svg=document.getElementById('b'),g=fxLayer(),{x,y}=cell(37),m=mid(37),me=document.getElementById('me')
+ const hs=document.getElementById('hsh');if(hs)hs.style.display='none'
+ const glow=svgEl('rect',{x:x+5,y:y+5,width:90,height:90,rx:6,fill:'#4fdcaa'});g.appendChild(glow);kill(glow,glow.animate([{opacity:0},{opacity:.65,offset:.3},{opacity:.15}],{duration:1000,fill:'forwards'}))
+ // a big shield, centred on the tile, drawn behind the token so the token lands on it
+ const sh=svgEl('g',{});sh.innerHTML=`<path d="M0-58 46-40v30c0 32-21 54-46 64-25-10-46-32-46-64v-30z" fill="#4fdcaa40" stroke="#9af5d6" stroke-width="5" stroke-linejoin="round"/><path d="M0-46 34-33v23c0 25-15 42-34 50-19-8-34-25-34-50v-23z" fill="none" stroke="#4fdcaa" stroke-width="2.5" opacity=".7"/><path class="gl" d="M0-58 46-40v30c0 32-21 54-46 64-25-10-46-32-46-64v-30z" fill="#e8fff7" opacity="0"/>`
+ const wrap=svgEl('g',{transform:`translate(${m.x},${m.y-6})`});wrap.appendChild(sh);svg.insertBefore(wrap,me)
+ sh.animate([{transform:'scale(.2)',opacity:0},{transform:'scale(1.12)',opacity:1,offset:.5},{transform:'scale(1)',opacity:1}],{duration:200,easing:'cubic-bezier(.2,.9,.3,1)',fill:'both'})
+ sh.querySelector('.gl').animate([{opacity:0},{opacity:.7,offset:.15},{opacity:0}],{duration:700,delay:520})
+ setTimeout(()=>ringFx(m,COL.green,40,700,6),180)}
+// skipping: a small double bounce in place and a soft ring
+function nope(){const me=document.getElementById('me');if(!me)return;const b=me.querySelector('.body')
+ b.animate([{transform:'translate(0,0)'},{transform:'translate(0,-22px) scale(.95,1.08)'},{transform:'translate(0,0) scale(1.08,.92)'},{transform:'translate(0,-10px)'},{transform:'translate(0,0)'}],{duration:560,easing:'ease-out'})
+ ringFx(mid(SC[sc].at),COL.gold,40,700,4)}
+
+const SH='<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2.5 19.5 5.5v6c0 5-3.4 8.6-7.5 10-4.1-1.4-7.5-5-7.5-10v-6z" fill="#4fdcaa33" stroke="#4fdcaa" stroke-width="1.8"/></svg>'
+// Tariff Waiver, his pick B (19 Oct): the printed black and orange on a tear-off ticket
+const TICKET_SM='<svg viewBox="0 0 30 18" width="26" height="16"><rect width="30" height="18" rx="3" fill="#0b0b0b" stroke="#f0812f55"/><rect x="21" width="9" height="18" rx="3" fill="#ee7a32"/><path d="M21 2v14" stroke="#0b0b0b" stroke-dasharray="2 2"/><text x="10.5" y="12.5" text-anchor="middle" fill="#f0812f" style="font:400 8px Federo">TW</text></svg>'
+const TW_ICON='<svg viewBox="0 0 20 14" width="18" height="13"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h15A1.5 1.5 0 0 1 19 2.5V5a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 1 11.5V9a2 2 0 0 0 0-4z" fill="currentColor"/><path d="M13 2v10" stroke="#0d0c0a" stroke-width="1.2" stroke-dasharray="1.6 1.4"/></svg>'
+const TICKET_ICON='<svg viewBox="0 0 40 40" width="42" height="42" fill="none" stroke="#e2b552" stroke-width="2.2" stroke-linejoin="round"><path d="M9 5h16l7 7v23H9z"/><path d="M25 5v7h7"/><path d="M14 17h8M14 22h5"/><circle cx="24" cy="25" r="2"/><circle cx="31" cy="33" r="2"/><path d="m33 23-11 12"/></svg>'
+// the deal: pay now, a diamond per turn you wait, the payout where it lands
+const CLK='<svg viewBox="-10 -10 20 20" width="11" height="11">'+'<g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle r="8"/><path d="M0-4.5V0l3 2"/></g></svg>'
+function line(k){return`<div class="tl" id="tl"><div class="nums"><span class="o">−${k}</span><span class="i">+${k*5}</span></div><div class="bar">${'<i></i>'.repeat(k)}</div><div class="cap"><span>now</span><span>${CLK}${k===1?'next turn':`in ${k} turns`}</span></div></div>`}
+const bankBtn=i=>`<button class="${i<=chips?'on':''}" data-n="${i}" aria-label="Borrow ${i}">${debtTok(30)}</button>`
+// what a loan of k gives now and costs back: repay any time; within 3 turns k+1, later (or unpaid at the end) k+2
+function bline(k){return`<div class="tl bl" id="tl"><div class="g"><span class="i">+${k}</span><span class="s">−${k+1}</span><span class="o">−${k+2}</span></div>
+ <div class="g bar"><i></i><i></i><i></i><b></b></div><div class="g cap"><span>now</span><span>${CLK}within 3 turns</span><span>later</span></div>
+ <div class="late">Repay any time. Later, or still owed at the end, costs 1 more.</div></div>`}
+const coinBtn=i=>`<button class="${i<=chips?'on':''}" data-n="${i}" aria-label="Invest ${i}"><span class="c3d"></span></button>`
+const SWORDS='<img src="/icons/takeover.svg" alt="" style="width:26px;height:26px;border-radius:6px">'   // takeover icon: the knight (his pick C, 19 Oct)
+const proj=(amt,k,cls='')=>`<span class="pj ${cls}">+${amt}${coin(14)}<span class="t">${CLK}${k}</span></span>`
+// money on its way: a four-turn line of deco diamonds, a gold pill where money lands (green = next turn); lost ones in red
+const pjs=(l,lost=[])=>{if(!l.length&&!lost.length)return'<span class="none">No money on its way yet</span>'
+ const due=(L,k)=>L.filter(x=>x[1]===k).reduce((a,x)=>a+x[0],0)
+ return`<div class="line">${[1,2,3,4].map(k=>{const v=due(l,k),x=due(lost,k);return`<div class="slot">${v?`<span class="pill">+${v}${coin(12)}</span>`:x?`<span class="pill lose">+${x}${coin(12)}</span>`:'<span class="dia"></span>'}</div>`}).join('')}</div><div class="lbls"><span>next</span><span>in 2</span><span>in 3</span><span>in 4</span></div>`}
+const mini=(p,extra='')=>`<span class="mini" style="--art:url(/art/countries/${p.c}.jpg)"></span>${extra}`
+function decision(){const s=SC[sc],q=`<div class="q">${s.t==='takeover'?SWORDS:s.t==='bank'?debtTok(26):`<img src="/icons/${s.t}.svg" alt="">`}${sc==='takeover'&&act===1?'Challenge Ana?':s.q}</div>`
+ if(result)return result.html
+ // bank (rule C), modelled on Invest: the turn opens with Roll, Borrow and (when you owe) Repay; Borrow opens a picker
+ if(sc==='bank'&&bankPhase==='borrow')return`<div class="q">${debtTok(26)}Borrow?</div><div class="inv"><div class="pick" id="pick">${[1,2,3].map(bankBtn).join('')}</div>${bline(n())}</div>
+  <div class="go"><button class="btn" data-k="bback">Back</button><button class="btn primary" data-k="borrow">Borrow ${chips}</button></div>`
+ // roll: the row stays as normal (money line first); the roll is an overlay on the panel, the bank opens from the table
+ if(sc==='roll')return''
+ if(sc==='ladder')return q+`<div class="inv"><div class="pick" id="pick">${[1,2,3,4].map(coinBtn).join('')}</div>${line(n())}</div>
+  <div class="go"><button class="btn" data-k="skip">Skip</button><button class="btn primary" data-k="invest">Invest ${chips}</button></div>`
+ if(sc==='crash')return q+`<div class="go"><button class="btn good two" data-k="hedge"><span>${SH} Hedge</span>${cost(4)}</button><button class="btn bad two" data-k="crash"><span>Don’t hedge</span><span class="cost">lose ${proj(6,1,'lose')}</span></button></div>`
+ if(sc==='tariff'&&phase===null)return q+`<div class="vic">${P.slice(1).map(p=>`<div class="v">${mini(p)}<span class="tw ${p.waiver?'':'none'}">${TW_ICON}${p.waiver||0}</span></div>`).join('')}</div>
+  <div class="go"><button class="btn primary" data-k="impose">Impose tariff</button></div>`
+ if(sc==='tariff'&&phase==='waiver'){const v=P[act];return`<div class="q"><img src="/icons/tariff.svg" alt="">Ana’s tariff: back ${back(v)}</div><div class="tkt"><div class="main">${TICKET_ICON}<b>Tariff Waiver</b></div><div class="stub"><i></i></div></div>
+  <div class="go"><button class="btn good" data-k="use">Use waiver</button><button class="btn bad" data-k="back">Go back ${back(v)}</button></div>`}
+ // compact: who, how far back, one button. If the richest player lands on it himself, it just happens
+ if(sc==='sanction'){const k=P[2];return`<div class="lead">${ICON('sanction')}${mini(k)}<div><b>${k.name}</b><small>${selfSanc?'richest · landed here':`richest · ${k.cap}${coin(14)}`}</small></div><span class="minus">−5</span>${selfSanc?'':'<button class="btn primary" data-k="sanction">Sanction</button>'}</div>`}
+ if(sc==='card')return q+`<div class="chips">${Object.entries(CARDS).map(([k,c])=>`<button aria-pressed="${k===cardId}" data-card="${k}">${c.name}</button>`).join('')}</div>`
+ if(sc==='takeover'){const me=P[act],them=P[act?0:1]
+  return q+`<div class="duel"><div class="side">${mini(me)}<b>${me.name}</b><small>best</small>${proj(me.best,me.bt)}</div><span class="vsx">VS</span><div class="side">${mini(them)}<b>${them.name}</b><small>best</small>${proj(them.best,them.bt)}</div></div>
+  <div class="rp" style="margin-top:8px">Pay 3 to challenge. You both roll. The higher roll takes the other’s best project.${act===1?' Ana passed, so Bo gets the chance.':''}</div>
+  <div class="go"><button class="btn" data-k="pass">Pass</button><button class="btn primary" data-k="challenge">Challenge ${cost(3)}</button></div>`}
+ if(sc==='debt')return q+`<div class="note">Debt shows as a silver bank and a count under the coins. Ana owes 2, Lena owes 1.</div>`}
+
+function frame(c){const k=c==='good'?'#d8b05a':'#d77a4a'
+ const corner=`<g fill="none" stroke="${k}" stroke-width="1.6"><path d="M10 118V10h150M18 96V18h120"/><path d="M18 54h36V18" stroke-width="1.3"/><path d="M54 30a24 24 0 0 0-24 24M54 54 34 34M54 54 44 26M54 54 26 44" stroke-width="1.1"/></g>`
+ return`<svg class="frame" viewBox="0 0 450 300" preserveAspectRatio="none">${[[0,0,1,1],[450,0,-1,1],[0,300,1,-1],[450,300,-1,-1]].map(([x,y,sx,sy])=>`<g transform="translate(${x},${y}) scale(${sx},${sy})">${corner}</g>`).join('')}
+  <g fill="none" stroke="${k}" stroke-width="1.4"><path d="M170 14h40l15 12 15-12h40M195 20l30 22 30-22"/></g>
+  <g transform="translate(225,52)"><circle cx="-34" r="2.4" fill="${k}"/><circle cx="-25" r="2.4" fill="${k}"/><circle cx="25" r="2.4" fill="${k}"/><circle cx="34" r="2.4" fill="${k}"/>
+  <rect x="-11" y="-11" width="22" height="22" transform="rotate(45)" fill="#0b1428" stroke="var(--k)" stroke-width="1.8"/><path d="M1.5-7-4 1.5h4l-1 6 5.5-8.5h-4z" fill="var(--k)"/></g></svg>`}
+function overlay(){const ov=document.getElementById('ov')
+ if(result&&result.closeCard&&sc==='card')lastCard=cardId
+ renderPile()
+ if(sc!=='card'||!dealt||result&&result.closeCard){if(!ov.querySelector('.bankw')){ov.classList.remove('on');ov.innerHTML='';ov.dataset.card=''}return}
+ if(ov.dataset.card===cardId&&ov.classList.contains('on'))return
+ const c=CARDS[cardId],k=c.kind==='good'?COL.green:COL.red
+ const lbl={pay:`Pay <span class="cost" style="font-size:15px"><b>2</b>${coin(17)}</span>`,debt:`Borrow 1 ${debtTok(22)}`,ok:'OK'}
+ ov.dataset.card=cardId
+ ov.innerHTML=`<div class="card" style="--k:${k}"><div class="side front"><div class="art" style="--art:url(${c.art})"></div>${c.titled?'':`<h3>${c.name}</h3><img class="logo" src="logo.png" alt="">`}</div>
+  <div class="side back">${frame(c.kind)}<div class="quote">“${c.quote}”</div><div class="rule">${c.rule}</div></div></div>
+  <div class="go">${c.choices.map(x=>`<button class="btn ${x==='pay'?'good':x==='debt'?'bad':'primary'}" data-k="${x}">${lbl[x]}</button>`).join('')}</div>`
+ ov.classList.add('on');setTimeout(()=>ov.querySelector('.card')?.classList.add('flip'),900);bind(ov)}
+function bind(root){root.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k
+  el.onmouseenter=el.onfocus=()=>{if(!busy){hover=k;refresh()}};el.onmouseleave=el.onblur=()=>{if(!busy){hover=null;refresh()}};el.onclick=()=>choose(k)})
+ root.querySelectorAll('[data-n]').forEach(el=>{el.onclick=()=>{chips=+el.dataset.n;hoverN=0;renderRows();refresh()}
+  el.onmouseenter=()=>{hoverN=+el.dataset.n;el.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('pre',+b.dataset.n<=hoverN));refresh()}
+  el.onmouseleave=()=>{hoverN=0;el.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('pre'));refresh()}})
+ root.querySelectorAll('[data-card]').forEach(el=>el.onclick=()=>{cardId=el.dataset.card;document.getElementById('ov').dataset.card='';render()})
+ root.querySelectorAll('[data-debt]').forEach(el=>el.onclick=()=>{debtLook=store('dod-debt',el.dataset.debt);render()})
+ root.querySelectorAll('[data-dtok]').forEach(el=>el.onclick=()=>{store('dod-dtok',el.dataset.dtok);render()})}
+function refresh(){if(busy)return;if(!(sc==='tariff'&&phase))drawBoard(preview(hover))   // mid-tariff the board holds its live tokens
+ const tl=document.getElementById('tl'),pk=document.getElementById('pick');if(tl&&sc==='bank'){tl.outerHTML=bline(n())}
+ if(tl&&sc==='ladder'){tl.outerHTML=line(n());document.getElementById('tl').classList.toggle('off',hover==='skip');pk.classList.toggle('off',hover==='skip')}
+ const t=document.querySelector('.tkt');if(t)t.classList.toggle('hint',hover==='use');const v=document.querySelector('.vs');if(v)v.classList.toggle('take',hover==='take')}
+function renderRows(){renderStrip();document.getElementById('rows').innerHTML=P.map((p,i)=>{const on=i===act,inc=on&&result&&result.inc||p.inc,has=inc.length
+  return`<div class="row ${on?'on':''}" style="--art:url(/art/countries/${p.c}.jpg);${on?`--tc:${phase==='waiver'?TILE_COL.tariff:TILE_COL[SC[sc].t]}`:''}">${porHTML(p,i)}
+  <div><div class="name">${p.name}${i===(sc==='sanction'&&selfSanc?2:0)?'<span class="turn">Your turn</span>':''}</div><div class="inc" ${on?'id="myinc"':''}>${pjs(inc)}</div>
+  ${debtOf(p,i)&&debtLook==='C'?`<div class="ribbon">${debtTok(14)} owes ${debtOf(p,i)} · −${1.5*debtOf(p,i)} at the end</div>`:''}</div>
+  ${on&&result?moneyHTML({...p,cap:p.cap+(result.coins||0)},i,true,result.debt||0).replace('ghost',''):moneyHTML(p,i,on)}${on?`<div class="dec">${decision()}</div>`:''}</div>`}).join('')
+ bind(document.getElementById('rows'))}
+let resetT=0
+// switching scenes cancels a pending reset from the last one
+function resetScene(){clearTimeout(resetT);clearTimeout(autoT);P=clone(P0);act=0;phase=null;busy=false;bankPhase=null;dealt=false;if(sc==='sanction'&&selfSanc){P[2].sq=45;act=2};LOANS=[{n:2,age:2}];P[0].debt=sc==='roll'?2:0;if(sc==='roll')P[3].debt=1}   // demo: Ana owes a 2 from 2 turns ago, Lena owes 1
+// whose-turn look options (19 Oct): A gold lift (default), B Deco rail, C spotlight
+const ACT={A:'Gold lift',B:'Deco rail',C:'Spotlight'}
+let actLook=store('dod-act')||'A';document.documentElement.dataset.active=actLook
+function renderOpts(){const o=document.getElementById('opts');o.innerHTML='Whose turn: '+Object.entries(ACT).map(([k,v])=>`<button aria-pressed="${k===actLook}" data-act="${k}">${k}. ${v}</button>`).join('')
+  +(sc==='sanction'?` · Who lands: <button aria-pressed="${!selfSanc}" data-ss="0">Ana</button><button aria-pressed="${selfSanc}" data-ss="1">Kenji (the richest)</button>`:'')
+ o.querySelectorAll('[data-ss]').forEach(b=>b.onclick=()=>{selfSanc=b.dataset.ss==='1';resetScene();render()})
+ o.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{actLook=store('dod-act',b.dataset.act);document.documentElement.dataset.active=actLook;renderOpts()})}
+function render(){const ph=document.querySelector('.ph');if(ph&&LAYOUT==='C')ph.onclick=()=>document.querySelector('.rcol').classList.toggle('open');document.getElementById('top').innerHTML=Object.entries(SC).map(([k,s])=>`<button aria-pressed="${k===sc}" onclick="sc='${k}';location.hash='${k}';hover=null;result=null;resetScene();render()${k==='takeover'?';setTimeout(takeIntro,80)':''}">${s.tab}</button>`).join('')
+ renderOpts();renderRows();overlay();refresh();rollOv(true);updBank()
+ if(sc==='sanction'&&selfSanc&&!busy&&!result){clearTimeout(autoT);autoT=setTimeout(()=>{if(sc==='sanction'&&selfSanc&&!busy&&!result)FLOW.sanction()},1400)}}
+
+// ---------- choosing: the token moves, the row shows what happened ----------
+// the row's money timeline: one segment per turn ahead, each payout above its turn; the new one drops in
+function moneyLine(items){const at=k=>items.filter(x=>x[0]===k)
+ return`<div class="mtl">${[1,2,3,4].map(k=>{const it=at(k),nw=it.some(x=>x[2]),amt=it.reduce((a,x)=>a+x[1],0)
+  return`<div><div class="lab">${it.length?`<span class="chip ${nw?'new':''}">+${amt}${coin(15)}</span>`:''}</div><div class="seg ${nw?'new':it.length?'has':''}"></div><div class="cap">${CLK}${k}</div></div>`}).join('')}</div>`}
+const CHECK='<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
+// results drawn, not told: a square as a mini tile (icon art, number in the corner), an arrow, chips
+const sqc=(q,t='',badge='')=>`<span class="sqc ${t?'art':''}" style="${t?`background-image:url(/icons/${t}.svg)`:''}"><b>${q}</b>${badge?`<span class="bd">${badge}</span>`:''}</span>`
+const ARR=c=>`<svg viewBox="0 0 30 12" width="30" height="12"><path d="M1 6h25M21 1l5 5-5 5" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const ICON=t=>`<img src="/icons/${t}.svg" width="24" height="24" alt="" style="border-radius:5px">`
+const res=(col,icon,title,body)=>({col,html:`<div class="res" style="--rc:${col}"><div class="rh">${icon}${title}</div>${body}</div>`})
+const OUT={
+ invest:()=>({...res(COL.green,ICON('ladder'),'Project started',moneyLine([[1,6,false],[chips,chips*5,true]])),
+  move:'hop',ms:780,coins:-chips,inc:[[6,1],[chips*5,chips]]}),
+ skip:()=>res(COL.gold,CHECK,'Skipped','<div class="rp">You stay on 37. Nothing spent.</div>'),
+ hedge:()=>({fx:'hedge',...res(COL.green,SH,'Hedged',`<div class="rvis"><div class="ln"><span class="ok">✓ safe</span>${proj(6,1)}<span class="paid">paid <b>4</b>${coin(15)}</span></div></div>`),move:'brake',ms:820,coins:-4}),
+ crash:()=>({...res(COL.red,ICON('snake'),'Market crash',`<div class="rvis"><div class="ln">${proj(6,1,'lose')}<span class="gone">✕ lost</span></div></div>`),move:'fall',ms:1100,inc:[]}),
+ use:()=>res(COL.green,SH,'Waiver used','<div class="rp">No setback. You stay on 24. No waivers left.</div>'),
+ back:()=>({...res(COL.red,ICON('tariff'),'Tariff paid','<div class="rp">Back 3 squares to 21. Your waiver is kept.</div>'),move:'steps',ms:1100}),
+ pay:()=>({...res(COL.red,ICON('event'),'Banking Panic',`<div class="rp">Paid <b style="color:var(--red)">2</b> ${coin(16)}. No debt taken.</div>`),closeCard:true,coins:-2}),
+ debt:()=>({...res(COL.red,ICON('event'),'Banking Panic',`<div class="rp">Borrowed 1 ${debtTok(16)}. It costs 1.5 at the end unless you repay it.</div>`),closeCard:true,debt:1}),
+ ok:()=>({...res(COL.gold,ICON('event'),CARDS[cardId].name,'<div class="rp">Applied.</div>'),closeCard:true}),
+ borrow:()=>({...res(COL.gold,debtTok(22),`Borrowed ${chips}`,`<div class="rp">+${chips} ${coin(16)} now. Repay <b style="color:var(--red)">${chips+1}</b> ${coin(16)} within 3 turns, <b style="color:var(--red)">${chips+2}</b> after.</div>`),coins:chips,debt:chips}),
+ repay:()=>({...res(COL.green,debtTok(22),'Loan repaid',`<div class="rp">Paid <b style="color:var(--red)">3</b> ${coin(16)}: the 2 you owed plus 1 for repaying on time.</div>`),coins:-3,debt:-2}),
+ roll:()=>res(COL.gold,CHECK,'Roll','<div class="rp">The roll itself is step 7 (turn flow).</div>'),
+ take:()=>({...res(COL.green,ICON('sanction'),'Project taken',`<div class="rp">Bo’s <b style="color:var(--green)">+8</b> project is yours. Paid <b style="color:var(--red)">3</b> ${coin(16)}.</div>`),coins:-3,inc:[[6,1],[8,2]]})}
+// a token rolls along a list of squares without hopping, spinning as it goes (sanction: knocked back, slowing down)
+function rollPath(el,qs,ms){return new Promise(res=>{const pts=qs.map(mid),n=pts.length-1;if(!el||n<1)return res();const body=el.querySelector('.body'),dx=+(el.dataset.dx||0),t0=performance.now();let over=false
+ const seg=[0];for(let i=1;i<=n;i++)seg.push(seg[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y));const L=seg[n]
+ const at=d=>{let i=1;while(i<n&&seg[i]<d)i++;const u=(d-seg[i-1])/((seg[i]-seg[i-1])||1),a=pts[i-1],b=pts[i];return{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u,dir:Math.sign(b.x-a.x)||Math.sign(b.y-a.y)||1}}
+ const end=()=>{if(over)return;over=true;const b=pts[n];el.setAttribute('transform',`translate(${b.x+dx},${b.y})`);body.removeAttribute('transform');res()}
+ ;(function f(now){if(over)return;const t=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-t,3),d=e*L,p=at(d)
+  el.setAttribute('transform',`translate(${p.x+dx},${p.y})`);body.setAttribute('transform',`rotate(${p.dir*d/30*57.3})`);if(t<1)requestAnimationFrame(f);else end()})(t0)
+ setTimeout(end,document.hidden?0:ms+150)})}
+// a token hops square by square along a list of squares
+function hopPath(el,qs,ms){return new Promise(res=>{const pts=qs.map(mid),n=pts.length-1;if(!el||n<1)return res();const body=el.querySelector('.body'),dx=+(el.dataset.dx||0),t0=performance.now();let over=false
+ const end=()=>{if(over)return;over=true;const b=pts[n];el.setAttribute('transform',`translate(${b.x+dx},${b.y})`);body.removeAttribute('transform');res()}
+ ;(function f(now){if(over)return;const t=Math.max(0,Math.min(1,(now-t0)/ms)),k=Math.min(n-1e-6,t*n),i=Math.floor(k),u=k-i,a=pts[i],b=pts[i+1],e=easeIO(u)
+  el.setAttribute('transform',`translate(${a.x+(b.x-a.x)*e+dx},${a.y+(b.y-a.y)*e})`);body.setAttribute('transform',`translate(0,${-Math.sin(Math.PI*u)*24})`);if(t<1)requestAnimationFrame(f);else end()})(t0)
+ setTimeout(end,document.hidden?0:ms+150)})}
+// landing on someone else's square: hop in, bump the owner, the square throbs gold and crossed swords pop above it
+async function takeIntro(){if(busy||sc!=='takeover')return;busy=true;const q=SC.takeover.at,m=mid(q),g=fxLayer(),a=document.getElementById('pk0'),b=document.getElementById('pk1'),T=ms=>document.hidden?1:ms
+ if(a)await hopPath(a,range(q-3,q),T(720))
+ const dir=Math.sign((+(b?.dataset.dx||0))-(+(a?.dataset.dx||0)))||1
+ ringFx(m,COL.gold,34,600,6);setTimeout(()=>ringFx(m,COL.gold,34,700,3),180)
+ a?.querySelector('.body').animate([{transform:'none'},{transform:`translate(${dir*10}px,0) scale(1.15,.85)`},{transform:'none'}],{duration:T(320)})
+ b?.querySelector('.body').animate([{transform:'none'},{transform:`translate(${dir*16}px,-6px) rotate(${dir*14}deg)`,offset:.35},{transform:`translate(${-dir*4}px,0)`,offset:.7},{transform:'none'}],{duration:T(560)})
+ const sw=svgEl('g',{});sw.innerHTML='<g><image href="/icons/takeover.svg" x="-26" y="-26" width="52" height="52" style="filter:drop-shadow(0 4px 6px #000a)"/></g>';g.appendChild(sw)
+ sw.animate([{transform:`translate(${m.x}px,${m.y-30}px) scale(0) rotate(-40deg)`},{transform:`translate(${m.x}px,${m.y-70}px) scale(1.3) rotate(8deg)`,offset:.55},{transform:`translate(${m.x}px,${m.y-64}px) scale(1) rotate(0)`}],{duration:T(480),easing:'cubic-bezier(.3,0,.3,1.4)',fill:'forwards'})
+ // the swords throb twice, then fade as the choice opens
+ setTimeout(()=>sw.firstChild.animate([{transform:'scale(1)'},{transform:'scale(1.15)'},{transform:'scale(1)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:T(900)}),T(500))
+ await wait(1400);sw.animate([{opacity:1},{opacity:0}],{duration:T(300),fill:'forwards'});setTimeout(()=>sw.remove(),T(320));busy=false}
+// ---------- the roll (an overlay on the players panel) and the bank window ----------
+const ORN='<svg viewBox="0 0 160 16" width="160" height="16" style="display:block;margin:0 auto"><path d="M0 8h58M102 8h58" stroke="#d8b05a66"/><g stroke="#d8b05a99" stroke-width="1">'+[-60,-40,-20,0,20,40,60].map(a=>`<path d="M80 16 L${80+Math.sin(a*Math.PI/180)*16} ${16-Math.cos(a*Math.PI/180)*16}"/>`).join('')+'</g><path d="M74 8l6-6 6 6-6 6z" fill="#e2b552"/></svg>'
+// the die face as a small icon, with the right pips
+const PIPS={1:[[12,12]],2:[[8,8],[16,16]],3:[[8,8],[12,12],[16,16]],4:[[8,8],[16,8],[8,16],[16,16]],5:[[8,8],[16,8],[12,12],[8,16],[16,16]],6:[[8,7],[16,7],[8,12],[16,12],[8,17],[16,17]]}
+const dieIcon=(v,sz=24)=>`<svg viewBox="0 0 24 24" width="${sz}" height="${sz}"><rect x="3" y="3" width="18" height="18" rx="5" fill="#e2b552"/><g fill="#1b2340">${PIPS[v].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.7"/>`).join('')}</g></svg>`
+// the roll: a slim Deco card above the players panel (it pushes the panel down). Tap the die to roll; the bank sits
+// beside it. The die's canvas reaches above the card so a jump is never cut off.
+function rollOv(on){const rc=document.querySelector('.rcol');let el=document.getElementById('rollov')
+ if(!on){if(el){el._dd?.dispose();el.remove()}return}
+ // always on the table; only live (tap to roll) when it is the roll
+ const live=()=>sc==='roll'&&!result&&!busy
+ const who=()=>`${mini(P[act])}${P[act].name} · ${sc==='roll'?'your roll':'your turn'}`
+ if(el){el.querySelector('.who').innerHTML=who();el.classList.toggle('idle',!live());if(!busy&&!result)el.querySelector('#rn').classList.remove('on');el.classList.remove('going');return}
+ el=document.createElement('div');el.id='rollov';el.className='rollov'
+ el.innerHTML=`${ORN}<div class="who">${who()}</div><div class="rbody"><span class="rn" id="rn"></span><canvas class="rdie" aria-label="Roll the die"></canvas></div>`
+ rc.insertBefore(el,rc.firstChild)
+ // the dice module can load after the first render on a fresh page: wait for it
+ const mk=()=>{if(!el.isConnected)return;if(window.duelDice)el._dd=window.duelDice(el.querySelector('canvas'),1);else setTimeout(mk,50)};mk()
+ el.classList.toggle('idle',!live())
+ el.querySelector('canvas').onclick=async()=>{if(!live())return;busy=true;el.classList.add('going');const v=1+Math.floor(Math.random()*6)
+  await el._dd?.roll(v);const rn=el.querySelector('#rn');rn.textContent=v;rn.classList.add('on')
+  await wait(550)
+  const at=SC.roll.at;await hopPath(document.getElementById('me'),range(at,at+v),260*v)
+  flowEnd(res(COL.gold,dieIcon(v),`Rolled ${v}`,`<div class="rp">Ana moves to ${at+v}.</div>`))}}
+// a loan of n costs n+1 to repay within 3 turns, n+2 after (or if still owed at the end)
+const lcost=l=>l.n+(l.age<3?1:2)
+// the bank window (his pick B, 19 Oct): pick a loan by its coins, Borrow beside it; three boxes say what you get and
+// what you pay back, once; loans you hold sit below with Repay. Coins are the spinning 3D coin.
+let bankSel=3
+const spinCoins=(n,cls='')=>`<span class="cstk ${cls}">${'<span class="c3d"></span>'.repeat(n)}</span>`
+function bankWin(){const held=n=>LOANS.some(l=>l.n===n)
+ if(held(bankSel))bankSel=[1,2,3].find(n=>!held(n))||0
+ const k=bankSel
+ const pick=[1,2,3].map(n=>`<button class="bsz ${n===k?'on':''}" data-bs="${n}" ${held(n)?'disabled title="You already have this loan"':''}>${spinCoins(n)}</button>`).join('')
+ const owe=LOANS.map(l=>{const left=3-l.age,c=(v,cls='')=>`<span class="oc ${cls}">${v}${coin(15)}</span>`
+  return`<div class="bowe">${debtTok(22)}<b>${l.n}</b><span class="bt2">${left>0?`${c(l.n+1)}${left===1?'now':`${left} turns`}<span class="ar">→</span>${c(l.n+2,'r')}${left===1?'next turn':'after'}`:`${c(l.n+2,'r')}late`}</span><button class="btn" data-bk="repay" data-n2="${l.n}">Repay <span class="cost"><b>${lcost(l)}</b>${coin(17)}</span></button></div>`}).join('')
+ return`<div class="bankw"><div class="bwh">${document.querySelector('#bankm .bt')?.outerHTML||''}<h3>Bank</h3><button class="x" data-bx aria-label="Close">✕</button></div>
+  ${k?`<div class="bpick">${pick}<button class="btn primary" data-bk="borrow" data-n2="${k}">Borrow ${k}</button></div>
+  <div class="bflow"><div class="bx g"><small>Now</small><b>+${k}<span class="c3d bc"></span></b></div><span class="ar">→</span>
+   <div class="bx"><small>Pay back</small><b>${k+1}<span class="c3d bc"></span></b><em>${'<i></i>'.repeat(3)}${CLK}3 turns</em></div><span class="or">or</span>
+   <div class="bx late"><small>Later</small><b>${k+2}<span class="c3d bc"></span></b><em>${CLK}after that</em></div></div>`:'<div class="bnone">You hold all three loans.</div>'}
+  ${owe?`<div class="bowes">${owe}</div>`:''}</div>`}
+function bankOpen(){if(busy)return;const ov=document.getElementById('ov');ov.innerHTML=bankWin();ov.classList.add('on');ov.dataset.card=''
+ ov.querySelector('[data-bx]').onclick=bankClose;ov.onclick=e=>{if(e.target===ov)bankClose()}
+ ov.querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{bankSel=+b.dataset.bs;bankOpen()})
+ ov.querySelectorAll('[data-bk]').forEach(b=>b.onclick=async()=>{const n=+b.dataset.n2
+  if(b.dataset.bk==='borrow'){await fromBank(n);LOANS.push({n,age:0});P[0].debt+=n;P[0].cap+=n}
+  else{const l=LOANS.find(x=>x.n===n),c=lcost(l);await toBank(c);P[0].cap-=c;P[0].debt-=n;LOANS=LOANS.filter(x=>x!==l)}
+  renderRows();bankOpen();updBank()})}
+// coins fly out of the bank into the player's money (borrowing); toBank is the way back
+function fromBank(n){const from=document.querySelector('#bankm .bt'),to=document.querySelector('#mycash .coin');if(!from||!to||!n)return Promise.resolve()
+ const r=from.getBoundingClientRect(),a=to.getBoundingClientRect(),bx=r.left+r.width/2-13,by=r.top+r.height/2-13
+ return Promise.all([...Array(n)].map((_,i)=>{const el=document.createElement('img');el.src=window.COIN_SRC;el.className='fly';el.width=el.height=26;document.body.appendChild(el)
+  const an=el.animate([{transform:`translate(${bx}px,${by}px) scale(.55)`,opacity:.7},{transform:`translate(${(a.left+bx)/2}px,${Math.min(a.top,by)-60}px) scale(1.25) rotate(180deg)`,opacity:1},{transform:`translate(${a.left}px,${a.top}px) scale(1) rotate(360deg)`}],{duration:document.hidden?1:480,delay:i*90,easing:'cubic-bezier(.4,0,.3,1)',fill:'backwards'})
+  return new Promise(res=>{const fin=()=>{if(!el.isConnected)return res();el.remove();res()};an.finished.then(fin,fin);setTimeout(fin,620+i*90)})}))}
+function bankClose(){const ov=document.getElementById('ov');ov.classList.remove('on');ov.innerHTML='';ov.onclick=null}
+// the silver badge on the bank shows what you owe
+function updBank(){const b=document.getElementById('bankm');if(!b)return;let o=b.querySelector('.owe');const n=P[0].debt
+ if(!n){o?.remove();return}if(!o){o=document.createElement('span');o.className='owe';b.appendChild(o)}o.textContent=n}
+document.getElementById('bankm').onclick=bankOpen
+// the event pile beside the board. Printed cards have no common back: one side is the illustration and name, the other
+// the explanation and effect. So the draw pile shows the next card's illustration side, and the last card played shows
+// its explanation side (hover to read it). On an event square the pile comes forward (the table dims, the top card
+// bobs); tap it or drag the top card onto the board to draw.
+const CB='<div class="cb"><i></i><i></i><i></i><i></i></div>'
+const cardFront=c=>`<div class="cf" style="background-image:url(${c.art})">${c.titled?'':`<b>${c.name}</b>`}</div>`
+const cardBack=c=>`<div class="ct ${c.kind}"><i></i><i></i><i></i><i></i><b>${c.name}</b><span>${c.rule}</span></div>`
+function renderPile(){const el=document.getElementById('pile'),bd=document.querySelector('.board');if(!el||!bd)return
+ const lc=lastCard&&CARDS[lastCard],nx=CARDS[cardId],ready=sc==='card'&&!dealt&&!result
+ el.innerHTML=`<span class="lab">last played</span><div class="last ${lc?'':'none'}">${lc?cardBack(lc):''}</div><span class="lab">${ready?'draw a card':'draw'}</span>
+  <div class="draw" aria-label="Draw an event card">${CB.replace('<div class="cb">','<div class="cb" style="left:4px;top:8px">')}${CB.replace('<div class="cb">','<div class="cb" style="left:2px;top:4px">')}<div class="top">${cardFront(nx)}</div><span class="count">18</span></div>`
+ el.classList.toggle('ready',ready);document.querySelector('.stage').classList.toggle('drawing',ready)
+ el.style.top=(bd.offsetTop+bd.offsetHeight-el.offsetHeight)+'px'
+ const top=el.querySelector('.draw .top');let drag=null
+ top.onpointerdown=e=>{if(!ready)return;e.preventDefault();try{top.setPointerCapture(e.pointerId)}catch(_){};drag={x:e.clientX,y:e.clientY,moved:0}}
+ top.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved=Math.hypot(dx,dy);top.style.transform=`translate(${dx}px,${dy}px) rotate(${dx/18}deg) scale(1.08)`;top.style.animation='none'}
+ top.onpointerup=e=>{if(!drag)return;const far=drag.moved>70,tap=drag.moved<6;drag=null
+  if(far||tap)deal(top);else{top.style.transform='';top.style.animation=''}}
+ el.querySelector('.draw').onclick=e=>{if(e.target.closest('.top'))return;deal(top)}}
+async function deal(top){if(sc!=='card'||dealt||busy)return;busy=true
+ top=top||document.querySelector('#pile .draw .top')
+ const from=top.getBoundingClientRect(),to=document.querySelector('.board').getBoundingClientRect()
+ const f=document.createElement('div');f.className='flycard';f.innerHTML=cardFront(CARDS[cardId]);Object.assign(f.style,{left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px'});document.body.appendChild(f);top.style.visibility='hidden'
+ const dx=to.left+to.width/2-(from.left+from.width/2),dy=to.top+to.height/2-(from.top+from.height/2)
+ await Promise.race([f.animate([{transform:'none'},{transform:`translate(${dx*.5}px,${dy*.5-80}px) rotate(-8deg) scale(1.6)`,offset:.55},{transform:`translate(${dx}px,${dy}px) scale(2.6)`,opacity:1},{transform:`translate(${dx}px,${dy}px) scale(2.6)`,opacity:0}],{duration:document.hidden?1:700,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}).finished.catch(()=>{}),wait(760)])
+ f.remove();dealt=true;busy=false;overlay()}
+let tariffPick=null
+// phone layout mock (A/B/C); the strip shows the players who are not deciding
+const LAYOUT=new URLSearchParams(location.search).get('layout');if(LAYOUT){document.documentElement.dataset.layout=LAYOUT}
+function renderStrip(){const el=document.getElementById('strip');if(!LAYOUT||!el)return
+ el.innerHTML=P.map((p,i)=>LAYOUT==='A'&&i===act?'':`<span class="sp ${i===act?'on':''}">${mini(p)}${coin(13)}${p.cap}</span>`).join('')+(LAYOUT==='D'?'<span class="more" aria-label="Show all players">▾</span>':'')
+ el.onclick=LAYOUT==='D'?()=>document.documentElement.classList.toggle('open'):null}
+const wait=ms=>new Promise(r=>setTimeout(r,document.hidden?0:ms))
+const flowEnd=r=>{result=r;renderRows();resetT=setTimeout(()=>{resetScene();result=null;hover=null;render()},3400)}
+const FLOW={
+ bopen(){bankPhase='borrow';if(chips>3)chips=3;hover=null;renderRows()},
+ bback(){bankPhase=null;hover=null;renderRows()},
+ // tariff (his pick C, 19 Oct): notices burst out of the lander's square together; each player is caught as theirs lands,
+ // then each caught player resolves in turn, top of the board first
+ async impose(){busy=true;drawBoard(null);const o=mid(SC[sc].at),g=fxLayer(),D=document.hidden?1:1500,T=ms=>document.hidden?1:ms
+  const others=P.map((p,i)=>i).slice(1),dist=i=>Math.hypot(mid(P[i].sq).x-o.x,mid(P[i].sq).y-o.y)
+  const R=Math.max(...[[0,0],[1000,0],[0,1000],[1000,1000]].map(([x,y])=>Math.hypot(x-o.x,y-o.y)))
+  const delay=i=>D*.8*dist(i)/R
+  // the lander's square flashes and one notice per player bursts out at once, each flying straight to its player
+  {ringFx(o,COL.orange,40,500,8);ringFx(o,'#ffd0a0',30,700,3)
+   const sq=cell(SC[sc].at),st=svgEl('rect',{x:sq.x+4,y:sq.y+4,width:92,height:92,rx:8,fill:'#ff8a3c',opacity:0});g.appendChild(st)
+   st.style.transformBox='fill-box';st.style.transformOrigin='center'
+   st.animate([{opacity:.7,transform:'scale(1.25)'},{opacity:.4,transform:'scale(.95)',offset:.3},{opacity:0,transform:'scale(1)'}],{duration:T(600),fill:'forwards'}).finished.then(()=>st.remove(),()=>{})
+   const burst=(m,col)=>{for(let k=0;k<7;k++){const a=k/7*Math.PI*2+Math.random()*.4,r=svgEl('rect',{x:-4,y:-6,width:8,height:12,rx:1.5,fill:k%2?col:'#fff6ea'});g.appendChild(r)
+     r.animate([{transform:`translate(${m.x}px,${m.y-40}px) rotate(0)`,opacity:1},{transform:`translate(${m.x+Math.cos(a)*46}px,${m.y-40+Math.sin(a)*46+18}px) rotate(${200+Math.random()*200}deg)`,opacity:0}],{duration:T(520),easing:'cubic-bezier(.2,.7,.4,1)',fill:'forwards'}).finished.then(()=>r.remove(),()=>{})}}
+   others.forEach(i=>{const m=mid(P[i].sq),cx=(o.x+m.x)/2+(o.y-m.y)*.25,cy=(o.y+m.y)/2-Math.abs(o.x-m.x)*.15-40
+    const tr=svgEl('path',{d:`M${o.x},${o.y} Q${2*cx-(o.x+m.x)/2},${2*cy-(o.y+m.y-52)/2} ${m.x},${m.y-52}`,fill:'none',stroke:'#ffa25a','stroke-width':3,'stroke-linecap':'round','stroke-dasharray':'2 10',opacity:.9});g.appendChild(tr)
+    const L=tr.getTotalLength?.()||600;tr.style.strokeDasharray=`${L}`;tr.style.strokeDashoffset=`${L}`
+    tr.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:Math.max(1,delay(i)),easing:'cubic-bezier(.2,.7,.3,1)',fill:'forwards'})
+    tr.animate([{opacity:.9},{opacity:0}],{duration:T(500),delay:delay(i)+T(150),fill:'forwards'}).finished.then(()=>tr.remove(),()=>{})
+    setTimeout(()=>{burst(m,'#ff8a3c');const c2=cell(P[i].sq),fl=svgEl('rect',{x:c2.x+5,y:c2.y+5,width:90,height:90,rx:6,fill:'#ff8a3c',opacity:0});g.appendChild(fl)
+     fl.animate([{opacity:.5},{opacity:0}],{duration:T(500),fill:'forwards'}).finished.then(()=>fl.remove(),()=>{})},delay(i))})
+   others.forEach(i=>{const m=mid(P[i].sq),n=svgEl('g',{});n.innerHTML='<g><rect x="-17" y="-22" width="34" height="44" rx="5" fill="#fff6ea" stroke="#d8521f" stroke-width="2.2"/><rect x="-17" y="-22" width="34" height="10" rx="5" fill="#ee7a32"/><text y="12" text-anchor="middle" fill="#d8521f" style="font:900 19px Nunito">%</text></g>';g.appendChild(n)
+    const cx=(o.x+m.x)/2+(o.y-m.y)*.25,cy=(o.y+m.y)/2-Math.abs(o.x-m.x)*.15-40;n.animate([{transform:`translate(${o.x}px,${o.y}px) scale(.4) rotate(-200deg)`},{transform:`translate(${cx}px,${cy}px) scale(1.25) rotate(-60deg)`,offset:.5},{transform:`translate(${m.x}px,${m.y-52}px) scale(1) rotate(0)`}],{duration:Math.max(1,delay(i)),easing:'cubic-bezier(.3,.6,.4,1)',fill:'forwards'}).finished.then(()=>n.remove(),()=>{})
+    setTimeout(()=>n.remove(),delay(i)+20)})}
+  const notes={}
+  // each player is caught the moment their notice lands: squash, an orange ring, the notice settles above
+  const caught=others.map(i=>new Promise(r=>setTimeout(()=>{const m=mid(P[i].sq),el=document.getElementById('pk'+i)
+   el&&el.querySelector('.body').animate([{transform:'scale(1.25,.72)'},{transform:'none'}],{duration:260});ringFx(m,COL.orange,30,520,5)
+   const n=svgEl('g',{});n.innerHTML='<g><rect x="-17" y="-22" width="34" height="44" rx="5" fill="#fff6ea" stroke="#d8521f" stroke-width="2.2"/><rect x="-17" y="-22" width="34" height="10" rx="5" fill="#ee7a32"/><text y="12" text-anchor="middle" fill="#d8521f" style="font:900 19px Nunito">%</text></g>';g.appendChild(n)
+   n.animate([{transform:`translate(${m.x}px,${m.y-20}px) scale(.3)`,opacity:0},{transform:`translate(${m.x}px,${m.y-58}px) scale(1.1)`,opacity:1,offset:.7},{transform:`translate(${m.x}px,${m.y-52}px) scale(1)`,opacity:1}],{duration:document.hidden?1:380,easing:'cubic-bezier(.3,0,.3,1.4)',fill:'forwards'})
+   notes[i]=n;r()},delay(i))))
+  await Promise.race([Promise.all(caught),wait(D+300)])
+  // then the turns play out one by one, top of the board down
+  const order=others.sort((a,b)=>P[b].sq-P[a].sq),log=[]
+  for(const i of order){const p=P[i],m=mid(p.sq),el=document.getElementById('pk'+i),n=notes[i]
+   let k='back'
+   if(p.waiver){phase='waiver';act=i;busy=false;renderRows();k=await new Promise(r=>tariffPick=r);busy=true}
+   if(k==='use'){p.waiver=0;document.querySelector('.tkt')?.classList.add('tear');n?.animate([{opacity:1},{transform:`translate(${m.x}px,${m.y-120}px) rotate(30deg)`,opacity:0}],{duration:450,fill:'forwards'})
+    ringFx(m,COL.green,30,600,6);await wait(450);log.push(`${p.name} used a waiver`)}
+   else{n?.animate([{opacity:1},{opacity:0}],{duration:300,fill:'forwards'});const to=p.sq-back(p);await hopPath(el,range(p.sq,to),320*back(p));p.sq=to;log.push(`${p.name} went back ${back(p)}`)}
+   phase=null;act=0;renderRows()}
+  flowEnd(res(COL.orange,ICON('tariff'),'Tariff done',`<div class="rp">${log.join('. ')}.</div>`))},
+ async use(){tariffPick&&tariffPick('use');tariffPick=null},
+ async back(){tariffPick&&tariffPick('back');tariffPick=null},
+ // sanction: each player's gavel appears on their own token; as they fly to the richest player the board dims;
+ // each one that lands makes the big gavel grow in the same spot; it comes down once, and the ripple clears the dark
+ async sanction(){busy=true;const k=P[2],km=mid(k.sq),g=fxLayer(),G=window.GAVEL_SRC,T=ms=>document.hidden?1:ms
+  g.insertAdjacentHTML('beforeend',`<defs><radialGradient id="spot" gradientUnits="userSpaceOnUse" cx="${km.x}" cy="${km.y}" r="170"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#05030a" stop-opacity=".75"/></radialGradient>
+   <mask id="clr" maskUnits="userSpaceOnUse" x="-40" y="-40" width="1080" height="1080"><rect x="-40" y="-40" width="1080" height="1080" fill="#fff"/><circle id="hole" cx="${km.x}" cy="${km.y}" r="1500" fill="#000" style="transform-box:fill-box;transform-origin:center;transform:scale(0)"/></mask></defs>`)
+  const dim=svgEl('rect',{x:-40,y:-40,width:1080,height:1080,fill:'url(#spot)',mask:'url(#clr)',opacity:0});g.appendChild(dim)
+  const rows=document.querySelectorAll('#rows .row'),voters=[0,1,3,4],N=voters.length
+  // the gavel image: head at (29%,29%), handle end at (60%,62%); the head is .45S from the handle end.
+  // rotate(+40deg) lifts the head straight up; rotate(-47deg) brings it down level, onto the token to its left.
+  // Every gavel is the big image scaled down around its handle end, so the flyers land exactly on the big one.
+  const BIG=230,pivot={x:km.x+.45*BIG,y:km.y-14},s0=70/BIG,grow=n=>.4+.6*(n+1)/N
+  const gav=()=>{const im=svgEl('image',{href:G,width:BIG,height:BIG,x:pivot.x-.6*BIG,y:pivot.y-.62*BIG});im.style.transformBox='fill-box';im.style.transformOrigin='60% 62%';im.style.filter='drop-shadow(0 0 10px #f5dc94aa)';g.appendChild(im);return im}   // the glow keeps black lacquer visible on the dark board
+  const big=gav();big.style.opacity=0
+  const fl=voters.map(i=>{const a=i===0?mid(anaAt()):mid(P[i].sq),im=gav(),at=`translate(${a.x-pivot.x}px,${a.y-pivot.y}px)`
+   im.animate([{transform:`${at} scale(0) rotate(40deg)`,opacity:0},{transform:`${at} scale(${s0}) rotate(40deg)`,opacity:1}],{duration:T(320),easing:'cubic-bezier(.3,0,.3,1.5)',fill:'forwards'})
+   ringFx(a,'#e2b552',26,520,4);rows[i]?.animate([{boxShadow:'inset 0 0 0 2px #e2b552'},{boxShadow:'inset 0 0 0 0 transparent'}],{duration:900});return{im,at}})
+  await wait(650)
+  dim.animate([{opacity:0},{opacity:1}],{duration:T(700),fill:'forwards'})
+  let size=0
+  await Promise.all(fl.map(({im,at},n)=>new Promise(res=>{const to=grow(n)
+   const an=im.animate([{transform:`${at} scale(${s0}) rotate(40deg)`},{transform:`${at} scale(${s0*1.3}) rotate(220deg)`,offset:.45},{transform:`translate(0,0) scale(${to}) rotate(400deg)`}],{duration:T(640),delay:T(n*170),easing:'cubic-bezier(.45,0,.35,1)',fill:'forwards'})
+   let done=false;const fin=()=>{if(done)return;done=true;im.remove()
+    big.animate([{transform:`rotate(40deg) scale(${size||to*.9})`,opacity:size?1:.6},{transform:`rotate(40deg) scale(${to*1.08})`,opacity:1,offset:.5},{transform:`rotate(40deg) scale(${to})`,opacity:1}],{duration:T(220),fill:'forwards'});big.style.opacity=1;size=to;res()}
+   an.finished.then(fin,fin);setTimeout(fin,640+n*170+80)})))   // frames can stall in a hidden tab: the timer keeps it moving
+  await wait(260)
+  // wind up, then down once
+  await Promise.race([big.animate([{transform:'rotate(40deg) scale(1)'},{transform:'rotate(48deg) scale(1)'}],{duration:T(200),fill:'forwards',easing:'ease-out'}).finished.catch(()=>{}),wait(240)])
+  big.animate([{transform:'rotate(48deg)'},{transform:'rotate(-47deg)',offset:.85},{transform:'rotate(-40deg)'}],{duration:T(260),easing:'cubic-bezier(.7,0,1,.6)',fill:'forwards'})
+  await wait(200);const el=document.getElementById('pk2')
+  el.querySelector('.body').animate([{transform:'scale(1.7,.3)'},{transform:'scale(1.7,.3)',offset:.45},{transform:'none'}],{duration:600})
+  document.querySelector('.board').animate([0,1,2,3,4,5,6,7].map(i=>{const a=12*(1-i/7);return{transform:i===7?'none':`translate(${i%2?-a:a}px,${(i%2?.5:-.5)*a}px) rotate(${(i%2?-.4:.4)*(1-i/7)}deg)`}}),{duration:560,easing:'ease-out'})
+  rows[2]?.animate([{boxShadow:'inset 0 0 0 2px #ff6b78'},{boxShadow:'inset 0 0 0 0 transparent'}],{duration:900})
+  // the blow sends ripples out across the board; the dark clears behind the first one
+  const RIP=T(1300);boardRipple(km,RIP);
+  pixelWave(km,RIP*1.15)
+document.getElementById('hole').animate([{transform:'scale(0)'},{transform:'scale(1)'}],{duration:RIP,easing:'cubic-bezier(.2,.6,.4,1)',fill:'forwards'})
+  ;[['#c4a0ff',7,0],['#e2b552',3,140],['#c4a0ff',2,300]].forEach(([c,w,d])=>{const r=svgEl('circle',{cx:km.x,cy:km.y,r:1500,fill:'none',stroke:c,'stroke-width':w,'vector-effect':'non-scaling-stroke'});r.style.transformBox='fill-box';r.style.transformOrigin='center';g.appendChild(r)
+   r.animate([{transform:'scale(0)',opacity:1},{transform:'scale(1)',opacity:0}],{duration:RIP,delay:T(d),easing:'cubic-bezier(.2,.6,.4,1)',fill:'both'}).finished.then(()=>r.remove(),()=>{})})
+  await wait(420);big.animate([{opacity:1},{opacity:0}],{duration:250,fill:'forwards'})
+  await rollPath(el,range(k.sq,k.sq-5),1100);k.sq-=5;dim.remove()
+  flowEnd(res(COL.purple,ICON('sanction'),'Kenji sanctioned',`<div class="rvis"><div class="ln">${mini(k)}<span class="by">−5</span><span class="to">to ${k.sq}</span></div></div>`))},
+ // takeover: pass hands the chance to the other player; challenge pays the bank, then a dice duel
+ async pass(){if(act===0){act=1;renderRows();return}busy=true;flowEnd(res(COL.gold,CHECK,'No takeover','<div class="rp">Both passed. Nobody pays, nothing changes.</div>'))},
+ async challenge(){busy=true;const me=act,them=act?0:1;await toBank(3);P[me].cap-=3;renderRows()
+  const ov=document.getElementById('ov'),A=P[me],B=P[them]
+  ov.innerHTML=`<div class="duelov"><div class="cols"><div class="col" id="dA">${mini(A)}<b>${A.name}</b></div><span class="vsx">VS</span><div class="col" id="dB">${mini(B)}<b>${B.name}</b></div></div><canvas id="dcv"></canvas><div class="msg" id="dmsg">Rolling…</div></div>`;ov.classList.add('on')
+  const dd=window.duelDice(document.getElementById('dcv')),r6=()=>1+Math.floor(Math.random()*6),msg=t=>document.getElementById('dmsg').textContent=t
+  let a,b;do{a=r6();b=r6();await dd.roll(a,b);if(a===b){msg(`Both rolled ${a}. Roll again`);await wait(800)}}while(a===b)
+  const win=a>b?me:them,lose=a>b?them:me;document.getElementById(a>b?'dA':'dB').classList.add('win');document.getElementById(a>b?'dB':'dA').classList.add('lose')
+  const amt=P[lose].best,bt=P[lose].bt;msg(`${Math.max(a,b)} beats ${Math.min(a,b)}. ${P[win].name} takes the +${amt} project`)
+  await wait(250)
+  // the portraits fight: the winner charges, the loser is knocked spinning and fades
+  const wc=document.getElementById(a>b?'dA':'dB'),lc=document.getElementById(a>b?'dB':'dA'),dir=a>b?1:-1,gap=lc.getBoundingClientRect().left-wc.getBoundingClientRect().left
+  const wm=wc.querySelector('.mini'),lm=lc.querySelector('.mini'),loserName=P[lose].name,T=ms=>document.hidden?1:ms
+  wm.animate([{transform:'none'},{transform:`translateX(${-dir*14}px) scale(.92)`,offset:.25},{transform:`translateX(${gap*.62}px) scale(1.12)`,offset:.55},{transform:'none'}],{duration:T(520),easing:'ease-in-out'})
+  await wait(260);lm.animate([{transform:'none'},{transform:`translate(${dir*50}px,-30px) rotate(${dir*220}deg) scale(.9)`,offset:.6},{transform:`translate(${dir*20}px,4px) rotate(${dir*340}deg) scale(.8)`}],{duration:T(520),easing:'ease-out',fill:'forwards'})
+  await wait(380);const ov2=document.querySelector('.duelov'),or=ov2.getBoundingClientRect(),wr=wc.getBoundingClientRect()
+  lc.animate([{opacity:1},{opacity:0}],{duration:T(220),fill:'forwards'})
+  ov2.querySelector('.vsx').animate([{opacity:1},{opacity:0}],{duration:T(200),fill:'forwards'})
+  // the dice have had their say (the message keeps the score): fold them away so the card gets short
+  const cv=document.getElementById('dcv');cv.animate([{opacity:1,height:cv.offsetHeight+'px'},{opacity:0,height:'0px'}],{duration:T(320),easing:'ease-in-out',fill:'forwards'})
+  const toMid=or.left+or.width/2-(wr.left+wr.width/2)
+  wc.animate([{transform:'none'},{transform:`translateX(${toMid}px) scale(1.15)`}],{duration:T(420),easing:'cubic-bezier(.3,1.3,.5,1)',fill:'forwards'})
+  const lab=document.createElement('div');lab.className='winlab';lab.textContent='Winner';ov2.appendChild(lab)
+  await wait(360)
+  // the won project drops in under the winner's name, with who it came from
+  const won=document.createElement('div');won.className='won';won.innerHTML=`<span class="pj big">+${amt}${coin(20)}<span class="t">${CLK}${bt}</span></span><small>from ${loserName}</small>`;ov2.insertBefore(won,document.getElementById('dmsg'))
+  won.animate([{transform:'translateY(-14px) scale(.7)',opacity:0},{transform:'translateY(2px) scale(1.06)',opacity:1,offset:.7},{transform:'none',opacity:1}],{duration:T(380),easing:'ease-out'})
+  won.querySelector('.pj').animate([{boxShadow:'0 0 0 0 #4fdcaa'},{boxShadow:'0 0 0 10px #4fdcaa00'}],{duration:T(600),delay:T(300)})
+  await wait(1000)
+  ov.classList.remove('on');await wait(300);dd.dispose()
+  P[win].inc=[...P[win].inc,[amt,bt]];P[lose].inc=[];P[win].best=Math.max(P[win].best,amt)
+  // the result, drawn rather than told: who rolled what, and the project moving from loser to winner
+  const W=P[win],L=P[lose],wv=Math.max(a,b),lv=Math.min(a,b),AR='<svg viewBox="0 0 24 12" width="22" height="11"><path d="M1 6h19M15 1l5 5-5 5" fill="none" stroke="#cfc5b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  flowEnd(res(win===me?COL.green:COL.red,SWORDS,win===me?'Takeover won':'Takeover lost',`<div class="tko"><div class="duo"><span class="pp">${mini(W)}${dieIcon(wv,26)}</span><b>&gt;</b><span class="pp lo">${dieIcon(lv,26)}${mini(L)}</span></div><div class="mv">${mini(L)}${AR}${proj(amt,bt)}${AR}${mini(W)}</div></div>`))}}
+function choose(k){if(busy)return;if(FLOW[k])return FLOW[k]();busy=true;const o=OUT[k]()
+ if(k==='invest')document.querySelectorAll('.pick button.on').forEach((b,i)=>setTimeout(()=>b.classList.add('spent'),i*90))
+ if(k==='use')document.querySelector('.tkt')?.classList.add('tear')
+ const finish=()=>{result=o;renderRows();overlay()
+  resetT=setTimeout(()=>{busy=false;result=null;hover=null;hoverN=0;render()},3200)}
+ if(k==='skip')nope()
+ const paid={invest:chips,hedge:4,pay:2,repay:3}[k]
+ const go=()=>{if(o.move){hover=k;drawBoard(preview(k));const hs=document.getElementById('hsh');if(hs)hs.style.opacity=0
+  move(o.move,o.ms,pt=>{if(o.move==='brake'){const b=document.querySelector('#me .body');b&&b.animate([{transform:'scale(1.22,.8)'},{transform:'translate(0,-8px) scale(.95,1.06)',offset:.45},{transform:'none'}],{duration:380,easing:'ease-out'})}if(o.move==='fall')crash(pt);setTimeout(finish,o.move==='fall'?600:350)},o.move==='brake'?shieldPop:null)}
+ else setTimeout(finish,k==='use'?550:k==='skip'?650:120)}
+ paid?toBank(paid).then(go):go()}
+addEventListener('coins',()=>{if(busy)return;document.getElementById('ov').dataset.card='';render()});resetScene();render()  // never redraw mid-animation
+</script></body></html>

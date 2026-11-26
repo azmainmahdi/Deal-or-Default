@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><!-- takeover: navy chess knight with a gold edge on the gold tile (his pick C, 19 Oct) -->
+<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a6"/><stop offset="1" stop-color="#b8892e"/></linearGradient><linearGradient id="tb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3cf6a"/><stop offset="1" stop-color="#c99a3e"/></linearGradient></defs>
+<rect width="64" height="64" rx="5" fill="url(#tb)"/>
+<g fill="#14213b" stroke="url(#gg)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M20 52h26v-5H20zM24 47c0-8 5-11 6-16l-8 3-3-5 10-12c2-3 8-3 12 2 5 6 6 17 3 28z"/><circle cx="33" cy="22" r="1.6" fill="url(#gg)" stroke="none"/></g>
+</svg>

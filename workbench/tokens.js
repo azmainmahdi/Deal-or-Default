@@ -1,0 +1,191 @@
+// Gold tokens for the playable game: the approved stand-ins from tokens-gold.html (built in three.js), rendered once
+// per player to a transparent PNG and placed on the board as images. renderTokens([[country,colour],...]) -> [{src, foot}] (foot: 0-1, where the base meets the ground).
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
+import {RoomEnvironment} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'
+import {RoundedBoxGeometry} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/geometries/RoundedBoxGeometry.js'
+
+// brushed, slightly pitted cast surface: a speckle bump map, like the reference casting
+function castBump(){const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d')
+ x.fillStyle='#808080';x.fillRect(0,0,512,512)
+ for(let i=0;i<9000;i++){const v=110+Math.random()*60|0;x.fillStyle=`rgba(${v},${v},${v},.35)`;x.beginPath();x.ellipse(Math.random()*512,Math.random()*512,1+Math.random()*3,.6+Math.random()*1.5,Math.random()*3,0,7);x.fill()}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);return t}
+const GOLD=new THREE.MeshPhysicalMaterial({color:'#c99a3e',metalness:1,roughness:.42,bumpMap:castBump(),bumpScale:.6})
+const GOLD2=GOLD.clone();GOLD2.side=THREE.DoubleSide
+const DARK=new THREE.MeshPhysicalMaterial({color:'#7a5a20',metalness:1,roughness:.6})
+
+const V=(x,y,z)=>new THREE.Vector3(x,y,z)
+const m=(g,mat=GOLD)=>{const o=new THREE.Mesh(g,mat);o.castShadow=o.receiveShadow=true;return o}
+const at=(o,x,y,z,rx=0,ry=0,rz=0)=>(o.position.set(x,y,z),o.rotation.set(rx,ry,rz),o)
+const lathe=(pts,seg=64)=>new THREE.LatheGeometry(pts.map(([r,y])=>new THREE.Vector2(r,y)),seg)
+const box=(w,h,d,r=.015)=>new RoundedBoxGeometry(w,h,d,3,r)
+// a limb or bar between two points
+function rod(a,b,r,mat=GOLD){const d=b.clone().sub(a),o=m(new THREE.CapsuleGeometry(r,d.length(),6,16),mat);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(V(0,1,0),d.normalize());return o}
+
+// the round base every token shares: gold disc, enamel flag band round the side (country),
+// a faceted gem in a gold bezel and a thin enamel ring on top (player colour)
+const FLAG={
+ usa:'<rect width="30" height="20" fill="#fff"/>'+[0,2,4,6,8,10,12].map(i=>`<rect y="${i*1.54}" width="30" height="1.54" fill="#b22234"/>`).join('')+'<rect width="13" height="10.8" fill="#3c3b6e"/>',
+ china:'<rect width="30" height="20" fill="#de2910"/><path d="M6 3l1.2 3.6H11L8 8.8l1.1 3.6L6 10.2 2.9 12.4 4 8.8 1 6.6h3.8z" fill="#ffde00"/>',
+ japan:'<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/>',
+ germany:'<rect width="30" height="7" fill="#111"/><rect y="7" width="30" height="6" fill="#dd0000"/><rect y="13" width="30" height="7" fill="#ffce00"/>',
+ bangladesh:'<rect width="30" height="20" fill="#006a4e"/><circle cx="13.5" cy="10" r="6" fill="#f42a41"/>',
+ uk:'<rect width="30" height="20" fill="#012169"/><path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" stroke-width="1.5"/><path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/><path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.5"/>',
+}
+const flagTex=c=>{const t=new THREE.TextureLoader().load('data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 30 20" preserveAspectRatio="none">${FLAG[c]}</svg>`))
+ t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.repeat.set(4,1);return t}
+const enamel=(o)=>new THREE.MeshPhysicalMaterial({roughness:.25,clearcoat:1,clearcoatRoughness:.08,...o})
+function base(country,color){const g=new THREE.Group()
+ g.add(m(lathe([[0,0],[.4,0],[.43,.012],[.43,.022],[.425,.026],[.425,.072],[.43,.076],[.43,.085],[.4,.098],[0,.098]],96)))
+ g.add(at(m(new THREE.CylinderGeometry(.427,.427,.044,96,1,true),enamel({map:flagTex(country)})),0,.049,0))
+ const ring=m(new THREE.RingGeometry(.345,.375,96),enamel({color}));ring.rotation.x=-Math.PI/2;ring.position.y=.0985;g.add(ring)
+ const gem=m(new THREE.OctahedronGeometry(.05,0),new THREE.MeshPhysicalMaterial({color,metalness:0,roughness:.02,transmission:.55,thickness:.4,ior:2.2,clearcoat:1,flatShading:true,emissive:color,emissiveIntensity:.18}))
+ gem.scale.set(1,.55,1);gem.position.set(0,.115,.36);g.add(gem,at(m(new THREE.TorusGeometry(.052,.01,8,32)),0,.1,.36,Math.PI/2,0,0))
+ return g}
+
+// ---- shape helpers ----
+// tube whose radius changes along its length (limbs, dragon body, horns, sashes)
+function taper(pts,rFn,seg=64,rad=16,mat=GOLD){const c=new THREE.CatmullRomCurve3(pts),g=new THREE.TubeGeometry(c,seg,1,rad,false),p=g.attributes.position
+ for(let i=0;i<=seg;i++){const P=c.getPointAt(i/seg),r=rFn(i/seg);for(let j=0;j<=rad;j++){const k=i*(rad+1)+j;p.setXYZ(k,P.x+(p.getX(k)-P.x)*r,P.y+(p.getY(k)-P.y)*r,P.z+(p.getZ(k)-P.z)*r)}}
+ g.computeVertexNormals();const o=m(g,mat);
+ // round end caps
+ const g2=new THREE.Group();g2.add(o);[[0,rFn(0)],[1,rFn(1)]].forEach(([t,r])=>{if(r>.004)g2.add(at(m(new THREE.SphereGeometry(r,16,12),mat),...c.getPointAt(t).toArray()))});return g2}
+// displace a lathe radially: fn(theta,y) returns a scale factor
+function sculpt(geo,fn){const p=geo.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),y=p.getY(i),k=fn(Math.atan2(x,z),y);p.setX(i,x*k);p.setZ(i,z*k)}geo.computeVertexNormals();return geo}
+function cone(from,dir,len,r,mat=GOLD){const o=m(new THREE.ConeGeometry(r,len,12),mat),d=dir.clone().normalize();o.position.copy(from).addScaledVector(d,len/2);o.quaternion.setFromUnitVectors(V(0,1,0),d);return o}
+const ss=(a,b,t)=>{t=Math.min(1,Math.max(0,(t-a)/(b-a)));return t*t*(3-2*t)}
+
+const BUILD={
+ // USA: modelled on his ChatGPT reference — round base, three square steps, robed figure, torch high, tablet at the hip
+ liberty(){const g=new THREE.Group()
+  ;[[.46,.06,.125],[.38,.07,.19],[.3,.07,.26]].forEach(([w,h,y])=>g.add(at(m(box(w,h,w,.012)),0,y,0)))
+  const robe=sculpt(lathe([[0,.295],[.16,.295],[.172,.31],[.16,.4],[.145,.55],[.133,.68],[.128,.76],[.124,.8],[.1,.85],[.055,.874],[0,.88]],120),
+   (a,y)=>1+.07*Math.sin(9*a+y*7)*(1-ss(.72,.84,y))+.035*Math.sin(23*a)*(1-ss(.5,.7,y)))
+  const rb=m(robe);rb.scale.z=.82;g.add(rb)
+  g.add(taper([V(-.1,.82,.06),V(-.03,.72,.105),V(.06,.6,.105),V(.12,.5,.07),V(.14,.44,0)],t=>.03-.008*t))       // stola over the chest
+  g.add(taper([V(-.14,.5,.04),V(-.06,.45,.11),V(.04,.43,.115),V(.13,.46,.05)],()=>.02))                          // lower drape
+  g.add(at(m(new THREE.CylinderGeometry(.028,.032,.07,20)),0,.885,0))
+  const head=at(m(new THREE.SphereGeometry(.064,40,30)),0,.955,.008);head.scale.set(.86,1.1,.92);g.add(head)
+  g.add(at(m(new THREE.SphereGeometry(.06,24,18)),0,.955,-.02),at(m(new THREE.SphereGeometry(.03,16,12)),0,.93,-.07))                                                    // hair
+  g.add(cone(V(0,.95,.058),V(0,-.25,1),.024,.011))
+  ;[1,-1].forEach(x=>{g.add(at(m(new THREE.SphereGeometry(.009,10,8),DARK),x*.021,.965,.05));g.add(at(m(box(.026,.006,.01,.002)),x*.021,.977,.053,0,0,-x*.15))})
+  g.add(at(m(box(.026,.006,.01,.003),DARK),0,.925,.052))                                                                   // nose
+  g.add(at(m(new THREE.TorusGeometry(.062,.012,10,40)),0,.99,0,Math.PI/2-.25,0,0))                              // diadem
+  for(let i=0;i<7;i++){const a=-1.25+i*(2.5/6),d=V(Math.sin(a),Math.cos(a),.35).normalize();g.add(cone(V(0,1,.01).addScaledVector(d,.055),d,.09,.013))}
+  g.add(taper([V(.1,.8,0),V(.135,.93,.01),V(.145,1.08,.02)],t=>.048-.022*t))                                      // draped right sleeve and arm
+  g.add(at(m(new THREE.SphereGeometry(.03,20,16)),.145,1.11,.02))
+  g.add(at(m(lathe([[0,1.11],[.018,1.11],[.022,1.18],[.048,1.225],[.052,1.24],[.044,1.25],[0,1.25]])),.145,0,.02))
+  g.add(at(m(new THREE.TorusGeometry(.05,.008,8,32)),.145,1.235,.02,Math.PI/2,0,0))
+  g.add(at(m(sculpt(lathe([[0,1.245],[.038,1.27],[.046,1.3],[.038,1.34],[.018,1.38],[0,1.4]],48),(a,y)=>1+.12*Math.sin(5*a+y*30))),.145,0,.02)) // flame
+  g.add(taper([V(-.1,.8,0),V(-.138,.7,.02),V(-.11,.63,.085)],t=>.042-.016*t))                                     // left arm
+  g.add(at(m(box(.085,.17,.03,.008)),-.125,.66,.1,-.12,.25,.22))                                                    // tablet
+  g.scale.x=-1   // torch in her right hand, tablet in her left, as on the real statue
+  return g},
+
+ // China: a coiled dragon rising from the base, head up and forward
+ dragon(){const g=new THREE.Group(),pts=[]
+  for(let i=0;i<=40;i++){const t=i/40,a=t*Math.PI*2.7+.4,r=.28-.13*t;pts.push(V(Math.cos(a)*r,.13+.42*Math.pow(t,1.1)+.03*Math.sin(t*Math.PI*6),Math.sin(a)*r))}
+  pts.push(V(.03,.66,.1),V(.05,.78,.16))
+  const rF=t=>.016+.068*ss(0,.55,t)*(1-.35*ss(.8,1,t))
+  g.add(taper(pts,rF,160,20))
+  const c=new THREE.CatmullRomCurve3(pts)
+  for(let i=3;i<46;i+=2){const t=i/48,P=c.getPointAt(t),T=c.getTangentAt(t),up=V(0,1,0).addScaledVector(T,-T.y).normalize(),r=rF(t)
+   const f=cone(P.clone().addScaledVector(up,r*.75),up,.025+r*.45,.014+r*.25);f.scale.z=.3;g.add(f)}
+  for(let i=4;i<44;i+=2){const t=i/48,P=c.getPointAt(t),T=c.getTangentAt(t),ring=m(new THREE.TorusGeometry(rF(t)*.98,.006,6,24),DARK);ring.position.copy(P);ring.lookAt(P.clone().add(T));g.add(ring)}
+  const end=c.getPointAt(1),dir=c.getTangentAt(1),h=new THREE.Group()
+  h.add(at(m(box(.13,.1,.11,.04)),0,0,0),at(m(box(.12,.055,.085,.025)),0,-.005,.1),at(m(box(.1,.025,.08,.012)),0,-.055,.08,.35,0,0))
+  ;[1,-1].forEach(s=>{h.add(at(m(new THREE.SphereGeometry(.018,12,10),DARK),s*.045,.035,.05))
+   h.add(at(m(box(.03,.015,.04,.006)),s*.045,.055,.045,-.3,0,0))
+   h.add(taper([V(s*.04,.05,-.02),V(s*.06,.12,-.07),V(s*.05,.17,-.15)],t=>.014-.01*t,24,8))      // horns
+   h.add(taper([V(s*.035,-.01,.15),V(s*.09,-.04,.17),V(s*.13,-.1,.12),V(s*.14,-.15,.08)],()=>.005,24,6))  // whiskers
+   for(let k=0;k<2;k++)h.add(cone(V(s*.05,.02-k*.035,-.04),V(s*.6,.2,-1),.06,.016))})                // mane
+  h.position.copy(end).addScaledVector(dir,.04);h.lookAt(end.clone().add(V(dir.x,0,dir.z).normalize().add(V(0,.15,0))));g.add(h)
+  ;[1,-1].forEach(s=>{const P=c.getPointAt(.86);g.add(taper([P.clone().add(V(s*.05,0,.02)),P.clone().add(V(s*.09,-.06,.08)),P.clone().add(V(s*.1,-.08,.13))],t=>.022-.01*t,20,8))})
+  return g},
+
+ // Japan: samurai kabuto — ribbed bowl, layered neck guard open at the front, turned-back flaps, kuwagata horns
+ kabuto(){const g=new THREE.Group(),Y=.29
+  g.add(at(m(sculpt(new THREE.SphereGeometry(.22,96,40,0,Math.PI*2,0,Math.PI/2),(a,y)=>1+.04*Math.pow(Math.abs(Math.cos(16*a)),3)*ss(.0,.12,.22-y))),0,Y,0))
+  g.add(at(m(new THREE.TorusGeometry(.04,.012,8,24)),0,Y+.215,0,Math.PI/2,0,0))
+  for(let k=0;k<3;k++){const r1=.215+k*.04,y1=Y-.02-k*.05   // neck guard plates, open at the front
+   g.add(m(new THREE.LatheGeometry([[r1,y1],[r1+.05,y1-.055],[r1+.045,y1-.066],[r1-.006,y1-.012]].map(([r,y])=>new THREE.Vector2(r,y)),80,Math.PI*.3,Math.PI*1.4),GOLD2))}
+  ;[1,-1].forEach(s=>{const f=at(m(box(.04,.13,.12,.02)),s*.235,Y-.06,.16,0,s*.75,s*-.15);g.add(f)})
+  g.add(at(m(new THREE.TorusGeometry(.225,.018,8,40,Math.PI*.7)),0,Y,0,Math.PI/2,0,Math.PI*.15))
+  const vz=at(m(new THREE.SphereGeometry(.235,48,8,Math.PI*-.35,Math.PI*.7,Math.PI*.5,Math.PI*.08),GOLD2),0,Y+.01,0);g.add(vz)
+  ;[1,-1].forEach(s=>g.add(taper([V(0,Y+.08,.22),V(s*.07,Y+.16,.24),V(s*.13,Y+.32,.21),V(s*.12,Y+.45,.15)],t=>.022-.012*t,40,10)))
+  g.add(at(m(new THREE.CylinderGeometry(.045,.045,.02,32)),0,Y+.09,.225,Math.PI/2,0,0))
+  return g},
+
+ // Germany: Brandenburg Gate — fluted Doric columns, end piers, entablature, stepped attic, quadriga
+ gate(){const g=new THREE.Group()
+  g.add(at(m(box(.86,.04,.3)),0,.115,0),at(m(box(.82,.03,.27)),0,.15,0))
+  const col=()=>m(sculpt(lathe([[0,0],[.034,0],[.034,.014],[.027,.022],[.024,.31],[.031,.318],[.034,.33],[0,.33]],48),(a,y)=>y>.02&&y<.31?1+.07*Math.cos(16*a):1))
+  for(let k=0;k<6;k++)g.add(at(col(),-.34+k*.136,.165,.05))
+  ;[1,-1].forEach(s=>g.add(at(m(box(.08,.33,.2)),s*.38,.33,-.04)))
+  g.add(at(m(box(.86,.05,.3)),0,.52,0))
+  for(let k=0;k<14;k++)g.add(at(m(box(.016,.035,.01,.003),DARK),-.39+k*.06,.565,.152))
+  g.add(at(m(box(.86,.04,.3)),0,.565,0),at(m(box(.9,.025,.33)),0,.595,0))
+  g.add(at(m(box(.5,.07,.22)),0,.64,0),at(m(box(.32,.06,.18)),0,.7,0))
+  const horse=()=>{const h=new THREE.Group();h.add(at(m(new THREE.CapsuleGeometry(.022,.05,6,12)),0,.06,0,Math.PI/2,0,0))
+   h.add(taper([V(0,.07,.03),V(0,.11,.055),V(0,.13,.06)],t=>.016-.004*t,12,8),at(m(box(.02,.022,.04,.008)),0,.135,.075))
+   ;[[.012,.022],[-.012,.022],[.012,-.022],[-.012,-.022]].forEach(([x,z])=>h.add(at(m(new THREE.CylinderGeometry(.006,.005,.05,6)),x,.03,z)));return h}
+  ;[-.075,-.025,.025,.075].forEach(x=>g.add(at(horse(),x,.73,.03)))
+  g.add(at(m(box(.12,.05,.05,.015)),0,.76,-.05))
+  g.add(at(m(new THREE.CapsuleGeometry(.016,.05,6,12)),0,.82,-.05),at(m(new THREE.SphereGeometry(.014,12,10)),0,.865,-.05))
+  g.add(at(m(new THREE.CylinderGeometry(.004,.004,.16,6)),.03,.86,-.04),at(m(new THREE.TorusGeometry(.018,.004,6,16)),.03,.95,-.04))
+  return g},
+
+ // Bangladesh: cycle rickshaw — bicycle front, passenger bench, big arched hood with ribs and medallions
+ rickshaw(){const g=new THREE.Group(),R=.115
+  const wheel=(x,z)=>{const w=new THREE.Group();w.add(m(new THREE.TorusGeometry(R,.016,10,48)),m(new THREE.TorusGeometry(R-.02,.006,6,48)))
+   for(let k=0;k<10;k++)w.add(at(m(new THREE.CylinderGeometry(.004,.004,(R-.02)*2,6)),0,0,0,0,0,k*Math.PI/10))
+   w.add(m(new THREE.CylinderGeometry(.02,.02,.04,16).rotateX(Math.PI/2)));w.position.set(x,R+.11,z);w.rotation.y=Math.PI/2;return w}
+  g.add(wheel(-.17,-.12),wheel(.17,-.12),wheel(0,.28))
+  g.add(at(m(new THREE.CylinderGeometry(.01,.01,.36,8)),0,R+.11,-.12,0,0,Math.PI/2))                             // rear axle
+  g.add(taper([V(0,R+.11,.28),V(0,.4,.25)],()=>.01),taper([V(0,.4,.25),V(0,.3,.1),V(0,.27,-.02)],()=>.011),taper([V(0,.38,.23),V(0,.34,.08)],()=>.009))
+  g.add(taper([V(-.08,.43,.23),V(0,.415,.25),V(.08,.43,.23)],()=>.009),at(m(box(.05,.02,.07,.008)),0,.37,.08))      // handlebar, saddle
+  g.add(at(m(box(.38,.025,.24,.008)),0,.27,-.1),at(m(box(.34,.05,.16,.02)),0,.31,-.11),at(m(box(.34,.14,.035,.012)),0,.39,-.2))
+  const shell=new THREE.CylinderGeometry(.2,.2,.27,40,1,true,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2)
+  const hood=new THREE.Group();hood.add(m(shell,GOLD2))
+  for(let k=0;k<4;k++)hood.add(at(m(new THREE.TorusGeometry(.2,.01,8,32,Math.PI)),0,0,-.135+k*.09))
+  hood.add(at(m(new THREE.CircleGeometry(.2,32,0,Math.PI),GOLD2),0,0,-.135))
+  ;[[0,.11],[-.09,.06],[.09,.06]].forEach(([x,y])=>hood.add(at(m(new THREE.CylinderGeometry(.03,.03,.008,20)),x,y,-.14,Math.PI/2,0,0)))
+  hood.position.set(0,.42,-.15);hood.rotation.x=-.12;g.add(hood)
+  return g},
+
+ // UK: Routemaster double-decker — rounded body, window rows, cab, open rear platform, wheels in arches
+ bus(){const g=new THREE.Group(),s=new THREE.Shape(),L=.42
+  s.moveTo(-L,.15);s.lineTo(L-.04,.15);s.quadraticCurveTo(L,.15,L,.2);s.lineTo(L,.54);s.quadraticCurveTo(L,.61,L-.07,.61);s.lineTo(-L+.07,.61);s.quadraticCurveTo(-L,.61,-L,.54);s.lineTo(-L,.15)
+  const body=new THREE.ExtrudeGeometry(s,{depth:.22,bevelEnabled:true,bevelThickness:.02,bevelSize:.02,bevelSegments:4,curveSegments:16}).translate(0,0,-.11).rotateY(Math.PI/2)
+  g.add(m(body))
+  const win=(z,y,w,h,x)=>g.add(at(m(box(.012,h,w,.004),DARK),x,y,z))
+  ;[1,-1].forEach(sd=>{const x=sd*.132;for(let k=0;k<6;k++)win(-.33+k*.12,.49,.095,.075,x);for(let k=0;k<5;k++)win(-.21+k*.12,.335,.095,.08,x)
+   g.add(at(m(box(.01,.02,.86,.006)),sd*.135,.415,0))})
+  g.add(at(m(box(.2,.075,.012,.004),DARK),0,.49,.455),at(m(box(.09,.08,.012,.004),DARK),-.05,.335,.455),at(m(box(.16,.035,.015,.006)),0,.565,.455))
+  g.add(at(m(box(.1,.07,.03,.01)),.06,.22,.455))                                                                   // radiator
+  g.add(at(m(box(.1,.17,.012,.004),DARK),.05,.31,-.455),at(m(new THREE.CylinderGeometry(.006,.006,.2,8)),.1,.31,-.45))
+  ;[[.13,.27],[-.13,.27],[.13,-.25],[-.13,-.25]].forEach(([x,z])=>{g.add(at(m(new THREE.CylinderGeometry(.07,.07,.04,28)),x,.16,z,0,0,Math.PI/2),at(m(new THREE.CylinderGeometry(.032,.032,.045,20),DARK),x,.16,z,0,0,Math.PI/2))})
+  g.position.y=-.03;return g},
+}
+const SET=[['USA','Statue of Liberty','liberty','usa'],['China','Dragon','dragon','china'],['Japan','Kabuto helmet','kabuto','japan'],['Germany','Brandenburg Gate','gate','germany'],['Bangladesh','Cycle rickshaw','rickshaw','bangladesh'],['UK','Double-decker bus','bus','uk']]
+const PC=['#2f7de8','#e0442c','#17a673','#8e5cf0','#e0569a','#1fb5c9']   // player colours: sapphire, ruby, emerald, amethyst, rose, aquamarine
+
+const KEY={usa:'liberty',china:'dragon',japan:'kabuto',germany:'gate',bangladesh:'rickshaw',uk:'bus'}
+export {PC}
+// one renderer for all; a camera a little above the table, like the tilted board, so the figures stand up on it
+export async function renderTokens(list,size=256){
+ const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(size,size)
+ r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.2;r.outputColorSpace=THREE.SRGBColorSpace
+ const scene=new THREE.Scene();scene.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),.04).texture
+ const key=new THREE.DirectionalLight('#fff1dc',2.4);key.position.set(-4,7,5);scene.add(key)
+ const rim=new THREE.DirectionalLight('#ffd9a0',1.2);rim.position.set(5,4,-6);scene.add(rim)
+ scene.add(new THREE.HemisphereLight('#ffe9c8','#2a1608',.45))
+ const cam=new THREE.PerspectiveCamera(26,1,.1,50);cam.position.set(0,1.75,3.6);cam.lookAt(0,.62,0)
+ const out=[]
+ for(const [country,color] of list){const g=new THREE.Group();g.add(BUILD[KEY[country]]())/* 22 Oct: no gold base (he found it heavy); the board shows a colour ring instead */;g.rotation.y=.35;scene.add(g)
+  // flag textures load async: wait a beat so the enamel band is painted
+  await new Promise(res=>setTimeout(res,60));r.render(scene,cam)
+  // the lowest opaque row is where the base touches the table: the board uses it to stand the figure on its square
+  const px=new Uint8Array(size*size*4),gl=r.getContext();gl.readPixels(0,0,size,size,gl.RGBA,gl.UNSIGNED_BYTE,px)
+  let low=0;for(let y=0;y<size&&!low;y++)for(let x=0;x<size;x+=2)if(px[(y*size+x)*4+3]>60){low=y;break}   // readPixels rows start at the bottom
+  out.push({src:r.domElement.toDataURL('image/png'),foot:1-low/size});scene.remove(g)}
+ r.dispose();return out}

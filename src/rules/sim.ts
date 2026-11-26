@@ -45,8 +45,10 @@ function smart(
   switch (d.kind) {
     case 'debtWindow': {
       if (late && pl.debt > 0) return last(has('repay')) ?? legal[0]!
+      // borrow early when short: the biggest free loan that keeps total debt at 3 or less
       if (borrow && !late && pl.debt < 3 && pl.capital < 6) {
-        return has('takeDebt').find((i) => i.type === 'takeDebt' && i.n === Math.min(3 - pl.debt, d.maxTake)) ?? legal[0]!
+        const fit = has('takeDebt').filter((i) => i.type === 'takeDebt' && pl.debt + i.n <= 3)
+        return last(fit) ?? legal[0]!
       }
       return legal[0]!
     }
@@ -77,6 +79,7 @@ export function checkInvariants(s: GameState): string | undefined {
   for (const [i, p] of s.players.entries()) {
     if (p.square < 1 || p.square > 100) return `player ${i} on square ${p.square}`
     if (p.debt < 0 || p.debt > cap) return `player ${i} debt ${p.debt}`
+    if (p.loans.reduce((a, l) => a + l.n, 0) !== p.debt) return `player ${i} loans don't sum to debt ${p.debt}`
     if (!Number.isInteger(p.capital)) return `player ${i} capital ${p.capital}`
   }
   if (s.current < 0 || s.current >= s.players.length) return `current ${s.current}`

@@ -6,7 +6,7 @@ import { CARDS } from './cards'
 import { DEFAULT_CONFIG, type Config } from './config'
 import { COUNTRY_IDS } from './countries'
 import {
-  addCapital, addDebt, addWaivers, move, netWorth, othersInOrder, tickProjects, topBy, type Ctx,
+  addCapital, addWaivers, freeLoans, move, netWorth, repayable, repayLoan, takeLoan, othersInOrder, tickProjects, topBy, type Ctx,
 } from './ops'
 import { roll, shuffle } from './rng'
 import { finalLedger } from './scoring'
@@ -17,7 +17,9 @@ export function projectTerms(country: CountryId, chips: number, delta: number, c
   const fast = country === 'bangladesh' && delta <= config.bangladeshMaxDelta
   return {
     ttm: fast ? Math.max(config.bangladeshMinTtm, chips - 1) : chips,
-    profit: chips * delta + (country === 'germany' && chips === config.germanyBonusChips ? 1 : 0),
+    profit: chips * delta + (country !== 'germany' ? 0
+      : config.germanyPerk === 'exact2' ? (chips === config.germanyBonusChips ? 1 : 0)
+      : config.germanyPerk === 'quality' && chips >= 2 ? config.germanyQuality : 0),
   }
 }
 
@@ -48,6 +50,7 @@ export function newGame(opts: { names: string[]; seed: number; config?: Partial<
       square: 1,
       capital: config.startCapital,
       debt: 0,
+      loans: [],
       waivers: config.startWaivers,
       projects: [],
       statuses: [],
@@ -78,8 +81,8 @@ export function legalIntents(s: GameState): Intent[] {
     case 'debtWindow':
       return [
         { player, type: 'roll' },
-        ...range(1, d.maxTake).map((n): Intent => ({ player, type: 'takeDebt', n })),
-        ...range(1, d.maxRepay).map((n): Intent => ({ player, type: 'repay', n })),
+        ...d.take.map((n): Intent => ({ player, type: 'takeDebt', n })),
+        ...d.repay.map((n): Intent => ({ player, type: 'repay', n })),
       ]
     case 'roll': return [{ player, type: 'roll' }]
     case 'invest': return range(0, d.max).map((chips): Intent => ({ player, type: 'invest', chips }))
@@ -123,14 +126,15 @@ function resolveDecision(c: Ctx, d: Decision, i: Intent): Effect[] {
   const p = d.player
   const pl = s.players[p]!
   switch (i.type) {
+    // one borrowing per turn; repaying any number of loans; then back to the window until the roll
     case 'takeDebt':
-      addDebt(c, p, i.n, 'borrowed')
+      takeLoan(c, p, i.n, 'borrowed')
       addCapital(c, p, i.n * (pl.country === 'uk' ? s.config.ukDebtCapital : 1), 'borrowed')
-      return [{ t: 'askRoll' }]
+      s.turnFlags.borrowed = true
+      return [{ t: 'askDebt' }]
     case 'repay':
-      addCapital(c, p, -i.n, 'repaid debt')
-      addDebt(c, p, -i.n, 'repaid')
-      return [{ t: 'askRoll' }]
+      repayLoan(c, p, i.n)
+      return [{ t: 'askDebt' }]
     case 'roll':
       return [{ t: 'roll' }]
     case 'invest': {
@@ -149,7 +153,7 @@ function resolveDecision(c: Ctx, d: Decision, i: Intent): Effect[] {
     case 'waiver': {
       if (d.kind !== 'waiver') return []
       const rest: Effect = { t: 'tariff', from: d.from, victims: d.rest }
-      if (!i.use) return [{ t: 'push', p, by: -d.setback, via: 'push', tiles: true }, rest]
+      if (!i.use) return [{ t: 'push', p, by: -d.setback, via: 'push', tiles: false }, rest]
       addWaivers(c, p, -1, 'used against tariff')
       c.ev.push({ type: 'waiverUsed', player: p })
       return [rest]
@@ -158,14 +162,24 @@ function resolveDecision(c: Ctx, d: Decision, i: Intent): Effect[] {
       if (d.kind !== 'cardChoice') return []
       s.discard.push(d.card)
       return CARDS[d.card].apply(c, p, i.option)
+    // his ruling 18 Oct: pay the fee (lost either way), both roll, ties roll again; the higher roll takes the other's
+    // most profitable project. Passing hands the same choice to the next player on the square.
     case 'takeover': {
-      if (i.victim === null) return []
-      const victim = s.players[i.victim]!
-      const smallest = victim.projects.reduce((a, x) => (x.profit < a.profit ? x : a))
-      victim.projects.splice(victim.projects.indexOf(smallest), 1)
-      pl.projects.push(smallest)
+      if (d.kind !== 'takeover') return []
+      if (i.victim === null) return [{ t: 'takeoverOffer', order: d.rest }]
       addCapital(c, p, -s.config.takeoverCost, 'hostile takeover')
-      c.ev.push({ type: 'projectStolen', from: i.victim, to: p, id: smallest.id })
+      const rolls: [number, number][] = []
+      let a = 0, b = 0
+      do { ;[a, s.rng] = roll(s.rng); [b, s.rng] = roll(s.rng); rolls.push([a, b]) } while (a === b)
+      const winner = a > b ? p : i.victim, loser = a > b ? i.victim : p
+      c.ev.push({ type: 'duel', challenger: p, defender: i.victim, rolls, winner })
+      const lp = s.players[loser]!
+      if (lp.projects.length) {
+        const best = lp.projects.reduce((x, y) => (y.profit > x.profit ? y : x))
+        lp.projects.splice(lp.projects.indexOf(best), 1)
+        s.players[winner]!.projects.push(best)
+        c.ev.push({ type: 'projectStolen', from: loser, to: winner, id: best.id })
+      }
       return []
     }
     case 'ack':
@@ -191,7 +205,8 @@ function snakeSlide(c: Ctx, p: Seat, head: number, tail: number, cost: number | 
       c.ev.push({ type: 'projectLost', player: p, id: x.id })
     }
   }
-  return [{ t: 'land', p }]
+  // his ruling 21 Oct: a square you are sent back onto does nothing (crash, hedge stop, tariff, sanction)
+  return []
 }
 
 function run(c: Ctx, e: Effect): Effect[] {
@@ -201,7 +216,7 @@ function run(c: Ctx, e: Effect): Effect[] {
     case 'turnStart': {
       const p = s.current
       const pl = s.players[p]!
-      s.turnFlags = { rollBonus: 0, noRepay: false, landings: 0 }
+      s.turnFlags = { rollBonus: 0, noRepay: false, landings: 0, borrowed: false }
       c.ev.push({ type: 'turnStarted', player: p, turn: s.turn })
       let skip = false
       for (const st of pl.statuses) {
@@ -222,12 +237,11 @@ function run(c: Ctx, e: Effect): Effect[] {
     }
 
     case 'askDebt': {
-      const pl = s.players[s.current]!
       s.decision = {
         kind: 'debtWindow',
         player: s.current,
-        maxTake: Math.min(cfg.maxDebtTake, cfg.debtCap - pl.debt),
-        maxRepay: s.turnFlags.noRepay ? 0 : Math.max(0, Math.min(pl.debt, pl.capital)),
+        take: s.turnFlags.borrowed ? [] : freeLoans(s, s.current),
+        repay: s.turnFlags.noRepay ? [] : repayable(s, s.current),
       }
       return []
     }
@@ -280,7 +294,10 @@ function run(c: Ctx, e: Effect): Effect[] {
           return []
         }
         case 'event': return [{ t: 'drawCard', p }]
-        case 'tariff': return [{ t: 'tariff', from: p, victims: othersInOrder(s, p) }]
+        case 'tariff':
+          if (s.corridor) { s.corridor--; c.ev.push({ type: 'tariffCancelled', player: p }); return [] }
+          for (const q of othersInOrder(s, p)) if (s.players[q]!.country === 'china') addCapital(c, q, cfg.chinaTariffIncome, 'export surplus')
+          return [{ t: 'tariff', from: p, victims: othersInOrder(s, p) }]
         case 'sanction': return [{ t: 'setback', by: cfg.sanctionSetback, threat: true }]
         case 'goal': return [{ t: 'finish', p }]
         default: return []
@@ -309,7 +326,7 @@ function run(c: Ctx, e: Effect): Effect[] {
         s.decision = { kind: 'waiver', player: v, from: e.from, setback, rest }
         return []
       }
-      return [{ t: 'push', p: v, by: -setback, via: 'push', tiles: true }, next]
+      return [{ t: 'push', p: v, by: -setback, via: 'push', tiles: false }, next]
     }
 
     case 'setback': {
@@ -321,7 +338,7 @@ function run(c: Ctx, e: Effect): Effect[] {
         : cfg.sanctionThreat === 'only' ? threatened
         : [...new Set([...leaders, ...threatened])]
       for (const q of targets) c.ev.push({ type: 'sanctionHit', player: q, setback: e.by })
-      return targets.map((q): Effect => ({ t: 'push', p: q, by: -e.by, via: 'push', tiles: true }))
+      return targets.map((q): Effect => ({ t: 'push', p: q, by: -e.by, via: 'push', tiles: false }))
     }
 
     case 'drawCard': {
@@ -362,12 +379,21 @@ function run(c: Ctx, e: Effect): Effect[] {
       return []
     }
 
+    // any square two players share (his ruling): the lander may challenge first, then the others there in turn order
     case 'takeover': {
-      const p = s.current
-      const pl = s.players[p]!
-      if (pl.square === 1 || pl.square === GOAL || pl.capital < cfg.takeoverCost) return []
-      const victims = othersInOrder(s, p).filter((q) => s.players[q]!.square === pl.square && s.players[q]!.projects.length)
-      if (victims.length) s.decision = { kind: 'takeover', player: p, victims }
+      const p = s.current, sq = s.players[p]!.square
+      if (sq === 1 || sq === GOAL) return []
+      const here = othersInOrder(s, p).filter((q) => s.players[q]!.square === sq)
+      return here.length ? [{ t: 'takeoverOffer', order: [p, ...here] }] : []
+    }
+
+    case 'takeoverOffer': {
+      const [q, ...rest] = e.order
+      if (q === undefined) return []
+      const sq = s.players[q]!.square
+      const victims = s.players.map((_, v) => v).filter((v) => v !== q && s.players[v]!.square === sq && s.players[v]!.projects.length)
+      if (s.players[q]!.capital < cfg.takeoverCost || !victims.length) return [{ t: 'takeoverOffer', order: rest }]
+      s.decision = { kind: 'takeover', player: q, victims, rest }
       return []
     }
 

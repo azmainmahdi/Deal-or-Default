@@ -1,0 +1,229 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Route Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
+<style>
+/* Step 2: board contents on the approved step-1 table. */
+html,body{margin:0;height:100%}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 40%,#0007 100%),#0000000f;pointer-events:none}
+.view{perspective:1800px;width:min(88vw,calc(100vh - 60px),780px)}
+.board{position:relative;width:100%;aspect-ratio:1;border-radius:10px;transform:rotateX(14deg);transform-origin:50% 60%;background:#101830;border:5px solid #b8892e;
+ box-shadow:0 3px 0 #6e5018,0 6px 0 #3a2a0c,0 18px 30px -8px #000c,0 40px 70px -24px #000a}
+.board::before{content:"";position:absolute;inset:0;border-radius:6px;background:url(board-bg.jpg) center/cover;opacity:.12;filter:saturate(.5)}
+.board::after{content:"";position:absolute;left:50%;top:50%;width:42%;aspect-ratio:1.47;transform:translate(-50%,-50%);background:url(logo.png) center/contain no-repeat;opacity:.08}
+svg{position:absolute;inset:2.4%;width:95.2%;height:95.2%;z-index:1;overflow:visible}
+.tile{fill:#16203cdd;stroke:#c9a24a8c;stroke-width:1.4}
+.num{fill:#efe6d2;font:700 15px Fraunces,Georgia,serif}
+.num.art{fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3.5px}
+.start{fill:#efe6d2;font:700 19px Fraunces,Georgia,serif}
+.delta{fill:#fff;font:700 13px Fraunces,Georgia,serif;paint-order:stroke;stroke:#0008;stroke-width:3px}
+.dest{fill:none;stroke-width:1.6;stroke-dasharray:5 5;opacity:.75}
+.dest.snake{stroke:#ff5a6a}.dest.ladder{stroke:#2ee6b0}
+.casing{fill:none;stroke:#0a0f1c;stroke-width:6.5;stroke-linejoin:round;stroke-linecap:round}
+.line{fill:none;stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
+.snake .line{stroke:#ff5a6a}.ladder .line{stroke:#2ee6b0}
+.head.snake{fill:#ff5a6a}.head.ladder{fill:#2ee6b0}
+@media (max-width:600px){
+ body{padding:12px 6px;align-content:start}
+ .view{width:calc(100vw - 12px);perspective:1400px}
+ .board{transform:rotateX(8deg);border-width:4px}
+ .num{font-size:23px}.num.art{stroke-width:4px}.start{font-size:24px}.delta{font-size:19px}
+ .line{stroke-width:4.5}.casing{stroke-width:8.5}
+}
+
+body{align-content:start;gap:14px;overflow:auto}
+.pick{position:relative;z-index:5;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.pick button{font:600 14px system-ui;padding:9px 14px;border-radius:999px;border:1px solid #c9a24a66;background:#0d1426cc;color:#efe6d2;cursor:pointer}
+.pick button[aria-pressed=true]{background:#c9a24a;color:#1a1206;border-color:#c9a24a}
+.note{position:relative;z-index:5;max-width:620px;margin:0 auto;color:#efe6d2;font:14px/1.45 system-ui;text-align:center;background:#0b1020b3;padding:8px 14px;border-radius:10px}
+.lab{pointer-events:none}
+.badge rect{stroke-width:1.2}.badge text{font:700 14px Fraunces,Georgia,serif}
+.badge.ladder rect{fill:#0d3b2f;stroke:#2ee6b0}.badge.ladder text{fill:#9ff5d8}
+.badge.snake rect{fill:#40121a;stroke:#ff5a6a}.badge.snake text{fill:#ffb3bb}
+.notch.ladder{fill:#2ee6b0}.notch.snake{fill:#ff5a6a}
+.arc{fill:none;stroke-width:3;stroke-linecap:round}
+.arc.ladder{stroke:#2ee6b0}.arc.snake{stroke:#ff5a6a}
+.arc.dash{stroke-dasharray:2 7}
+.pulse{animation:pulse 2.6s linear infinite}@keyframes pulse{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.chev{animation:chev 1.6s ease-in-out infinite}@keyframes chev{0%,100%{opacity:.45}50%{opacity:1}}
+.coin{animation:coin 1.4s ease-in-out infinite}@keyframes coin{0%,100%{opacity:.6}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.pulse,.chev,.coin{animation:none}}
+.shadow{fill:none;stroke:#000;stroke-width:5;opacity:.35;filter:blur(3px)}
+.dot.ladder{fill:#2ee6b0}.dot.snake{fill:#ff5a6a}
+.hit{fill:transparent;cursor:pointer}
+.glow{fill:none;stroke-width:3}.glow.ladder{stroke:#2ee6b0}.glow.snake{stroke:#ff5a6a}
+.reach{fill:#c9a24a22;stroke:#c9a24a;stroke-width:2}
+.pawn{fill:#3987e5;stroke:#f5d67b;stroke-width:4}
+.faint{opacity:.18}
+.rail{stroke:#e2c07a;stroke-width:5;stroke-linecap:round;fill:none}
+.rung{stroke:#e2c07a;stroke-width:4;stroke-linecap:round}
+.piece{opacity:.62}
+.sbody{fill:none;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:600px){.badge text{font-size:20px}.pick button{font-size:13px;padding:8px 11px}.note{font-size:13px}}
+</style></head><body>
+<div class="pick" id="pick"></div>
+<p class="note" id="note"></p>
+<div class="view"><div class="board"><svg viewBox="0 0 1000 1000" id="b"></svg></div></div>
+<script>
+const PRINT=[{10:13,22:26,29:32,37:42,50:55,59:64,67:75,71:86},{17:5,28:9,31:14,48:26,58:39,65:46,88:73,99:63}]
+// the advisor's re-seat: every jump straight up or down its own column (checked: same game length, no clashes with event squares)
+const TOWER=[{9:12,19:22,29:32,39:42,49:52,58:63,67:74,73:88},{17:4,28:8,31:11,47:27,57:37,66:46,85:65,98:63}]
+let L=PRINT[0],S=PRINT[1]
+const E=[7,25,43,54,61,69,76,87,96], T=[23,34,62,72,83], X=[18,45,68,79,91]
+const type=q=>q===1?'start':q===100?'goal':L[q]?'ladder':S[q]?'snake':E.includes(q)?'event':T.includes(q)?'tariff':X.includes(q)?'sanction':''
+const cell=q=>{const i=q-1,r=Math.floor(i/10),c=r%2===0?i%10:9-i%10;return{x:c*100,y:(9-r)*100}}
+const mid=q=>{const{x,y}=cell(q);return{x:x+50,y:y+50}}
+let R=[...Object.entries(L).map(([f,t])=>({f:+f,t,k:'ladder'})),...Object.entries(S).map(([f,t])=>({f:+f,t,k:'snake'}))]
+const from=q=>R.find(r=>r.f===q)
+const IN=7,W=100-2*IN
+const OPTS={
+ flight:['Trade routes','Dashed flight paths with a cargo plane for ladders, falling arcs with a crash marker for snakes.'],
+ deco:['Deco pieces','Snakes and ladders as Art Deco jewellery pieces lying on the board: a gold and ruby serpent, a gold stepped ladder.'],
+}
+let mode=location.hash.slice(1)in OPTS?location.hash.slice(1):'deco'
+const C={ladder:'#2ee6b0',snake:'#ff5a6a'}
+// quadratic arc between tile centres, bowed up off the board (or down, for falling shapes)
+function geo(r,lift=.28,down=false){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)
+ let px=-dy/d,py=dx/d;if(py>0||(Math.abs(py)<.01&&px<0)){px=-px;py=-py}if(down){px=-px;py=-py}
+ const k=Math.min(d*lift,150),c={x:(a.x+b.x)/2+px*k,y:(a.y+b.y)/2+py*k}
+ const at=t=>({x:(1-t)**2*a.x+2*(1-t)*t*c.x+t*t*b.x,y:(1-t)**2*a.y+2*(1-t)*t*c.y+t*t*b.y})
+ const tan=t=>{const x=2*(1-t)*(c.x-a.x)+2*t*(b.x-c.x),y=2*(1-t)*(c.y-a.y)+2*t*(b.y-c.y);return Math.atan2(y,x)*180/Math.PI}
+ const sh={x:(a.x+b.x)/2+px*k*.25,y:(a.y+b.y)/2+py*k*.25+14}
+ return{a,b,c,d,at,tan,len:d*1.15,shadow:`M${a.x},${a.y+10} Q${sh.x},${sh.y} ${b.x},${b.y+10}`}}
+const head=(p,ang,k,s=1)=>`<path fill="${C[k]}" stroke="#0a0f1c" stroke-width="2" d="M-2,-8 L13,0 L-2,8 Z" transform="translate(${p.x},${p.y}) rotate(${ang}) scale(${s})"/>`
+const endT=g=>1-30/g.len
+function capArc(r,i){const g=geo(r),e=g.at(endT(g)),d=`M${g.a.x},${g.a.y} Q${g.c.x},${g.c.y} ${e.x},${e.y}`
+ return`<path class="shadow" d="${g.shadow}"/><path d="${d}" fill="none" stroke="#0a0f1c" stroke-width="7" stroke-linecap="round"/>
+ <path d="${d}" fill="none" stroke="${C[r.k]}" stroke-width="3" stroke-linecap="round"/>
+ <path d="${d}" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="6 94" class="pulse" style="animation-delay:${-i*.37}s"/>
+ <circle cx="${g.a.x}" cy="${g.a.y}" r="6" fill="${C[r.k]}" stroke="#0a0f1c" stroke-width="2"/>${head(e,g.tan(endT(g)),r.k)}`}
+// seeded wobble so each chart looks hand-drawn but never changes between loads
+const rnd=n=>{const x=Math.sin(n*99.13)*43758.5;return x-Math.floor(x)}
+function market(r){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),n=Math.max(5,Math.round(d/34)),px=-dy/d,py=dx/d,up=r.k==='ladder'
+ const pts=[];for(let i=0;i<=n;i++){const t=i/n,w=i===0||i===n?0:(rnd(r.f*7+i)-.5)*30;pts.push({x:a.x+dx*t+px*w,y:a.y+dy*t+py*w})}
+ const e=pts[n],q=pts[n-1],ang=Math.atan2(e.y-q.y,e.x-q.x)*180/Math.PI,ux=(e.x-q.x),uy=(e.y-q.y),ul=Math.hypot(ux,uy)
+ pts[n]={x:e.x-ux/ul*28,y:e.y-uy/ul*28}
+ const dd='M'+pts.map(p=>`${p.x},${p.y}`).join(' L')
+ let candles='';for(let i=1;i<n;i++){const p=pts[i],h=10+rnd(r.f+i)*14,bull=up?rnd(i*3+r.f)>.25:rnd(i*3+r.f)<.25
+  candles+=`<line x1="${p.x}" y1="${p.y-h}" x2="${p.x}" y2="${p.y+h}" stroke="${bull?C.ladder:C.snake}" stroke-width="1.5" opacity=".7"/><rect x="${p.x-3.5}" y="${p.y-h*.55}" width="7" height="${h*1.1}" fill="${bull?C.ladder:C.snake}" opacity=".75"/>`}
+ return`<g opacity=".95">${candles}<path d="${dd}" fill="none" stroke="#0a0f1c" stroke-width="7" stroke-linejoin="round"/><path d="${dd}" fill="none" stroke="${C[r.k]}" stroke-width="3" stroke-linejoin="round"/>${head(pts[n],ang,r.k)}</g>`}
+const PLANE='M0,-1.5 L6,-1.5 L10,-0.6 L10,0.6 L6,1.5 L0,1.5 Z M3,-1.5 L6,-7 L8,-7 L7,-1.5 Z M3,1.5 L6,7 L8,7 L7,1.5 Z M0,-1.2 L-2.5,-4.5 L-1,-4.5 L1.5,-1.2 Z M0,1.2 L-2.5,4.5 L-1,4.5 L1.5,1.2 Z'
+const DIVE='M-7,-6 L-2,-1 L1,-4 L7,4 M7,4 L7,-1 M7,4 L2,4'
+function flight(r){const up=r.k==='ladder',g=geo(r,up?.38:.22,!up),et=endT(g),e=g.at(et),d=`M${g.a.x},${g.a.y} Q${g.c.x},${g.c.y} ${e.x},${e.y}`,m=g.at(.55)
+ const icon=up?`<g transform="translate(${m.x},${m.y}) rotate(${g.tan(.55)}) scale(2.3)"><path d="${PLANE}" fill="#e9fff8" stroke="#0a0f1c" stroke-width=".6"/></g>`
+  :`<g transform="translate(${m.x},${m.y})"><circle r="13" fill="#40121a" stroke="${C.snake}" stroke-width="2"/><path d="${DIVE}" fill="none" stroke="#ffb3bb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>`
+ return`<path class="shadow" d="${g.shadow}"/><path d="${d}" fill="none" stroke="#0a0f1c" stroke-width="6" stroke-linecap="round"/>
+ <path d="${d}" fill="none" stroke="${C[r.k]}" stroke-width="2.6" stroke-dasharray="${up?'9 7':'3 6'}" stroke-linecap="round"/>
+ <circle cx="${g.a.x}" cy="${g.a.y}" r="5" fill="${C[r.k]}"/>${head(e,g.tan(et),r.k,.9)}${icon}`}
+function deco(r,i){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI,col=r.k==='ladder'?'#e9c46a':'#ff5a6a'
+ let h='';const n=Math.floor((d-34)/22);for(let j=0;j<=n;j++){const s=16+j*22,x=a.x+dx/d*s,y=a.y+dy/d*s
+  h+=`<path class="chev" style="animation-delay:${(j/n)*1.6-i*.2}s" d="M-6,-10 L4,0 L-6,10" fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="square" transform="translate(${x},${y}) rotate(${ang})"/>`}
+ return`<g><path d="M${a.x},${a.y}L${b.x},${b.y}" stroke="#0a0f1c" stroke-width="28" stroke-linecap="round" opacity=".35"/>${h}
+ <circle cx="${a.x}" cy="${a.y}" r="9" fill="#0a0f1c" stroke="${col}" stroke-width="3"/><rect x="-9" y="-9" width="18" height="18" fill="${col}" stroke="#0a0f1c" stroke-width="2" transform="translate(${b.x-dx/d*24},${b.y-dy/d*24}) rotate(45)"/></g>`}
+function coins(r,i){const up=r.k==='ladder',g=geo(r,up?.3:.18,!up),n=Math.max(4,Math.round(g.len/26));let h=''
+ for(let j=0;j<=n;j++){const t=.04+(j/n)*(endT(g)-.04),p=g.at(t),rr=up?7+j/n*3:10-j/n*3
+  h+=`<g class="coin" style="animation-delay:${(j/n)*1.4-i*.3}s" transform="translate(${p.x},${p.y})"><circle r="${rr}" fill="${up?'#f5d67b':'#ff7a87'}" stroke="${up?'#7a5410':'#5a0f18'}" stroke-width="2"/><circle r="${rr*.55}" fill="none" stroke="${up?'#b8892e':'#c23242'}" stroke-width="1.4"/></g>`}
+ const e=g.at(endT(g)+.02)
+ return`<path class="shadow" d="${g.shadow}" style="opacity:.2"/>${h}${head(e,g.tan(endT(g)),r.k,1.1)}`}
+const pathOf=(g,et)=>{const e=g.at(et);return`M${g.a.x},${g.a.y} Q${g.c.x},${g.c.y} ${e.x},${e.y}`}
+const dur=g=>(1.4+g.len/400).toFixed(2)
+function tubes(r,i){const up=r.k==='ladder',g=geo(r,up?.34:.2,!up),d=pathOf(g,1),col=C[r.k]
+ const mouth=(p,o)=>`<ellipse cx="${p.x}" cy="${p.y}" rx="15" ry="9" fill="#0a0f1c" stroke="${col}" stroke-width="3" opacity="${o}"/>`
+ return`<path class="shadow" d="${g.shadow}" style="stroke-width:16;opacity:.35"/>${mouth(g.a,1)}${mouth(g.b,1)}
+ <path d="${d}" fill="none" stroke="#0a0f1c" stroke-width="22" stroke-linecap="round" opacity=".55"/>
+ <path d="${d}" fill="none" stroke="${col}" stroke-width="18" stroke-linecap="round" opacity=".28"/>
+ <path d="${d}" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".55" transform="translate(-3,-4)"/>
+ <g><circle r="7" fill="#f5d67b" stroke="#7a5410" stroke-width="2"/><animateMotion dur="${dur(g)}s" begin="${-i*.4}s" repeatCount="indefinite" path="${d}"/></g>`}
+function metro(r,i){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,m=Math.min(Math.abs(dx),Math.abs(dy)),p={x:a.x+Math.sign(dx)*m,y:a.y+Math.sign(dy)*m}
+ const pts=[a,p,b].filter((q,j,arr)=>!j||q.x!==arr[j-1].x||q.y!==arr[j-1].y),d=smooth(pts,40)
+ const shades={ladder:['#2ee6b0','#4fc3f7','#9ccc65','#26c6da'],snake:['#ff5a6a','#ff8a50','#f06292','#e53935']},col=shades[r.k][i%4]
+ const st=(q,end)=>`<circle cx="${q.x}" cy="${q.y}" r="${end?11:9}" fill="${end?col:'#f4f1ea'}" stroke="${end?'#f4f1ea':col}" stroke-width="5"/>`
+ return`<path d="${d}" fill="none" stroke="#0a0f1c" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/><path d="${d}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>${st(a,0)}${st(b,1)}`}
+function smooth(p,r=12){let d=`M${p[0].x},${p[0].y}`
+ for(let i=1;i<p.length-1;i++){const a=p[i-1],b=p[i],c=p[i+1],l1=Math.hypot(b.x-a.x,b.y-a.y),l2=Math.hypot(c.x-b.x,c.y-b.y),k=Math.min(r,l1/2,l2/2)
+  d+=` L${b.x+(a.x-b.x)*k/l1},${b.y+(a.y-b.y)*k/l1} Q${b.x},${b.y} ${b.x+(c.x-b.x)*k/l2},${b.y+(c.y-b.y)*k/l2}`}
+ return d+` L${p.at(-1).x},${p.at(-1).y}`}
+function portals(r,i){const up=r.k==='ladder',g=geo(r,up?.5:.3,!up),d=pathOf(g,1),col=C[r.k]
+ const ring=(p,s,rev)=>`<g transform="translate(${p.x},${p.y}) scale(1,.55)"><circle r="${22*s}" fill="${col}" opacity=".18"/><circle r="${22*s}" fill="none" stroke="${col}" stroke-width="4" stroke-dasharray="10 6"><animateTransform attributeName="transform" type="rotate" from="0" to="${rev?-360:360}" dur="3s" repeatCount="indefinite"/></circle><circle r="${12*s}" fill="none" stroke="#fff" stroke-width="2" opacity=".7"/></g>`
+ let sparks='';for(let k=0;k<3;k++)sparks+=`<circle r="3.5" fill="#fff"><animateMotion dur="${dur(g)}s" begin="${-(k/3)*dur(g)-i*.3}s" repeatCount="indefinite" path="${d}"/></circle>`
+ return`<path d="${d}" fill="none" stroke="${col}" stroke-width="9" opacity=".18" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" opacity=".85" stroke-linecap="round"/>${ring(g.a,1,0)}${ring(g.b,.8,1)}${sparks}`}
+function rails(r,i){const up=r.k==='ladder',g=geo(r,up?.25:.18,!up),d=pathOf(g,1),col=C[r.k],tie=up?'#8a6420':'#7a2a32'
+ return`<path class="shadow" d="${g.shadow}" style="stroke-width:12;opacity:.3"/>
+ <path d="${d}" fill="none" stroke="${tie}" stroke-width="20" stroke-dasharray="4 7"/>
+ <path d="${d}" fill="none" stroke="#c9ced8" stroke-width="13"/><path d="${d}" fill="none" stroke="#2a2f3a" stroke-width="8"/>
+ <path d="${d}" fill="none" stroke="${tie}" stroke-width="8" stroke-dasharray="4 7" opacity=".9"/>
+ <g><g><rect x="-11" y="-8" width="22" height="16" rx="3" fill="${col}" stroke="#0a0f1c" stroke-width="2.5"/><rect x="-6" y="-4.5" width="12" height="6" rx="1" fill="#0a0f1c" opacity=".55"/></g><animateMotion dur="${dur(g)}s" begin="${-i*.5}s" repeatCount="indefinite" rotate="auto" path="${d}"/></g>`}
+function tower(r){const s=cell(r.f),d=cell(r.t),up=r.k==='ladder'
+ if(up)return`<path d="M${s.x+50},${s.y-9} l16,14 h-32 Z" fill="#f5d67b" stroke="#0a0f1c" stroke-width="2.5"/>
+  <rect x="${d.x+IN+8}" y="${d.y+100-IN-7}" width="${W-16}" height="4" rx="2" fill="#f5d67b"/>`
+ let net='';for(let k=0;k<7;k++)net+=`<path d="M${d.x+IN+4+k*12},${d.y+62} l6,10 l6,-10" fill="none" stroke="#f5d67b" stroke-width="2"/>`
+ return`<path d="M${s.x+50},${s.y+109} l16,-14 h-32 Z" fill="#ff5a6a" stroke="#0a0f1c" stroke-width="2.5"/>
+  <g>${net}<line x1="${d.x+IN+4}" y1="${d.y+62}" x2="${d.x+100-IN-4}" y2="${d.y+62}" stroke="#f5d67b" stroke-width="2.5"/><line x1="${d.x+IN+4}" y1="${d.y+72}" x2="${d.x+100-IN-4}" y2="${d.y+72}" stroke="#f5d67b" stroke-width="1.5" opacity=".7"/></g>`}
+function skyline(r){const{x,y}=cell(r.f),gain=Math.abs(r.t-r.f)
+ if(r.k==='ladder'){const h=Math.min(64,14+gain*3.4),l=x+30,w=40,b=y+84,top=b-h
+  let win='';for(let yy=top+8;yy<b-6;yy+=9)win+=`<rect x="${l+7}" y="${yy}" width="${w-14}" height="3" fill="#7a5410" opacity=".55"/>`
+  return`<ellipse cx="${l+w/2+8}" cy="${b+2}" rx="30" ry="7" fill="#000" opacity=".45"/>
+  <path d="M${l+w},${b} L${l+w+9},${b-8} L${l+w+9},${top-8} L${l+w},${top} Z" fill="#8a6420"/>
+  <rect x="${l}" y="${top}" width="${w}" height="${h}" fill="url(#gold)"/>${win}
+  <path d="M${l},${top} L${l+9},${top-8} L${l+w+9},${top-8} L${l+w},${top} Z" fill="#fbe7a1"/>
+  <path d="M${l+12},${top-4} L${l+w/2+4},${top-16} L${l+w-4},${top-4} Z" fill="#f5d67b" stroke="#8a6420" stroke-width="1"/>
+  <text x="${l+w/2}" y="${b-6}" text-anchor="middle" style="font:700 13px Fraunces,Georgia,serif" fill="#3a2a0c">+${gain}</text>`}
+ const n=Math.min(6,Math.round(gain/6));let rings=''
+ for(let k=0;k<=n;k++){const i=IN+k*5.5;rings+=`<rect x="${x+i}" y="${y+i}" width="${100-2*i}" height="${100-2*i}" rx="2" fill="rgb(${60-k*9},${14-k*2},${22-k*3})" stroke="#ff5a6a" stroke-opacity="${.7-k*.1}" stroke-width="1.2"/>`}
+ return rings+`<text x="${x+50}" y="${y+57}" text-anchor="middle" style="font:700 15px Fraunces,Georgia,serif" fill="#ff8a95">−${gain}</text>`}
+function futures(){const P=24;let h='';const{x,y}=cell(P)
+ const end={};for(let f=1;f<=6;f++){const raw=P+f,q=L[raw]||S[raw]||raw;(end[q]=end[q]||{f:[],k:L[raw]?'ladder':S[raw]?'snake':''}).f.push(f)
+  const c=cell(raw);h+=`<rect x="${c.x+IN}" y="${c.y+IN}" width="${W}" height="${W}" rx="3" fill="#c9a24a18" stroke="#c9a24a" stroke-width="2" stroke-dasharray="${L[raw]||S[raw]?'5 4':'0'}"/>`}
+ for(const[q,v]of Object.entries(end)){const c=mid(+q),col=v.k?C[v.k]:'#efe6d2'
+  h+=`<g class="ghost"><ellipse cx="${c.x}" cy="${c.y+16}" rx="22" ry="7" fill="#000" opacity=".4"/><circle cx="${c.x}" cy="${c.y}" r="22" fill="#3987e5" fill-opacity=".45" stroke="${col}" stroke-width="3" stroke-dasharray="${v.k?'0':'5 4'}"/>
+  <text x="${c.x}" y="${c.y+7}" text-anchor="middle" style="font:700 19px Fraunces,Georgia,serif;paint-order:stroke;stroke:#0a0f1c;stroke-width:4px" fill="#fff">${v.f.join('·')}</text></g>`}
+ h+=`<ellipse cx="${x+50}" cy="${y+66}" rx="26" ry="9" fill="#000" opacity=".5"/><circle cx="${x+50}" cy="${y+50}" r="26" fill="#3987e5" stroke="#f5d67b" stroke-width="5"/>`
+ return h}
+// centreline helpers: straight for ladders, gentle S-curve for snakes
+function spine(r,wave){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),px=-dy/d,py=dx/d,n=Math.max(1,Math.round(d/130))
+ return Array.from({length:61},(_,i)=>{const t=i/60,w=wave?Math.sin(t*Math.PI*2*n)*wave*Math.sin(t*Math.PI):0;return{x:a.x+dx*t+px*w,y:a.y+dy*t+py*w}})}
+function decoPiece(r){const up=r.k==='ladder'
+ if(up){const a=mid(r.f),b=mid(r.t),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),ux=dx/d,uy=dy/d,px=-uy*12,py=ux*12,A={x:a.x+ux*8,y:a.y+uy*8},B={x:b.x-ux*22,y:b.y-uy*22}
+  const rail=(sg)=>`M${A.x+px*sg},${A.y+py*sg}L${B.x+px*sg},${B.y+py*sg}`
+  let rungs='';for(let s=10;s<d-34;s+=18){const x=A.x+ux*s,y=A.y+uy*s;rungs+=`M${x+px},${y+py} L${x+ux*6},${y+uy*6} L${x-px},${y-py}`}
+  const fin=(p,sg)=>`<path d="M0,-7 L5,0 L0,7 L-5,0 Z" fill="#fbe7a1" stroke="#5a3c08" stroke-width="1.5" transform="translate(${p.x},${p.y})"/>`
+  return`<g><path d="${rail(1)}${rail(-1)}${rungs}" fill="none" stroke="#000" stroke-width="8" opacity=".35" transform="translate(4,6)" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="${rail(1)}${rail(-1)}${rungs}" fill="none" stroke="#3a2a0c" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="${rail(1)}${rail(-1)}${rungs}" fill="none" stroke="url(#gold)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  ${fin({x:B.x+px,y:B.y+py})}${fin({x:B.x-px,y:B.y-py})}${fin({x:A.x+px,y:A.y+py})}${fin({x:A.x-px,y:A.y-py})}
+  <path d="M0,-9 L14,0 L0,9 L4,0 Z" fill="#2ee6b0" stroke="#0a0f1c" stroke-width="2" transform="translate(${B.x+ux*12},${B.y+uy*12}) rotate(${Math.atan2(uy,ux)*180/Math.PI})"/></g>`}
+ const p=spine(r,22),L1=[],R1=[];let bands=''
+ p.forEach((q,i)=>{const n=p[Math.min(i+1,60)],o=p[Math.max(i-1,0)],tx=n.x-o.x,ty=n.y-o.y,tl=Math.hypot(tx,ty)||1,w=11*(1-i/60*.8),nx=-ty/tl*w,ny=tx/tl*w
+  L1.push(`${q.x+nx},${q.y+ny}`);R1.unshift(`${q.x-nx},${q.y-ny}`);if(i%4===2&&i<58)bands+=`M${q.x+nx},${q.y+ny}L${q.x+tx/tl*4},${q.y+ty/tl*4}L${q.x-nx},${q.y-ny}`})
+ const body=`M${L1.join(' L')} L${R1.join(' L')} Z`,h=p[0],h2=p[2],ang=Math.atan2(h.y-h2.y,h.x-h2.x)*180/Math.PI
+ return`<g><path d="${body}" fill="#000" opacity=".35" transform="translate(4,6)"/><path d="${body}" fill="#a3182b" stroke="#f5d67b" stroke-width="2.2" stroke-linejoin="round"/>
+ <path d="${bands}" fill="none" stroke="#f5d67b" stroke-width="1.6" opacity=".85"/>
+ <g transform="translate(${h.x},${h.y}) rotate(${ang})"><path d="M-6,-13 L14,-6 L20,0 L14,6 L-6,13 Z" fill="#a3182b" stroke="#f5d67b" stroke-width="2.4" stroke-linejoin="round"/>
+ <path d="M6,-5 l4,2 l-4,2 Z M6,3 l4,2 l-4,2 Z" fill="#f5d67b" transform="translate(0,-1)"/></g></g>`}
+let tk=0
+function ticker(r,i){const up=r.k==='ladder',p=spine(r,up?0:18),gain=Math.abs(r.t-r.f),d='M'+p.map(q=>`${q.x},${q.y}`).join(' L'),id='tp'+r.f
+ const txt=(up?`FDI +${gain} ▲ `:`CRASH −${gain} ▼ `).repeat(12),col=C[r.k],bg=up?'#062a20':'#2a0a10'
+ const e=p[60],e2=p[56],ang=Math.atan2(e.y-e2.y,e.x-e2.x)*180/Math.PI
+ return`<defs><path id="${id}" d="${d}"/></defs><path d="${d}" fill="none" stroke="#000" stroke-width="24" opacity=".35" transform="translate(3,5)" stroke-linecap="butt"/>
+ <path d="${d}" fill="none" stroke="${col}" stroke-width="24"/><path d="${d}" fill="none" stroke="${bg}" stroke-width="19"/>
+ <text style="font:700 12.5px ui-monospace,Menlo,monospace;letter-spacing:.5px" fill="${col}" dy="4.5"><textPath href="#${id}" startOffset="0">${txt}<animate attributeName="startOffset" from="-${(up?9+String(gain).length:11+String(gain).length)*7.6*2}" to="0" dur="2.2s" repeatCount="indefinite"/></textPath></text>
+ <path d="M-4,-15 L14,0 L-4,15 Z" fill="${col}" stroke="#0a0f1c" stroke-width="2" transform="translate(${e.x},${e.y}) rotate(${ang})"/>
+ <rect x="-14" y="-14" width="28" height="28" rx="3" fill="${bg}" stroke="${col}" stroke-width="2.5" transform="translate(${p[0].x},${p[0].y}) rotate(45)"/>`}
+const DRAW={flight,deco:decoPiece}
+const DEFS=`<defs><linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#b8892e"/><stop offset=".45" stop-color="#f5d67b"/><stop offset="1" stop-color="#c9962f"/></linearGradient></defs>`
+function render(){let tiles='',lab='',mid1=''
+ ;[L,S]=mode==='tower'?TOWER:PRINT
+ R=[...Object.entries(L).map(([f,t])=>({f:+f,t,k:'ladder'})),...Object.entries(S).map(([f,t])=>({f:+f,t,k:'snake'}))]
+ for(let q=1;q<=100;q++){const{x,y}=cell(q),t=type(q),art=t&&t!=='start'
+  tiles+=`<rect class="tile" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}" rx="3"/>`
+  if(art&&!(mode==='skyline'&&t==='snake'))tiles+=`<image href="/icons/${t}.svg" x="${x+IN}" y="${y+IN}" width="${W}" height="${W}"/>`
+  if(t==='start')lab+=`<text class="start" x="${x+18}" y="${y+56}">Start</text>`
+  else if(t!=='goal')lab+=`<text class="num ${art?'art':''}" x="${x+100-IN-4}" y="${y+IN+16}" text-anchor="end" style="paint-order:stroke;stroke:#0b1020;stroke-width:4px">${q}</text>`
+  if(t==='ladder'&&mode!=='skyline')lab+=`<text class="delta" x="${x+100-IN-4}" y="${y+100-IN-5}" text-anchor="end">Δ${L[q]-q}</text>`}
+ R.slice().sort((a,b)=>cell(a.f).y-cell(b.f).y).forEach((r,i)=>mid1+=`<g>${DRAW[mode](r,i)}</g>`)
+ const extra=mode==='futures'?futures():''
+ document.getElementById('b').innerHTML=DEFS+tiles+(mode==='skyline'?`<g class="lab">${lab}</g>`+mid1:mid1+`<g class="lab">${lab}</g>`)+extra
+ document.getElementById('note').innerHTML=OPTS[mode][1]+(false?'<br><button id="hold" style="margin-top:8px;font:600 15px system-ui;padding:10px 22px;border-radius:999px;border:1px solid #c9a24a;background:'+(show?'#c9a24a':'#0d1426')+';color:'+(show?'#1a1206':'#efe6d2')+'">Hold for routes</button>':'')
+ document.getElementById('pick').innerHTML=Object.entries(OPTS).map(([k,[n]],i)=>`<button aria-pressed="${k===mode}" onclick="mode='${k}';location.hash='${k}';render()">${i+1}. ${n}</button>`).join('')}
+render()
+</script></body></html>

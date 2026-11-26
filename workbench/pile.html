@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Event pile and waiver</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Nunito:wght@700;800;900&family=Federo&display=swap" rel="stylesheet">
+<style>
+/* Two picks: how the event deck sits beside the board (the bank already holds the top-left corner, so the pile goes
+   bottom-left), and how a Tariff Waiver looks (big in the waiver choice, small as the count in a player row).
+   Card backs reuse the printed text side: navy with gold Deco corners. */
+:root{--gold:#d8b05a;--gold2:#f5dc94;--ink:#f3ecdc;--mute:#a39a86;--navy:#14213b;--orange:#ee7a32}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:15px/1.35 Nunito,system-ui;padding:26px 16px}
+h1{font:800 22px Fraunces;text-align:center;margin:0 0 4px}.sub{text-align:center;color:var(--mute);margin:0 0 20px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;max-width:1150px;margin:0 auto 30px}
+.opt{padding:14px;border-radius:18px;background:#0d0c0a99;box-shadow:0 0 0 1px #d8b05a33}
+.opt h2{margin:0 0 3px;font:800 16px Fraunces}.opt p{margin:0 0 12px;color:var(--mute);font-size:12.5px}
+.scene{position:relative;height:250px;border-radius:12px;background:#0000003a;overflow:hidden}
+.corner{position:absolute;right:-40px;top:-40px;width:250px;height:250px;border:5px solid #b8892e;border-radius:12px;background:#101830;
+ background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:44px 44px}
+/* a card back: navy, gold hairline frame, stepped Deco corners, a small diamond emblem */
+.back{position:absolute;width:132px;height:88px;border-radius:7px;background:linear-gradient(160deg,#1e2a44,#111a2e);box-shadow:0 0 0 1px #0a1020,0 6px 10px -4px #000c}
+.back::before{content:"";position:absolute;inset:6px;border:1px solid #d8b05a66;border-radius:3px}
+.back::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%) rotate(45deg);border:1.5px solid var(--gold);box-shadow:0 0 0 4px #111a2e,0 0 0 5px #d8b05a55}
+.back i{position:absolute;width:14px;height:14px;border-color:#e2b552;border-style:solid}
+.back i:nth-child(1){left:9px;top:9px;border-width:1.5px 0 0 1.5px}.back i:nth-child(2){right:9px;top:9px;border-width:1.5px 1.5px 0 0}.back i:nth-child(3){left:9px;bottom:9px;border-width:0 0 1.5px 1.5px}.back i:nth-child(4){right:9px;bottom:9px;border-width:0 1.5px 1.5px 0}
+.face{position:absolute;width:132px;height:88px;border-radius:7px;background:center/cover;box-shadow:0 6px 12px -4px #000c}
+.face b{position:absolute;left:0;right:0;bottom:6px;text-align:center;font:400 12px Federo;color:#fff;text-shadow:0 1px 4px #000}
+.count{position:absolute;padding:2px 9px;border-radius:999px;background:#0d0c0ae6;box-shadow:0 0 0 1px #d8b05a66;font:400 13px Federo;color:var(--gold2)}
+.lab{position:absolute;font:800 10.5px Nunito;color:var(--mute);letter-spacing:.12em;text-transform:uppercase}
+.shoe{position:absolute;width:168px;height:104px;border-radius:12px 12px 8px 8px;background:linear-gradient(165deg,#2b2720,#0d0c0a);box-shadow:0 0 0 1px #d8b05a88,0 12px 20px -8px #000}
+.shoe::before{content:"";position:absolute;inset:6px;border:1px solid #d8b05a33;border-radius:8px}
+.shoe .mouth{position:absolute;right:-1px;top:24px;width:24px;height:58px;border-radius:10px 0 0 10px;background:#05060a;box-shadow:inset 0 0 0 1px #d8b05a55}
+/* waiver looks */
+.wv{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 8px;border-radius:12px;background:#0000003a}
+.w-print{width:220px;height:132px;border-radius:10px;background:linear-gradient(160deg,#1a1a1a,#060606);box-shadow:0 0 0 1px #00000088,0 12px 20px -8px #000;position:relative;padding:14px}
+.w-print .ic{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#f9a24a,#d8521f);display:grid;place-items:center}
+.w-print b{position:absolute;left:14px;bottom:14px;font:400 22px Federo;color:#f0812f;letter-spacing:.04em}
+.w-print small{position:absolute;right:14px;top:16px;font:800 10px Nunito;color:#f0812f;letter-spacing:.14em}
+.w-tkt{display:flex;height:96px;filter:drop-shadow(0 10px 14px #000a)}
+.w-tkt .m{width:170px;border-radius:10px 0 0 10px;background:linear-gradient(160deg,#151515,#050505);padding:14px 16px;position:relative}
+.w-tkt .m b{display:block;font:400 21px Federo;color:#f0812f;letter-spacing:.06em}.w-tkt .m small{font:800 10px Nunito;letter-spacing:.14em;color:#a39a86}
+.w-tkt .m::after{content:"No. 0417";position:absolute;left:16px;bottom:12px;font:400 11px Federo;color:#f0812fcc}
+.w-tkt .s{width:62px;border-radius:0 10px 10px 0;background:linear-gradient(180deg,#f2873a,#d8521f);position:relative;display:grid;place-items:center;font:400 22px Federo;color:#1a0b02}
+.w-tkt .s::before{content:"";position:absolute;left:-1px;top:6px;bottom:6px;border-left:2px dashed #050505}
+.w-seal{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffb46a,#e2661f 60%,#9c3a0e);box-shadow:inset 0 0 0 6px #0d0c0a33,inset 0 0 0 8px #ffd2a055,0 12px 20px -8px #000;display:grid;place-items:center;text-align:center;position:relative}
+.w-seal b{font:400 15px/1.1 Federo;color:#1a0b02;letter-spacing:.12em}.w-seal small{display:block;font:800 9px Nunito;letter-spacing:.2em;color:#1a0b02aa;margin-top:4px}
+.w-seal::before{content:"";position:absolute;inset:12px;border-radius:50%;border:1.5px dashed #1a0b0277}
+.chips{display:flex;gap:10px;align-items:center;font:800 12px Nunito;color:var(--mute)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 4px;border-radius:999px;background:#ee7a3222;color:#ffb27a;font:900 13px Nunito}
+.mini-p{width:28px;height:18px;border-radius:3px;background:#0a0a0a;box-shadow:0 0 0 1px #f0812f66;display:grid;place-items:center}
+.mini-t{display:flex;height:18px}.mini-t i{width:20px;border-radius:3px 0 0 3px;background:#0a0a0a}.mini-t em{width:8px;border-radius:0 3px 3px 0;background:#ee7a32}
+.mini-s{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffb46a,#e2661f)}
+</style></head><body>
+<h1>Event pile</h1><p class="sub">Beside the board's bottom-left corner. Tap or drag the top card to draw it; it flies to the centre and turns over.</p>
+<div class="grid">
+<section class="opt"><h2>A. One neat stack</h2><p>Card backs from the printed text side, stacked with a slight offset. A count of cards left. The top card lifts when you hover.</p>
+<div class="scene"><div class="corner" style="right:-60px;top:-80px"></div>
+ <div class="back" style="left:36px;top:132px"><i></i><i></i><i></i><i></i></div><div class="back" style="left:33px;top:128px"><i></i><i></i><i></i><i></i></div><div class="back" style="left:30px;top:124px"><i></i><i></i><i></i><i></i></div>
+ <div class="back" style="left:27px;top:112px;transform:rotate(-2deg);box-shadow:0 0 0 1px #0a1020,0 16px 18px -6px #000"><i></i><i></i><i></i><i></i></div>
+ <span class="count" style="left:138px;top:212px">18 left</span><span class="lab" style="left:30px;top:96px">tap or drag</span></div></section>
+
+<section class="opt"><h2>B. Dealing shoe</h2><p>A black and gold Deco box, like a casino card shoe. The next card peeks out of the mouth; tap the shoe to deal.</p>
+<div class="scene"><div class="corner" style="right:-60px;top:-80px"></div>
+ <div class="back" style="left:122px;top:138px;transform:rotate(-6deg)"><i></i><i></i><i></i><i></i></div>
+ <div class="shoe" style="left:18px;top:124px"><span class="mouth"></span></div>
+ <span class="count" style="left:44px;top:156px">18</span><span class="lab" style="left:20px;top:104px">tap to deal</span></div></section>
+
+<section class="opt"><h2>C. Draw pile and last card</h2><p>The face-down pile, and beside it the last card played, art side up, so everyone sees what just happened.</p>
+<div class="scene"><div class="corner" style="right:-60px;top:-80px"></div>
+ <div class="back" style="left:24px;top:132px"><i></i><i></i><i></i><i></i></div><div class="back" style="left:20px;top:126px"><i></i><i></i><i></i><i></i></div>
+ <div class="face" style="left:170px;top:130px;background-image:url(/art/events/corruptionProbe.jpg);transform:rotate(3deg)"></div>
+ <span class="count" style="left:56px;top:218px">18 left</span><span class="lab" style="left:24px;top:108px">draw</span><span class="lab" style="left:176px;top:108px">last played</span></div></section>
+</div>
+
+<h1>Tariff Waiver</h1><p class="sub">Big when you choose to use one; small as the count in your row.</p>
+<div class="grid">
+<section class="opt"><h2>A. The printed card</h2><p>Faithful to the physical set: a black card, the orange tariff icon, "Tariff Waiver" in orange.</p>
+<div class="wv"><div class="w-print"><span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#1a0b02" stroke-width="2"><rect x="5" y="3" width="12" height="17" rx="2"/><path d="M8 8h6M8 12h6M14 17l5-5M15 12.5h.01M18.5 16.5h.01" stroke-linecap="round"/></svg></span><small>ONE USE</small><b>Tariff Waiver</b></div>
+<div class="chips">in a row: <span class="chip"><span class="mini-p"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#f0812f" stroke-width="3"><rect x="5" y="3" width="12" height="17" rx="2"/></svg></span>1</span></div></div></section>
+
+<section class="opt"><h2>B. Tear-off ticket</h2><p>The printed colours on a ticket with a stub you tear off to use it (the tear animation we already have). Serial number for flavour.</p>
+<div class="wv"><div class="w-tkt"><div class="m"><small>ONE USE</small><b>Tariff Waiver</b></div><div class="s">%</div></div>
+<div class="chips">in a row: <span class="chip"><span class="mini-t"><i></i><em></em></span>1</span></div></div></section>
+
+<section class="opt"><h2>C. Customs seal</h2><p>An orange enamel seal, like a customs stamp: "Tariff Waiver, one use". Stamps down when used.</p>
+<div class="wv"><div class="w-seal"><div><b>TARIFF<br>WAIVER</b><small>ONE USE</small></div></div>
+<div class="chips">in a row: <span class="chip"><span class="mini-s"></span>1</span></div></div></section>
+</div>
+</body></html>

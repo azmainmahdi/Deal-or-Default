@@ -79,7 +79,7 @@ export function Dock({ s, onIntent }: { s: GameState; onIntent: (i: Intent) => v
     : all
   const perChip = pl.country === 'uk' ? s.config.ukDebtCapital : 1
   const text = mode === 'takeDebt'
-    ? `Borrow how much? Each Debt chip gives ${perChip} Capital now and costs ${s.config.debtWeight} Net Worth at the end if unpaid.`
+    ? `Borrow how much? Each Debt chip gives ${perChip} Capital now and costs 1 extra if repaid within ${s.config.debtOnTime} turns, ${s.config.debtLateInterest} after that or at the end.`
     : mode === 'repay' ? 'Repay how much? Each chip costs 1 Capital.' : prompt(s)
   return (
     <section className="dock" aria-label="Your decision" style={{ '--pc': PAWN_COLORS[d.player] } as React.CSSProperties}>
@@ -92,8 +92,8 @@ export function Dock({ s, onIntent }: { s: GameState; onIntent: (i: Intent) => v
             {KEY[keyOf(i)] && <kbd>{KEY[keyOf(i)]}</kbd>}
           </button>
         ))}
-        {d.kind === 'debtWindow' && !mode && d.maxTake > 0 && <button onClick={() => setMode('takeDebt')}>Borrow…</button>}
-        {d.kind === 'debtWindow' && !mode && d.maxRepay > 0 && <button onClick={() => setMode('repay')}>Repay…</button>}
+        {d.kind === 'debtWindow' && !mode && d.take.length > 0 && <button onClick={() => setMode('takeDebt')}>Borrow…</button>}
+        {d.kind === 'debtWindow' && !mode && d.repay.length > 0 && <button onClick={() => setMode('repay')}>Repay…</button>}
         {mode && <button className="quiet" onClick={() => setMode(null)}>Back</button>}
       </div>
     </section>

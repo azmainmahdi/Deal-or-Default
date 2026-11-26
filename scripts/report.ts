@@ -1,4 +1,4 @@
-// npm run report -- [--games 10000] [--out report.json]
+// npm run report -- [--games 10000] [--out report.json] [--only <id prefix>]
 // Runs each rule variant over the same seeds and writes balance stats as JSON (M2 report).
 import { writeFileSync } from 'node:fs'
 import type { Config } from '../src/rules/config'
@@ -20,6 +20,18 @@ const variants: { id: string; label: string; config: Partial<Config>; mix?: bool
   { id: 'b0-largest', label: 'No bonus (reference)', config: { finishBonus: 0, hedgeLoss: 'largest' } },
   { id: 'china1', label: 'China tariff setback 1 (tuning test)', config: { finishBonus: 20, chinaTariffSetback: 1 } },
   { id: 'mix', label: 'Strategy mix, bonus 20', config: { finishBonus: 20 }, mix: true },
+  // 19 Oct: debt interest C + China export surplus are in the defaults; these isolate them at his bonus of 30
+  { id: 'b30-c', label: 'Bonus 30, debt C, China +1 per tariff', config: { finishBonus: 30 } },
+  { id: 'b30-c-nochina', label: 'Bonus 30, debt C, China perk off (reference)', config: { finishBonus: 30, chinaTariffIncome: 0 } },
+  { id: 'b30-c-china2', label: 'Bonus 30, debt C, China +2 per tariff (tuning test)', config: { finishBonus: 30, chinaTariffIncome: 2 } },
+  { id: 'mix30', label: 'Strategy mix, bonus 30, debt C', config: { finishBonus: 30 }, mix: true },
+  { id: 'de-bund', label: 'Germany: loans never late', config: { finishBonus: 30, germanyPerk: 'bund' } },
+  { id: 'de-quality3', label: 'Germany: 2+ chips pay +3', config: { finishBonus: 30, germanyPerk: 'quality', germanyQuality: 3 } },
+  { id: 'de-quality5', label: 'Germany: 2+ chips pay +5', config: { finishBonus: 30, germanyPerk: 'quality', germanyQuality: 5 } },
+  { id: 'de-quality2', label: 'Germany: 2+ chips pay +2', config: { finishBonus: 30, germanyPerk: 'quality', germanyQuality: 2 } },
+  { id: 'de-export1', label: 'Germany: +1 per payout', config: { finishBonus: 30, germanyPerk: 'export', germanyExport: 1 } },
+  { id: 'de-export2', label: 'Germany: +2 per payout', config: { finishBonus: 30, germanyPerk: 'export', germanyExport: 2 } },
+  { id: 'de-export3', label: 'Germany: +3 per payout', config: { finishBonus: 30, germanyPerk: 'export', germanyExport: 3 } },
 ]
 
 type Tally = Record<string, { wins: number; expected: number; n: number }>
@@ -31,7 +43,8 @@ const add = (t: Tally, k: string, won: number, expected: number) => {
 }
 const ratio = (t: Tally) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, { ratio: v.wins / v.expected, n: v.n }]))
 
-const results = variants.map((v) => {
+const only = arg('only', '')   // e.g. --only de- runs just the variants whose id starts with it
+const results = variants.filter((v) => v.id.startsWith(only)).map((v) => {
   const t0 = performance.now()
   const country: Tally = {}, seat: Tally = {}, policy: Tally = {}, borrowed: Tally = {}, bySize: Tally = {}
   const rounds: number[] = []

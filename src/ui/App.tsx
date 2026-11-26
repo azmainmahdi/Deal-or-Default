@@ -403,7 +403,7 @@ function Final({ s, onNew, onRematch, online }: { s: GameState; onNew: () => voi
           </div>
         </div>
         <table>
-          <thead><tr><th>#</th><th>Player</th><th>Capital</th><th>incl. bonus</th><th>incl. matured</th><th>− Debt × {s.config.debtWeight}</th><th>Unfinished deals</th><th>Net Worth</th></tr></thead>
+          <thead><tr><th>#</th><th>Player</th><th>Capital</th><th>incl. bonus</th><th>incl. matured</th><th>− Open loans (+{s.config.debtLateInterest} each)</th><th>Unfinished deals</th><th>Net Worth</th></tr></thead>
           <tbody>
             {r.rows.map((x, i) => (
               <tr key={x.player} style={{ animationDelay: `${0.4 + i * 0.35}s` }} className={r.winners.includes(x.player) ? 'win' : ''}>

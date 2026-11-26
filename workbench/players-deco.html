@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 5: Players Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@700;800&family=Josefin+Sans:wght@600;700&family=Limelight&family=Federo&family=Righteous&family=Poiret+One&display=swap" rel="stylesheet">
+<style>
+/* Step 5, round 4: the bubble rows in Art Deco. Country-card portraits instead of flags, gold hairlines,
+   stepped corners, letterspaced caps. Money on its way sits on a four-turn line of deco diamonds. */
+:root{--navy:#0b0a09;--navy2:#1a1814;--gold:#d8b05a;--gold2:#f5dc94;--ink:#f3ecdc;--mute:#a39a86;--green:#4fdcaa;--red:#ff8590;--num:#f5dc94}
+body.ivory{--navy:#e9dfc8;--navy2:#f7f1e3;--gold:#a8802e;--gold2:#7a5a18;--ink:#1d170c;--mute:#7d7260;--red:#b3283a;--num:#5c430f}
+body.ivory .panel{box-shadow:0 18px 40px -12px #000a}body.ivory .n{text-shadow:none}body.ivory .lbls span:first-child{color:#178a5f}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:var(--ink);font:14px/1.3 Nunito,system-ui}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 40%,#0008 100%);pointer-events:none}
+.top{position:relative;display:flex;gap:8px;justify-content:center;padding:14px 16px 0}
+.top button{font:800 14px Nunito;padding:9px 18px;border-radius:999px;border:1px solid var(--gold);background:linear-gradient(#22201b,#0b0a09);color:#f5dc94;cursor:pointer}
+.stage{position:relative;display:grid;gap:18px;padding:18px 16px 40px;max-width:1280px;margin:0 auto;grid-template-columns:minmax(0,1fr) 420px;align-items:start}
+.board{aspect-ratio:1;border:5px solid #b8892e;border-radius:10px;background:#101830 url(board-bg.jpg) center/cover;box-shadow:0 18px 40px -10px #000c;position:relative;overflow:hidden}
+.board::after{content:"Board";position:absolute;inset:0;display:grid;place-items:center;background:#101830d9;font:700 18px Fraunces;color:#c9a24a88;letter-spacing:.3em;text-transform:uppercase}
+@media (max-width:900px){.stage{grid-template-columns:1fr}.board{max-width:520px;width:100%;justify-self:center}}
+
+/* the panel: navy, a double gold rule, stepped Art Deco corners */
+.panel{position:relative;padding:16px 14px 10px;background:linear-gradient(180deg,var(--navy2),var(--navy));
+ clip-path:polygon(14px 0,calc(100% - 14px) 0,calc(100% - 14px) 6px,calc(100% - 6px) 6px,calc(100% - 6px) 14px,100% 14px,100% calc(100% - 14px),calc(100% - 6px) calc(100% - 14px),calc(100% - 6px) calc(100% - 6px),calc(100% - 14px) calc(100% - 6px),calc(100% - 14px) 100%,14px 100%,14px calc(100% - 6px),6px calc(100% - 6px),6px calc(100% - 14px),0 calc(100% - 14px),0 14px,6px 14px,6px 6px,14px 6px);
+ box-shadow:0 18px 40px -12px #000}
+.panel::before{content:"";position:absolute;inset:9px;border:1px solid #d8b05a66;outline:1px solid #d8b05a26;outline-offset:3px;pointer-events:none}
+.head{display:flex;align-items:center;gap:10px;justify-content:center;margin:2px 0 8px;font:700 12px Fraunces;letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
+.head i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}.head i:last-child{background:linear-gradient(90deg,var(--gold),transparent)}
+.head svg{width:22px;height:12px}
+
+.row{position:relative;display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:center;padding:12px 8px;cursor:pointer;transition:background .3s}
+.row+.row::before{content:"";position:absolute;left:20px;right:20px;top:0;height:1px;background:linear-gradient(90deg,transparent,#d8b05a55 20%,#d8b05a55 80%,transparent)}
+.row+.row::after{content:"";position:absolute;left:50%;top:-3px;width:6px;height:6px;margin-left:-3px;transform:rotate(45deg);background:var(--navy2);box-shadow:0 0 0 1px #d8b05a88}
+.row.on{background:radial-gradient(ellipse at 25% 50%,#d8b05a2e,transparent 75%)}
+/* portrait from the country card, in a gold double rim; the player colour is the gem */
+.por{position:relative;width:58px;height:58px;border-radius:12px;background:var(--art) center 30%/150% no-repeat;box-shadow:0 0 0 2px var(--gold),0 0 0 4px var(--navy),0 0 0 5px #d8b05a88,0 6px 12px -4px #000}
+.row.on .por{box-shadow:0 0 0 2px var(--gold),0 0 0 4px var(--navy),0 0 0 6px #f5dc94,0 0 20px 3px #e8c15e99}
+.por .fl{position:absolute;right:-7px;bottom:-6px;width:22px;height:15px;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1.5px var(--gold),0 2px 4px #0009}.por .fl svg{display:block;width:100%;height:100%}
+.name{font:800 17px Fraunces;letter-spacing:.02em}
+.ctry{font:700 10px Nunito;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin-top:1px}
+.ctry b{color:var(--gold2);font-weight:800}
+.turn{display:inline-block;margin-left:8px;padding:2px 9px;font:800 9.5px Nunito;letter-spacing:.16em;text-transform:uppercase;color:#241800;background:linear-gradient(#f9e3a0,#d8b05a);vertical-align:3px;
+ clip-path:polygon(6px 0,calc(100% - 6px) 0,100% 50%,calc(100% - 6px) 100%,6px 100%,0 50%);animation:bob 1.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-2px)}}
+.owe{margin-left:6px;font:800 10px Nunito;letter-spacing:.08em;color:var(--red);text-transform:uppercase}
+/* coins: a gold coin and a big number */
+.cash{display:flex;align-items:center;gap:7px}
+.coin{width:24px;height:24px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 35% 30%,#fff5cf,#f0c55a 45%,#a8770f);box-shadow:inset 0 0 0 2px #b8892e,inset 0 0 0 4px #f6d67a,0 2px 3px #0008}
+.coin::after{content:"";position:absolute;inset:8px;transform:rotate(45deg);border:1.5px solid #a8770f99}
+.coin.sm{width:15px;height:15px;box-shadow:inset 0 0 0 1.5px #b8892e,0 1px 2px #0008}.coin.sm::after{inset:4.5px;border-width:1px}
+.n{font:var(--nf,400 28px Federo);letter-spacing:var(--nl,0);font-variant-numeric:tabular-nums;color:var(--num);text-shadow:0 1px 0 #000}
+/* money on its way: four turns, deco diamonds, gold pills where money lands */
+.line{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px;max-width:220px}
+.slot{position:relative;height:26px;display:grid;place-items:center}
+.slot::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#d8b05a44}
+.slot:first-child::before{left:50%}.slot:last-child::before{right:50%}
+.dia{position:relative;width:7px;height:7px;transform:rotate(45deg);border:1px solid #d8b05a99;background:var(--navy)}
+.pill{position:relative;display:flex;align-items:center;gap:3px;padding:2px 8px 2px 3px;border-radius:999px;font:800 12px Nunito;color:#2a1a00;
+ background:linear-gradient(#ffe9a6,#e2b54f);box-shadow:0 0 0 1px #8a6420,0 3px 8px -3px #000}
+.slot:first-child .pill{background:linear-gradient(#b8ffe2,#4fdcaa);box-shadow:0 0 0 1px #1f7a58,0 0 12px -2px #4fdcaa;animation:glow 1.8s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 1px #1f7a58,0 0 18px 2px #4fdcaa88}}
+.lbls{display:grid;grid-template-columns:repeat(4,1fr);max-width:220px;font:800 9px Nunito;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);text-align:center}
+.lbls span:first-child{color:var(--green)}
+.none{margin-top:9px;font:700 11px Nunito;letter-spacing:.06em;color:var(--mute);font-style:italic}
+.more{grid-column:2/-1;display:none;font:700 12px Nunito;color:var(--mute)}.row.open .more{display:block}
+.fly{position:fixed;z-index:9;pointer-events:none}
+@media (max-width:420px){.ctry{letter-spacing:.12em}.row{grid-template-columns:50px 1fr auto;gap:10px;padding:10px 4px}.por{width:50px;height:50px}.n{font-size:24px}.name{font-size:15px}}
+</style></head><body>
+<div class="top"><button onclick="document.body.classList.remove('ivory')">Black</button><button onclick="document.body.classList.add('ivory')">Ivory</button><button onclick="endTurn()">Next turn</button></div>
+<div class="top" id="fonts"></div>
+<div class="stage"><div class="board"></div>
+ <div class="panel"><div class="head"><i></i><svg viewBox="0 0 22 12"><path d="M11 1 L13 6 L11 11 L9 6 Z M1 6 H7 M15 6 H21" stroke="#d8b05a" fill="#d8b05a" stroke-width="1"/></svg>Players<svg viewBox="0 0 22 12"><path d="M11 1 L13 6 L11 11 L9 6 Z M1 6 H7 M15 6 H21" stroke="#d8b05a" fill="#d8b05a" stroke-width="1"/></svg><i></i></div><div id="sb"></div></div></div>
+<script>
+const FLAG={
+ usa:'<rect width="30" height="20" fill="#fff"/>'+[0,2,4,6,8,10,12].map(i=>`<rect y="${i*1.54}" width="30" height="1.54" fill="#b22234"/>`).join('')+'<rect width="13" height="10.8" fill="#3c3b6e"/>',
+ china:'<rect width="30" height="20" fill="#de2910"/><path d="M6 3l1.2 3.6H11L8 8.8l1.1 3.6L6 10.2 2.9 12.4 4 8.8 1 6.6h3.8z" fill="#ffde00"/>',
+ japan:'<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/>',
+ germany:'<rect width="30" height="7" fill="#111"/><rect y="7" width="30" height="6" fill="#dd0000"/><rect y="13" width="30" height="7" fill="#ffce00"/>',
+ bangladesh:'<rect width="30" height="20" fill="#006a4e"/><circle cx="13.5" cy="10" r="6" fill="#f42a41"/>',
+ uk:'<rect width="30" height="20" fill="#012169"/><path d="M0 0L30 20M30 0L0 20" stroke="#fff" stroke-width="4"/><path d="M0 0L30 20M30 0L0 20" stroke="#c8102e" stroke-width="1.5"/><path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/><path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.5"/>',
+}
+const PC=['#3d86f0','#e5523a','#1fb27d','#9466f2','#e2609f','#22b9cc']
+const NAMES={usa:'USA',china:'China',japan:'Japan',germany:'Germany',bangladesh:'Bangladesh',uk:'UK'}
+// sample mid-game state (made up for the preview)
+const START=[
+ {name:'Ana',c:'usa',sq:24,cap:14,debt:0,st:[],pj:[{p:6,t:1},{p:4,t:3}]},
+ {name:'Bo',c:'china',sq:32,cap:9,debt:0,st:[],pj:[{p:8,t:2}]},
+ {name:'Kenji',c:'japan',sq:37,cap:21,debt:0,st:[],pj:[]},
+ {name:'Lena',c:'germany',sq:8,cap:6,debt:2,st:[],pj:[{p:3,t:1},{p:3,t:2},{p:5,t:4}]},
+ {name:'Rafi',c:'bangladesh',sq:61,cap:12,debt:0,st:[],pj:[{p:10,t:4}]},
+ {name:'Will',c:'uk',sq:50,cap:4,debt:0,st:['Rate hike for 2 turns'],pj:[]},
+]
+let P=structuredClone(START),active=0,openRow=-1
+const due=(p,k)=>p.pj.filter(x=>x.t===k).reduce((a,x)=>a+x.p,0)
+function render(){document.getElementById('sb').innerHTML=P.map((p,i)=>{const on=i===active
+ return`<div class="row ${on?'on':''} ${openRow===i?'open':''}" style="--pc:${PC[i]};--art:url(/art/countries/${p.c}.jpg)" onclick="openRow=openRow===${i}?-1:${i};render()">
+  <div class="por"><span class="fl"><svg viewBox="0 0 30 20" preserveAspectRatio="none">${FLAG[p.c]}</svg></span></div>
+  <div><div class="name">${p.name}${on?'<span class="turn">Your turn</span>':''}${p.debt?`<span class="owe">owes ${p.debt}</span>`:''}</div>
+   <div class="ctry">${NAMES[p.c]} · square <b>${p.sq}</b></div>
+   ${p.pj.length?`<div class="line">${[1,2,3,4].map(k=>{const v=due(p,k);return`<div class="slot">${v?`<span class="pill"><span class="coin sm"></span>+${v}</span>`:'<span class="dia"></span>'}</div>`}).join('')}</div>
+   <div class="lbls"><span>next</span><span>in 2</span><span>in 3</span><span>in 4</span></div>`:'<div class="none">No money on its way yet</div>'}</div>
+  <div class="cash"><span class="coin"></span><span class="n" data-cap="${i}">${p.cap}</span></div>
+  <div class="more">${[p.debt?`Owes ${p.debt} coins.`:'',...p.st.map(s=>s+'.'),`${p.pj.reduce((a,x)=>a+x.p,0)} coins on the way in total.`].filter(Boolean).join(' ')}</div></div>`}).join('')}
+// demo: next turn's money flies into the coin total, which counts up; the turn passes on
+function endTurn(){const paid=[]
+ P.forEach((p,i)=>{const d=due(p,1);if(d){const src=document.querySelectorAll('#sb .row')[i].querySelector('.slot:first-child .pill');paid.push([i,p.cap,d,src&&src.getBoundingClientRect()])}
+  p.pj=p.pj.map(x=>({...x,t:x.t-1})).filter(x=>x.t>0);p.cap+=d})
+ P[active].sq=Math.min(99,P[active].sq+1+Math.floor(Math.random()*6));active=(active+1)%P.length;render()
+ paid.forEach(([i,from,d,r])=>{const el=document.querySelector(`[data-cap="${i}"]`);el.textContent=from;const to=el.getBoundingClientRect()
+  for(let k=0;k<Math.min(6,d);k++){const c=document.createElement('span');c.className='coin fly';const sx=r?r.left:to.left-60,sy=r?r.top:to.top;c.style.left=sx+'px';c.style.top=sy+'px';document.body.appendChild(c)
+   c.animate([{transform:'translate(0,0) scale(.6)',opacity:0},{transform:`translate(${(to.left-sx)/2}px,${(to.top-sy)/2-36}px) scale(1)`,opacity:1,offset:.5},{transform:`translate(${to.left-30-sx}px,${to.top-sy}px) scale(.7)`,opacity:.9}],{duration:650,delay:k*70,easing:'ease-in-out'}).onfinish=()=>c.remove()}
+  const t0=performance.now()+450,tick=t=>{const k=Math.max(0,Math.min(1,(t-t0)/600));el.textContent=Math.round(from+d*k);if(k<1)requestAnimationFrame(tick);else el.animate([{transform:'scale(1)'},{transform:'scale(1.22)'},{transform:'scale(1)'}],{duration:300})};requestAnimationFrame(tick)})
+ if(P.every(p=>!p.pj.length))setTimeout(()=>{P=structuredClone(START);render()},2000)}
+render()
+// font choices for the coin numbers
+const FONTS=[['Federo',"400 28px Federo"],['Poiret One',"400 30px 'Poiret One'",'.02em'],['Limelight',"400 27px Limelight"],['Josefin Sans',"700 28px 'Josefin Sans'"],['Righteous',"400 27px Righteous"]]   // Federo is the default; the rest become a setting
+function fonts(k){document.body.style.setProperty('--nf',FONTS[k][1]);document.body.style.setProperty('--nl',FONTS[k][2]||'0')
+ document.getElementById('fonts').innerHTML='Numbers: '+FONTS.map(([n,f],i)=>`<button style="font:${f.replace(/\d+px/,'15px')};${i===k?'background:#d8b05a;color:#1a1206':''}" onclick="fonts(${i})">${n} 14 21</button>`).join('')}
+fonts(0)
+if(location.hash==='#fonts'){const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;z-index:20;background:#0b0a09;display:grid;align-content:center;gap:4px;padding:24px'
+ d.innerHTML=FONTS.map(([n,f],i)=>`<div style="display:grid;grid-template-columns:150px 1fr;align-items:center;gap:16px;padding:8px 18px;border-bottom:1px solid #d8b05a33"><span style="font:800 13px Nunito;color:#a39a86;letter-spacing:.1em;text-transform:uppercase">${i+1}. ${n}</span><span style="font:${f.replace(/\d+px/,'40px')};color:#f5dc94;letter-spacing:.04em">14 · 9 · 21 · 6 · 12 · 108</span></div>`).join('');document.body.appendChild(d)}
+</script></body></html>

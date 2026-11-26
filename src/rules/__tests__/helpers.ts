@@ -4,9 +4,10 @@ import { newGame, step } from '../engine'
 import { roll } from '../rng'
 import type { CountryId, GameEvent, GameState, Intent, Player } from '../types'
 
-/** A fresh game at player 0's debt window. Countries default to Germany (its perk only fires on exactly 2 chips). */
+/** A fresh game at player 0's debt window. Countries default to Germany on its old printed perk (fires only on
+ *  exactly 2 chips), so most tests are unaffected by perks; the Made in Germany test passes its own config. */
 export function game(n = 2, config: Partial<Config> = {}, countries: CountryId[] = []): GameState {
-  const { state } = newGame({ names: Array.from({ length: n }, (_, i) => `P${i}`), seed: 1, config: { ackCards: false, ...config } })
+  const { state } = newGame({ names: Array.from({ length: n }, (_, i) => `P${i}`), seed: 1, config: { ackCards: false, germanyPerk: 'exact2', ...config } })
   state.players.forEach((pl, i) => (pl.country = countries[i] ?? 'germany'))
   return state
 }

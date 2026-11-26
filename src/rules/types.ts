@@ -9,6 +9,9 @@ export type CardId =
   | 'portBlockade' | 'insuranceFraud' | 'corruptionProbe' | 'debtSpiral' | 'sanctionThreat'
   | 'rateHike' | 'commodityCrash' | 'capitalControls'
 
+/** One borrowing, kept so interest can depend on its age. `turn` is the game turn it was taken on. */
+export interface Loan { n: number; turn: number }
+
 export interface Project { id: number; chips: number; delta: number; ttm: number; profit: number }
 
 /** Countdown statuses: each is consumed at the start of its owner's turn, `turns` times. */
@@ -20,7 +23,8 @@ export interface Player {
   country: CountryId
   square: number
   capital: number
-  debt: number
+  debt: number       // total owed: always the sum of loans[].n
+  loans: Loan[]
   waivers: number
   projects: Project[]
   statuses: Status[]
@@ -44,16 +48,17 @@ export type Effect =
   | { t: 'applyCard'; p: Seat; card: CardId }
   | { t: 'finish'; p: Seat }
   | { t: 'takeover' }
+  | { t: 'takeoverOffer'; order: Seat[] }
   | { t: 'endTurn' }
 
 export type Decision =
-  | { kind: 'debtWindow'; player: Seat; maxTake: number; maxRepay: number }
+  | { kind: 'debtWindow'; player: Seat; take: number[]; repay: number[] }   // loan sizes you may take / repay now
   | { kind: 'roll'; player: Seat }
   | { kind: 'invest'; player: Seat; max: number; from: number; to: number }
   | { kind: 'hedge'; player: Seat; cost: number; from: number; to: number }
   | { kind: 'waiver'; player: Seat; from: Seat; setback: number; rest: Seat[] }
   | { kind: 'cardChoice'; player: Seat; card: CardId; options: string[] }
-  | { kind: 'takeover'; player: Seat; victims: Seat[] }
+  | { kind: 'takeover'; player: Seat; victims: Seat[]; rest: Seat[] }   // rest: who else on the square may challenge if this player passes
   | { kind: 'ackCard'; player: Seat; card: CardId }
 
 export type Intent =
@@ -84,6 +89,8 @@ export type GameEvent =
   | { type: 'projectMatured'; player: Seat; id: number; profit: number }
   | { type: 'projectLost'; player: Seat; id: number }
   | { type: 'projectStolen'; from: Seat; to: Seat; id: number }
+  | { type: 'duel'; challenger: Seat; defender: Seat; rolls: [number, number][]; winner: Seat }
+  | { type: 'tariffCancelled'; player: Seat }
   | { type: 'hedged'; player: Seat; cost: number }
   | { type: 'cardDrawn'; player: Seat; card: CardId }
   | { type: 'deckShuffled' }
@@ -121,7 +128,8 @@ export interface GameState {
   discard: CardId[]
   queue: Effect[]
   decision: Decision | null
-  turnFlags: { rollBonus: number; noRepay: boolean; landings: number }
+  turnFlags: { rollBonus: number; noRepay: boolean; landings: number; borrowed?: boolean }
+  corridor?: number   // Trade Corridor: tariffs still to cancel (the next tariff square landed on by anyone)
   nextProjectId: number
   result?: FinalLedger
 }

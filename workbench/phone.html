@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 6: Phone Layout</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Fraunces:opsz,wght@9..144,800&display=swap" rel="stylesheet">
+<style>
+/* Three phone layouts for the turn panel, each a live turn.html in a phone-sized frame. Every tab and button works. */
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#1a0f08 url(wood.jpg) center/cover fixed;min-height:100vh;color:#f3ecdc;font:15px/1.35 Nunito,system-ui;padding:22px 16px 40px}
+h1{margin:0 auto 4px;max-width:1260px;font:800 22px Fraunces}.lead{margin:0 auto 18px;max-width:1260px;color:#a39a86;font-weight:700}
+.grid{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;max-width:1260px;margin:0 auto}
+.opt{display:flex;flex-direction:column;gap:8px;width:390px;max-width:100%}
+.opt h2{margin:0;font:800 17px Fraunces}.opt p{margin:0;font:700 12.5px Nunito;color:#a39a86;min-height:34px}
+.phone{width:390px;max-width:100%;height:800px;border-radius:38px;padding:10px;background:#0b0a08;box-shadow:0 0 0 2px #3a332a,0 30px 60px -20px #000}
+.phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#1a0f08}
+</style></head><body>
+<h1>Phone layout</h1>
+<p class="lead">The same turn on a phone, four ways. Each frame is the live page: switch scenes and press the buttons.</p>
+<div class="grid">
+ <section class="opt"><h2>D · Compact (new)</h2><p>Small panel and buttons. The strip shows everyone's coins; tap it to open the full list.</p><div class="phone"><iframe src="turn.html?layout=D#ladder" title="Layout D"></iframe></div></section>
+ <section class="opt"><h2>A · Bottom sheet</h2><p>Your decision is fixed at the bottom. The other players sit in a strip above the board.</p><div class="phone"><iframe src="turn.html?layout=A#ladder" title="Layout A"></iframe></div></section>
+ <section class="opt"><h2>B · Compact strip</h2><p>Every player in one strip above the board. The decision sits under the board and scrolls with the page.</p><div class="phone"><iframe src="turn.html?layout=B#ladder" title="Layout B"></iframe></div></section>
+ <section class="opt"><h2>C · Pull-up sheet</h2><p>Like A, but tap the Players handle to pull the sheet up and see everyone.</p><div class="phone"><iframe src="turn.html?layout=C#ladder" title="Layout C"></iframe></div></section>
+</div>
+</body></html>
